@@ -1,0 +1,80 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project
+
+FairShareMonApi — a personal/group **expense ledger & debt-splitting** Web API ("Sổ ghi nợ chi tiêu"). Each user owns their own data (members, expense batches, vouchers, records); the system tracks who paid and who owes. Single solution `FairShareMonApi.sln` with the Web API project `FairShareMonApi/`.
+
+The full back-end design spec lives in **`The-ideal.md`** (data model, auth, endpoints, business logic) — treat it as the source of truth for *what* to build. This file describes *how* to build it (conventions).
+
+**Stack (.NET 8):** `net8.0` (SDK pinned in `global.json`), EF Core 8 + Pomelo MySQL (MySQL/MariaDB), AutoMapper, NLog, BCrypt for password hashing, **opaque stateful tokens** (whitelist in Memcached, not JWT), DiDecoration for attribute-driven DI, Swagger. Nullable + ImplicitUsings enabled.
+
+> These conventions were adapted from the sibling project **quick-ordering** (a .NET 9 codebase). Where quick-ordering uses .NET 9-only or domain-specific features, this repo substitutes a .NET 8-compatible equivalent — see **".NET 8 adaptations"** below.
+
+## Commands
+
+```powershell
+dotnet build .\FairShareMonApi.sln                                       # build
+dotnet run --project .\FairShareMonApi\FairShareMonApi.csproj            # run API locally (Swagger UI at /swagger)
+dotnet test .\FairShareMonApi.sln                                        # run all tests
+```
+
+EF Core migrations (from repo root):
+
+```powershell
+dotnet ef migrations add <Name> --project .\FairShareMonApi\FairShareMonApi.csproj
+dotnet ef database update --project .\FairShareMonApi\FairShareMonApi.csproj
+```
+
+Requires running MySQL/MariaDB (`ConnectionStrings:Default`) and Memcached — configured in `FairShareMonApi/appsettings.json`.
+
+## Architecture
+
+**Request flow:** `Controllers/* → Services/Api/* → Repositories/* → AppDbContext`. Controllers stay thin and delegate to services; business logic never lives in controllers or repositories.
+
+Core building blocks to establish/orient (see `The-ideal.md` for the domain):
+- `Program.cs` — bootstrap, middleware pipeline, auth/DI/DbContext/Memcached wiring.
+- `Controllers/AppController.cs` — base controller. All controllers derive from it; routes are `api/v{version:apiVersion}/[controller]` and responses are auto-wrapped via `[ResponseWrapped]` into `ApiResult<T>`. **Treat as locked** once written — don't edit without explicit per-request permission.
+- `Repositories/Abstractions/BaseRepository.cs` — `ExecuteQueryAsync` (reads), `ExecuteTransactionAsync` (writes), and `Query<T>(...)` which applies `AsNoTracking` and soft-delete filtering by default.
+- `Models/ApiResult.cs` — `ApiResult<T>.Success(...)` / `ApiResult.Failure(...)` / `ApiResult.SuccessMessage(...)`.
+
+**Controllers** map to the endpoint groups in `The-ideal.md`: Auth, Members, Vouchers (+ records sub-routes), Batches, Stats. Service implementations live under `Services/Api/<Area>/`.
+
+**Dependency injection** is attribute-driven via the DiDecoration package. Annotate services with `[ScopedService]`, `[SingletonService]`, or `[TransientService]` instead of registering manually. For multiple implementations of one interface, set `Multiple = true` (property initializer), otherwise `TryAdd` silently drops later ones.
+
+**Database (`Database/`):**
+- All EF entity mappings go in `AppDbContext.cs` (or per-entity static `ConfigureModel(ModelBuilder)` methods invoked from it — see Style).
+- `AppDbContext.partial.cs` is reserved for query filters (`HasQueryFilter`) only — no entity declaration blocks.
+- Soft-delete is standard: `members.is_active` per the spec, and/or an `IsDeleted` / `IEntityDeletable` flag; deleted rows excluded by default by `BaseRepository.Query`.
+- Use `AsNoTracking()` for reads; enable tracking only when mutating.
+
+**Auth (per `The-ideal.md`):** opaque stateful tokens. On login, generate a random token, store its **SHA-256 hash** in `auth_tokens` (the whitelist) and in Memcached with TTL = `expires_at`; return the raw token once. Each request hashes the incoming token and checks the whitelist (cache first, DB fallback). Access + refresh token pair. Logout/revoke removes from whitelist; password change revokes all of a user's tokens.
+
+## Critical conventions
+
+- **Resource Owned authorization (mandatory):** every query for an owned resource is scoped `WHERE id = :id AND user_id = :current_user_id`. On miss return **404 Not Found**, never 403 (don't leak existence). Validate cross-user links too: a voucher's `payer_member_id` and a record's `member_id` must belong to the same `user_id`.
+- **Money safety:** store money as `DECIMAL`/`decimal` or as integer smallest-unit (VND). **Never `float`/`double`.** Enforce `amount >= 0` with a DB CHECK constraint, not just app validation.
+- **Batch lifecycle:** when an `expense_batches.status = CLOSED`, disable all writes to vouchers in that batch (create/update/delete records and adding vouchers) — read/export only.
+- **Transactions:** writes go through `ExecuteTransactionAsync`; use `TransactionContext.NoCommit()` to abort on validation/business failure. Don't add a trailing `SaveChangesAsync` that just duplicates the extension's commit (keep explicit saves only for a genuinely needed intermediate flush). Creating a voucher + its records is one transaction.
+- **Async:** suffix methods `Async`, thread `CancellationToken` through, always await `Task`/`ValueTask`.
+- **Style:** prefer primary constructors for any class with a single constructor. Skip types with multiple constructors, real ctor logic, or a parameterless default-init ctor (entities, value types, `AppDbContext`). Guard clauses + early returns. Vietnamese for user-facing messages and Swagger summaries.
+
+## .NET 8 adaptations (differences from quick-ordering)
+
+| quick-ordering (.NET 9) | FairShareMonApi (.NET 8) |
+|---|---|
+| `Guid.CreateVersion7().ToString()` | `Uuid.NewV7()` helper (manual UUIDv7, time-ordered, .NET 8-compatible) — **never** call `Guid.CreateVersion7()` |
+| EF Core 9 / Pomelo 9 / `Microsoft.*` 9.x | EF Core 8 / Pomelo 8 / `Microsoft.*` 8.x package versions |
+| JWT auth | opaque stateful token (hashed in DB + Memcached) per `The-ideal.md` |
+| Redis (StackExchange.Redis) | Memcached |
+
+## Process rules (mandatory)
+
+- **Clarification-First:** do NOT assume. When information is missing, ambiguous, preference-dependent, or has multiple valid solutions, stop and ask the user before proceeding. If a reasonable engineer would ask first, ask first.
+- **Planning doc before code:** every feature/fix/refactor/migration gets a Markdown file under `/planning/[main-purpose].md` (lowercase kebab-case) before implementation begins — objective, requirements, open questions, assumptions, implementation plan, impact analysis, progress log, final outcome. Keep it synchronized with the actual work; a task isn't done until its planning doc is updated.
+- **DB migration rule:** any schema/data change is **appended** to `FairShareMonApi/database-migration.sql` at the end, outside the commented "applied" block, with a dated comment. The maintainer applies it manually.
+
+## More detail
+
+`AGENTS.md` (architecture map) and `.agents/rules/rules.md` (full coding-style + process rules) carry the complete conventions. `The-ideal.md` carries the domain design.
