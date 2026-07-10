@@ -92,7 +92,7 @@ Solution layout — 2 projects:
 - `FairShareMonApi/` (existing web project): `Controllers/` (Auth, Members, Categories, Tags, Vouchers, Batches, Stats + `AppController` base), `Services/Api/<Area>/`, `Repositories/` + `Repositories/Abstractions/BaseRepository`, `Database/` (`AppDbContext` + `AppDbContext.partial.cs` + `Entities/` with per-entity `ConfigureModel`), `Auth/` (opaque-token `AuthenticationHandler`), `Middlewares/`, `Models/` (`ApiResult<T>`, requests/DTOs), `Extensions/` (`DatabaseExtensions`), `Utils/` (`Uuid.NewV7()`), `Attributes/`, `Enums/`, `Constants/`.
 - `FairShareMonApi.Tests/`: xUnit; service-level tests against **real MariaDB with per-test transaction rollback** (GHM style, adapted to EF Core: open connection + transaction, pass to `DbContextOptions`, roll back on dispose), `SkippableFact` when DB unreachable; EF InMemory only for pure-logic units.
 
-Packages (all 8.x-compatible): `Microsoft.EntityFrameworkCore` 8.x + `Pomelo.EntityFrameworkCore.MySql` 8.x (+ Design/Tools), `DiDecoration` 1.1.0 (+ Analyzers) — *only* DI mechanism, `BCrypt.Net-Core`, `EnyimMemcachedCore` (Memcached client), `NLog.Extensions.Logging`, `AutoMapper` **13.0.1** (last MIT), `Swashbuckle.AspNetCore` + `Asp.Versioning.Mvc`, xUnit + `Xunit.SkippableFact` for tests.
+Packages (all 8.x-compatible): `Microsoft.EntityFrameworkCore` 8.x + `Pomelo.EntityFrameworkCore.MySql` 8.x (+ Design/Tools), `DiDecoration` 1.1.0 (+ Analyzers) — *only* DI mechanism, `BCrypt.Net-Core`, `StackExchange.Redis` (cache client — *superseded 2026-07-10: originally `EnyimMemcachedCore`/Memcached per the spec; user chose the Redis instance running under Docker*), `NLog.Extensions.Logging`, `AutoMapper` **13.0.1** (last MIT), `Swashbuckle.AspNetCore` + `Asp.Versioning.Mvc`, xUnit + `Xunit.SkippableFact` for tests.
 
 GHM lessons grafted onto the quick-ordering base:
 1. **Uniform soft delete** — `HasQueryFilter` on every `is_active`/`IsDeleted` entity in `AppDbContext.partial.cs`; `BaseRepository.Query` remains a second guard, never the only one. No raw `DbSet` reads in services.
@@ -132,6 +132,7 @@ Solo-maintained, ~10-table domain; compile-time layering ceremony costs more tha
 - Wrote comparison matrix, recommendation, and decision log.
 - Reviewed quick-ordering's newly pulled commit `aeaed04` (shift carry-over audit + switch to EF migrations); per user decision, updated CLAUDE.md, AGENTS.md, and `.agents/rules/rules.md` to replace the manual `database-migration.sql` rule with EF Core migrations (+ offline design-time factory), and aligned this doc's recommendation.
 - User decided remaining stack questions: AutoMapper 13.0.1, FluentValidation, real MariaDB tests. Wrote the initialization plan ([project-initialization.md](project-initialization.md)); aligned CLAUDE.md and testing rules.
+- User answered the initialization plan's open questions: MariaDB **11.7.2**, tests against the real DB (`FSM_TEST_CONNECTION` env override), and **Redis (Docker) replaces Memcached** as the cache — `StackExchange.Redis` instead of `EnyimMemcachedCore`, matching quick-ordering. Mentions of "Memcached" elsewhere in this doc's analysis sections are historical (they describe the spec at analysis time). CLAUDE.md / AGENTS.md / rules.md updated.
 
 ## Final Outcome
 

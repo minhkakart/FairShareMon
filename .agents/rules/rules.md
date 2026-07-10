@@ -47,13 +47,13 @@
 - Once written, treat `Controllers/AppController.cs` as **locked** — do not modify it without explicit, file-specific permission in the current request.
 
 ## Domain Safety Rules
-- **Resource Owned:** scope every owned-resource query by `WHERE ... AND user_id = :current_user_id`; return **404** (not 403) on miss. Validate cross-user FK links (a voucher's `payer_member_id` and a record's `member_id` must share the voucher's `user_id`).
+- **Resource Owned:** scope every owned-resource query by `WHERE ... AND user_id = :current_user_id`; return **404** (not 403) on miss. Validate cross-user FK links (an expense's `payer_member_id` and a share's `member_id` must match the expense's `user_id`).
 - **Money:** store as `DECIMAL`/`decimal` or integer smallest-unit; never float/double. Enforce `amount >= 0` with a DB CHECK constraint.
-- **Batch lifecycle:** validate state transitions explicitly; a `CLOSED` batch rejects all writes to its vouchers/records. Voucher `expense_time` must fall within the batch's date range.
-- Create a voucher and its records in a single transaction.
+- **Event lifecycle:** validate state transitions explicitly; a `CLOSED` event rejects all writes to its expenses/shares (sole exception: the settled flag). Closing is one-way and never automatic. Expense `expense_time` must fall within the event's date range.
+- Create an expense and its shares in a single transaction.
 
 ## Auth
-- Opaque stateful token (not JWT). Store `SHA-256(token)` in `auth_tokens` and Memcached (TTL = expiry); return the raw token to the client once.
+- Opaque stateful token (not JWT). Store `SHA-256(token)` in `auth_tokens` and Redis (TTL = expiry); return the raw token to the client once.
 - Validate each request by hashing the incoming token and checking the whitelist (cache first, DB fallback). Issue access + refresh tokens.
 - Logout/revoke removes from the whitelist; password change revokes all of a user's tokens.
 
@@ -88,7 +88,7 @@ Every feature, enhancement, bug fix, refactor, migration, or significant change 
 
 ## Planning Directory & Naming
 - Store all planning docs under `/planning` (create it if missing).
-- One Markdown file per work item: `/planning/[main-purpose].md` — lowercase, kebab-case, descriptive (e.g. `user-authentication.md`, `voucher-export-feature.md`).
+- One Markdown file per work item: `/planning/[main-purpose].md` — lowercase, kebab-case, descriptive (e.g. `user-authentication.md`, `expense-export-feature.md`).
 
 ## Required Template
 Each planning file MUST contain: **Title**, **Objective**, **Background**, **Requirements**, **Open Questions**, **Assumptions**, **Implementation Plan**, **Impact Analysis** (APIs / Database / Infrastructure / Services / Documentation), **Progress Log** (timestamped entries), **Final Outcome**, and optional **Future Improvements**. Record significant decisions with reason + alternatives considered.
