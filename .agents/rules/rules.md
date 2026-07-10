@@ -60,10 +60,15 @@
 ## Testing Rules
 - Use xUnit.
 - Prefer focused tests asserting both the returned result (`ApiResult<T>`, error codes, state) and persisted EF Core data changes.
-- Use isolated in-memory DB instances per test; lightweight fakes/stubs for collaborators.
+- Integration tests run against a real MariaDB: shared fixture probes the DB once and skips tests (`Xunit.SkippableFact`) when unreachable; each test runs inside a transaction rolled back on dispose so nothing persists. Use lightweight fakes/stubs for collaborators.
+- EF InMemory only for pure-logic units with no DB-level behavior (e.g. helpers).
 
 ## Database Change Rule
-- Append any DB schema/data migration to the end of `FairShareMonApi/database-migration.sql`, outside completed/commented blocks, with a dated comment and short description. The maintainer applies it manually.
+- DB schema changes use EF Core migrations: `dotnet ef migrations add <Name>` then `dotnet ef database update` (both `--project .\FairShareMonApi\FairShareMonApi.csproj`).
+- `migrations add` / `migrations script` run offline via `AppDbContextDesignTimeFactory` (pins the MariaDB `ServerVersion`); only `database update` / `migrations list` need a reachable MySQL/MariaDB (`ConnectionStrings:Default`).
+- Bump the pinned version in that factory if the target server major/minor changes.
+- Review the generated migration before applying; keep the model snapshot in sync.
+- Do not create or append to a manual `database-migration.sql`. Data-only fixes with no schema change may be applied as ad-hoc SQL.
 
 ---
 

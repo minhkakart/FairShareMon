@@ -41,4 +41,4 @@
 ## Process Rules (important)
 - **Clarification-First:** never assume; ask the user when anything is ambiguous, missing, or preference-dependent.
 - **Planning doc before code:** create `/planning/[main-purpose].md` (lowercase kebab-case) before implementing; keep it synced; finish it before marking a task done.
-- **DB Change Rule:** append any schema/data migration to the end of `FairShareMonApi/database-migration.sql`, outside completed/commented blocks, with a dated comment.
+- **DB Change Rule:** schema changes use EF Core migrations: `dotnet ef migrations add <Name> --project .\FairShareMonApi\FairShareMonApi.csproj` then `dotnet ef database update --project .\FairShareMonApi\FairShareMonApi.csproj`. Authoring commands run offline via `AppDbContextDesignTimeFactory` (pinned MariaDB `ServerVersion` — bump it if the target server major/minor changes); review the generated migration before applying. No manual `database-migration.sql`.

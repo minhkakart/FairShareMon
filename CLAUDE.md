@@ -8,7 +8,7 @@ FairShareMonApi — a personal/group **expense ledger & debt-splitting** Web API
 
 The full back-end design spec lives in **`The-ideal.md`** (data model, auth, endpoints, business logic) — treat it as the source of truth for *what* to build. This file describes *how* to build it (conventions).
 
-**Stack (.NET 8):** `net8.0` (SDK pinned in `global.json`), EF Core 8 + Pomelo MySQL (MySQL/MariaDB), AutoMapper, NLog, BCrypt for password hashing, **opaque stateful tokens** (whitelist in Memcached, not JWT), DiDecoration for attribute-driven DI, Swagger. Nullable + ImplicitUsings enabled.
+**Stack (.NET 8):** `net8.0` (SDK pinned in `global.json`), EF Core 8 + Pomelo MySQL (MySQL/MariaDB), AutoMapper **13.0.1 pinned** (last MIT license — never upgrade to 14+), FluentValidation for request validation, NLog, BCrypt for password hashing, **opaque stateful tokens** (whitelist in Memcached, not JWT), DiDecoration for attribute-driven DI, Swagger. Nullable + ImplicitUsings enabled. Integration tests run against a **real MariaDB** with per-test transaction rollback (skip when unreachable), not EF InMemory.
 
 > These conventions were adapted from the sibling project **quick-ordering** (a .NET 9 codebase). Where quick-ordering uses .NET 9-only or domain-specific features, this repo substitutes a .NET 8-compatible equivalent — see **".NET 8 adaptations"** below.
 
@@ -73,7 +73,7 @@ Core building blocks to establish/orient (see `The-ideal.md` for the domain):
 
 - **Clarification-First:** do NOT assume. When information is missing, ambiguous, preference-dependent, or has multiple valid solutions, stop and ask the user before proceeding. If a reasonable engineer would ask first, ask first.
 - **Planning doc before code:** every feature/fix/refactor/migration gets a Markdown file under `/planning/[main-purpose].md` (lowercase kebab-case) before implementation begins — objective, requirements, open questions, assumptions, implementation plan, impact analysis, progress log, final outcome. Keep it synchronized with the actual work; a task isn't done until its planning doc is updated.
-- **DB migration rule:** any schema/data change is **appended** to `FairShareMonApi/database-migration.sql` at the end, outside the commented "applied" block, with a dated comment. The maintainer applies it manually.
+- **DB migration rule:** schema changes go through **EF Core migrations** (`dotnet ef migrations add <Name>` then `dotnet ef database update`, both `--project .\FairShareMonApi\FairShareMonApi.csproj`). Provide an `AppDbContextDesignTimeFactory` that pins the MariaDB `ServerVersion` so authoring commands (`migrations add`, `migrations script`) run offline; only `database update` / `migrations list` need a reachable DB. Review the generated migration before applying and keep the model snapshot in sync. Do not create or append to a manual `database-migration.sql`; data-only fixes with no schema change may be ad-hoc SQL.
 
 ## More detail
 
