@@ -21,7 +21,7 @@ Turn the bare `dotnet new webapi` template into a runnable, tested infrastructur
 - `BaseRepository` + `ExecuteTransactionAsync`/`TransactionContext.NoCommit()`; `ExecuteQueryAsync` **without** opening a transaction; `Query<T>()` applying `AsNoTracking` + soft-delete filtering hooks (interface only for now).
 - **Auth at abstract level:** authentication handler + token contracts wired into the pipeline; no real token issuance/validation logic, no `users`/`auth_tokens` entities. Concrete registrations are empty stubs.
 - `Uuid.NewV7()` helper (manual UUIDv7 — never `Guid.CreateVersion7()`).
-- Redis (StackExchange.Redis, `IConnectionMultiplexer` singleton), NLog, AutoMapper 13.0.1, FluentValidation auto-validation, Asp.Versioning, Swagger with Bearer scheme — all wired and boot-verified.
+- Redis (StackExchange.Redis, `IConnectionMultiplexer` singleton), NLog, AutoMapper 13.0.1, FluentValidation (manual validation — validators registered via `AddValidatorsFromAssembly`), Asp.Versioning, Swagger with Bearer scheme — all wired and boot-verified.
 - Test project with the real-MariaDB harness (probe once, skip when unreachable, per-test transaction rollback) + pure-logic unit tests for the helpers that exist.
 - Vietnamese for any user-facing message infrastructure produces (e.g. generic error text).
 
@@ -45,7 +45,7 @@ All answered by user 2026-07-10:
 - Auth abstractions shaped for the spec's opaque-token design so the real implementation drops in later without reshaping contracts: token string → SHA-256 → whitelist lookup (cache first, DB fallback).
 - Stub behavior: the stub token validator authenticates **nothing** (every `[Authorize]` request → 401); anonymous endpoints work. Stubs throw no exceptions and contain no logic.
 - `BCrypt.Net-Core` is **not** added yet (belongs to the auth feature, not infrastructure).
-- FluentValidation wired via `FluentValidation.AspNetCore` 11.x auto-validation; no validators yet beyond wiring verification in tests.
+- FluentValidation wired via the core `FluentValidation` package + `FluentValidation.DependencyInjectionExtensions` (**manual validation** — services inject `IValidator<T>` and validate explicitly; no `FluentValidation.AspNetCore`, no auto-validation); no validators yet beyond wiring verification in tests.
 - Swagger stays on already-referenced Swashbuckle 6.6.2.
 - Redis reachable at `localhost:6379` (Docker port mapping) — configurable via a `Redis` appsettings section.
 - Concrete MariaDB credentials (database name, user, password) for `ConnectionStrings:Default` are filled in when Step 3 lands — user's local server, not known yet.
@@ -59,7 +59,7 @@ Main project (add to existing DiDecoration 1.1.0 / Swashbuckle 6.6.2):
 | `Microsoft.EntityFrameworkCore` (+ `.Relational`, `.Design`, `.Tools`) | 8.0.x latest | ORM |
 | `Pomelo.EntityFrameworkCore.MySql` | 8.0.x latest | MySQL/MariaDB provider |
 | `AutoMapper` | **13.0.1** | mapping (last MIT license — never upgrade to 14+; 13.x includes `AddAutoMapper` DI registration) |
-| `FluentValidation.AspNetCore` | 11.3.x | request validation (auto-validation) |
+| `FluentValidation` (+ `.DependencyInjectionExtensions`) | 11.x latest | request validation (manual — `IValidator<T>` injected in services). License: **Apache-2.0**, free for commercial use — no pin needed (unlike AutoMapper). Upstream asks commercial users to voluntarily sponsor via GitHub Sponsors/OpenCollective |
 | `NLog.Extensions.Logging` | 5.3.x (net8-compatible) | logging |
 | `StackExchange.Redis` | 2.8.x latest | Redis client (token whitelist cache; matches quick-ordering) |
 | `Asp.Versioning.Mvc` (+ `.ApiExplorer`) | 8.1.x | API versioning |
@@ -79,10 +79,10 @@ Test project: `xunit` 2.9.x, `xunit.runner.visualstudio`, `Microsoft.NET.Test.Sd
 
 1. `Models/ApiResult.cs` — `ApiResult<T>.Success(...)`, `ApiResult.Failure(...)`, `ApiResult.SuccessMessage(...)`; serializes `{ data, isSuccess, error{code,message} }`; implements `IActionResult`; HTTP status derived from the attached error (404/400/401/500 — not always-200).
 2. `Constants/ErrorCodes.cs` (stable explicit ints) + `Exception/ErrorException.cs` (code → default HTTP status mapping).
-3. `Attributes/ResponseWrappedAttribute.cs`, `Middlewares/ErrorHandlerMiddleware.cs` (outermost catch → `ApiResult` for wrapped endpoints), `Attributes/MvcFilters/ErrorHandlerFilter.cs` (exception filter + ModelState/FluentValidation surfacing; suppress built-in invalid-model filter).
+3. `Attributes/ResponseWrappedAttribute.cs`, `Middlewares/ErrorHandlerMiddleware.cs` (outermost catch → `ApiResult` for wrapped endpoints), `Attributes/MvcFilters/ErrorHandlerFilter.cs` (exception filter — maps `FluentValidation.ValidationException` from manual validation to 400 `ApiResult` with field errors, plus ModelState/binding-error surfacing; suppress built-in invalid-model filter).
 4. `Controllers/AppController.cs` — base controller as specified in CLAUDE.md. **Locked after this step.**
 5. `Utils/Uuid.cs` — manual UUIDv7 `NewV7()`.
-6. `Program.cs` bootstrap: NLog, DiDecoration `RegisterDecorators`, AutoMapper, FluentValidation auto-validation, API versioning, Swagger (Bearer scheme + Vietnamese descriptions), Redis (`IConnectionMultiplexer` singleton), pipeline `UseRouting → ErrorHandlerMiddleware → UseAuthentication → UseAuthorization → MapControllers`. `ErrorHandlerMiddleware` sits deliberately *after* routing (it needs endpoint metadata to see `[ResponseWrapped]`); it is the outermost catch for endpoint execution, not for routing itself. Ends with `public partial class Program {}` for WebApplicationFactory.
+6. `Program.cs` bootstrap: NLog, DiDecoration `RegisterDecorators`, AutoMapper, FluentValidation validator registration (`AddValidatorsFromAssembly` — no auto-validation), API versioning, Swagger (Bearer scheme + Vietnamese descriptions), Redis (`IConnectionMultiplexer` singleton), pipeline `UseRouting → ErrorHandlerMiddleware → UseAuthentication → UseAuthorization → MapControllers`. `ErrorHandlerMiddleware` sits deliberately *after* routing (it needs endpoint metadata to see `[ResponseWrapped]`); it is the outermost catch for endpoint execution, not for routing itself. Ends with `public partial class Program {}` for WebApplicationFactory.
 7. A minimal `Controllers/HealthController.cs` (anonymous `GET api/v1/health` returning `ApiResult`) so the envelope/pipeline is observable and testable.
 
 ### Step 3 — Data-access infrastructure (empty model)
@@ -152,13 +152,16 @@ User decision 2026-07-10 (OQ3): a Redis container is what's actually running loc
 - `Microsoft.Extensions.Caching.StackExchangeRedis` (`IDistributedCache`) — simpler surface, but the token-whitelist store benefits from direct key TTL control, and quick-ordering's reference patterns use `IConnectionMultiplexer` directly.
 
 ### Decision
-Keep `FluentValidation.AspNetCore` 11.3.x auto-validation despite upstream deprecation.
+Use the core `FluentValidation` package (+ `FluentValidation.DependencyInjectionExtensions` for `AddValidatorsFromAssembly`) with **manual validation** — not `FluentValidation.AspNetCore` auto-validation. *(Supersedes the earlier "keep FluentValidation.AspNetCore despite deprecation" decision.)*
 
 ### Reason
-The package is in maintenance mode (FluentValidation team recommends manual validation), but it works fine on net8, matches the GHM reference pattern the validation decision was based on, and keeps controllers/services free of validation plumbing. Known trade-off, revisit only if it breaks on a future framework upgrade.
+User decision 2026-07-13. `FluentValidation.AspNetCore` is deprecated/maintenance-mode and the FluentValidation team explicitly recommends manual validation. Services inject `IValidator<T>` and validate explicitly; failures throw `ValidationException`, which `ErrorHandlerFilter` maps to a 400 `ApiResult` with field errors — so the response shape stays identical to what auto-validation would have produced.
+
+Licensing note (2026-07-13): FluentValidation is **Apache-2.0** — free for commercial use with no version ceiling (contrast AutoMapper, pinned at 13.0.1 as the last MIT release). The project displays a request that commercial users voluntarily sponsor it (GitHub Sponsors / OpenCollective); this is a courtesy ask, not a license obligation.
 
 ### Alternatives Considered
-- Manual validation (inject `IValidator<T>` per endpoint) — more boilerplate in every service; can be adopted later without changing validator classes.
+- `FluentValidation.AspNetCore` 11.3.x auto-validation (previous decision, GHM reference pattern) — dropped: deprecated upstream, and adopting the recommended path now avoids a later migration.
+- Custom auto-validation action filter over `IValidator<T>` — recreates the deprecated machinery; not worth owning for this domain's simple payloads.
 
 ## Progress Log
 
@@ -167,6 +170,11 @@ The package is in maintenance mode (FluentValidation team recommends manual vali
 - Full-featured plan written, then rescoped per user direction to infrastructure-only with abstract auth + empty stubs. Awaiting answers to Open Questions 1–3 (MariaDB version/connection, test DB, Memcached) — Step 1–2 can start without them; Steps 3 and 5 need OQ1/OQ2.
 - Plan reviewed. Fixes applied: SDK pin corrected 8.0.422 → **8.0.414** (actual installed SDK; 8.0.422 would fail `rollForward: latestFeature`), added `Microsoft.AspNetCore.Mvc.Testing` + `public partial class Program` for WebApplicationFactory, documented why `ErrorHandlerMiddleware` sits after `UseRouting`, committed the 401 test to WebApplicationFactory with a Swagger-hidden probe endpoint, recorded the FluentValidation.AspNetCore deprecation trade-off, and made stub deletion by the auth feature explicit (DiDecoration `TryAdd` hazard).
 - User answered all Open Questions: MariaDB **11.7.2** (pin ServerVersion), tests hit the **real DB** (`ConnectionStrings:Default`) with `FSM_TEST_CONNECTION` env override, and cache is **Redis under Docker** (StackExchange.Redis replaces EnyimMemcachedCore). CLAUDE.md / AGENTS.md / rules.md synced to Redis. Plan is unblocked — implementation can start.
+
+### 2026-07-13
+
+- User decision: use the core **`FluentValidation`** package, not `FluentValidation.AspNetCore`. Plan switched from auto-validation to **manual validation** (`AddValidatorsFromAssembly` registration; services inject `IValidator<T>`; `ValidationException` → 400 `ApiResult` via `ErrorHandlerFilter`). Package set, requirements, Step 2, and Decision Log updated; the stack-analysis doc's validation decision line annotated accordingly.
+- Recorded FluentValidation licensing status (user flagged the project's sponsorship notice): Apache-2.0, free for commercial use, no version pin needed; upstream requests voluntary sponsorship from commercial users (GitHub Sponsors / OpenCollective).
 
 ## Final Outcome
 

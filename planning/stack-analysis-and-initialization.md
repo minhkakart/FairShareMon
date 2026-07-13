@@ -22,7 +22,7 @@ Analyze the code spec of both reference projects, compare their advantages and d
 
 - Restore `The-ideal.md` from `6b19f01` (it is currently empty after the reset), or is a rewritten spec coming? CLAUDE.md still treats it as the source of truth. *(Still open — carried into [project-initialization.md](project-initialization.md).)*
 - ~~Mapping~~ → **Decided 2026-07-10: AutoMapper 13.0.1** (last MIT release; never upgrade to 14+).
-- ~~Validation~~ → **Decided 2026-07-10: FluentValidation** (GHM style, auto-validation).
+- ~~Validation~~ → **Decided 2026-07-10: FluentValidation** (GHM style, auto-validation). *(Revised 2026-07-13: core `FluentValidation` package with manual validation — `FluentValidation.AspNetCore` is deprecated and not used.)*
 - ~~Test DB~~ → **Decided 2026-07-10: real MariaDB integration tests** with per-test rollback isolation.
 
 ## Assumptions
