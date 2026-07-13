@@ -1,6 +1,6 @@
 @FairShareMonApi_HostAddress = http://localhost:5200
 
-GET {{FairShareMonApi_HostAddress}}/weatherforecast/
+GET {{FairShareMonApi_HostAddress}}/api/v1/health
 Accept: application/json
 
 ###

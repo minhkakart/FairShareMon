@@ -7,10 +7,29 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="Asp.Versioning.Mvc" Version="8.1.1" />
+        <PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" Version="8.1.1" />
+        <!-- AutoMapper is pinned at 13.0.1 (last MIT-licensed release) - never upgrade to 14+. -->
+        <PackageReference Include="AutoMapper" Version="[13.0.1]" />
         <PackageReference Include="DiDecoration" Version="1.1.0" />
         <PackageReference Include="DiDecoration.Analyzers" Version="1.1.1" />
-        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.27"/>
+        <PackageReference Include="FluentValidation" Version="11.12.0" />
+        <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="11.12.0" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.28" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.28">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="8.0.28" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.28">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="NLog.Extensions.Logging" Version="5.3.15" />
+        <PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="8.0.3" />
+        <PackageReference Include="StackExchange.Redis" Version="2.8.58" />
         <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2"/>
+        <PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="6.6.2" />
     </ItemGroup>
 
 </Project>

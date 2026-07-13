@@ -88,10 +88,12 @@ Claude Code loads project agents from the working directory's `.claude/agents/`;
 - User approved scope (API first), team form (persistent agents + orchestration), cadence (checkpoint per feature).
 - Created `feature-planner`, `api-implementer`, `test-engineer`, `code-reviewer` under `FairShareMon/.claude/agents/`; wrote this playbook.
 - Next: Milestone 1 (infrastructure init) via the protocol, starting at Implement since `project-initialization.md` is already approved.
+- **Milestone 1 executed end-to-end through the protocol** (implementer Steps 1–4 → test-engineer Step 5 → reviewer: 0 blocking + 1 should-fix + nits → implementer fix round → reviewer delta re-review: APPROVE → orchestrator Step 6 verification). Result: 42 tests (39 pass / 3 DB-skips), live boot verified. First full cycle of the team worked as designed.
+- Environment note: MariaDB (3306) and Redis (6379) were both unreachable on this machine during the milestone — boot tolerates it by design; DB integration tests skip until the servers are started.
 
 ## Final Outcome
 
-(pending — team created, first milestone in progress)
+Team operational. Four role agents live in `FairShareMon/.claude/agents/` (loaded from the next session onward; this session ran the same role prompts on general-purpose agents). Milestone 1 (infrastructure) completed through the full protocol and committed. Checkpoint questions for the user: OQ4 `error.fields` envelope placement; optional rules.md `string? Uuid` → `string Uuid` one-word sync; start MariaDB/Redis to un-skip DB tests.
 
 ## Future Improvements
 
