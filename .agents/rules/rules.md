@@ -39,7 +39,7 @@
 
 ## Entity Conventions
 - Each entity is a `partial class`: a clean POCO in `Database/Entities/<Name>.cs` (properties only) and a `Database/Entities/Partials/<Name>.cs` holding the constructor and the static `ConfigureModel(ModelBuilder)`.
-- PK is `ulong Id` (bigint unsigned). Add a separate `string? Uuid` column (max length 64, unique index) for external references.
+- PK is `ulong Id` (bigint unsigned). Add a separate `string Uuid` column (non-nullable — the constructor always sets it; max length 64, unique index) for external references.
 - The constructor sets `Uuid = Uuid.NewV7()` and `CreatedAt = AppDateTime.Now`. **Never use `Guid.CreateVersion7()`** (it is .NET 9-only) — use the `Uuid.NewV7()` helper.
 - Timestamps `CreatedAt` / `UpdatedAt` on every table; `UpdatedAt` uses `ValueGeneratedOnAddOrUpdate()` with `current_timestamp()` default.
 

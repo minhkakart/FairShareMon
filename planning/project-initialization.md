@@ -36,7 +36,7 @@ Turn the bare `dotnet new webapi` template into a runnable, tested infrastructur
 
 New (raised during implementation, 2026-07-13 — implemented with a recorded default, awaiting confirmation):
 
-4. **Field-error placement in the envelope.** The plan mandates "400 `ApiResult` with field errors" but the envelope spec is `{ data, isSuccess, error{code,message} }` and doesn't say where field errors go. Implemented as an optional `error.fields` property (`field name → string[] messages`, omitted from JSON when null) so the core shape is unchanged. Confirm, or direct a different shape.
+4. ~~**Field-error placement in the envelope.**~~ → **Confirmed by user 2026-07-13 (Milestone 1 checkpoint):** optional `error.fields` property (`camelCase field name → string[] messages`, omitted from JSON when null); core envelope shape unchanged. This is now part of the stable API contract.
 
 All answered by user 2026-07-10:
 
@@ -223,7 +223,7 @@ Infrastructure skeleton delivered per plan (Steps 1–6), reviewed and approved 
 - **Auth:** opaque-token contracts + `OpaqueTokenAuthenticationHandler` (default scheme, wrapped 401 challenge), FallbackPolicy requiring authentication, MUST-DELETE stubs (`StubTokenService`, `StubTokenValidator`), hidden `[Authorize]` probe endpoint.
 - **Tests:** 42 total — 39 pass, 3 MariaDB smoke tests skip (server not running on this machine during the milestone; un-skip by starting MariaDB or setting `FSM_TEST_CONNECTION`).
 
-**Known limitations / handoffs:** OQ4 (`error.fields` placement) awaits user confirmation at the checkpoint; DB smoke tests never executed against a live server yet; Redis wired but unused; auth feature must delete the stubs, own the Swagger padlock filter and `HandleForbidAsync` wrapping; `ResponseWrapped` auto-wrap of plain DTOs and `ValidationException`→400 mapping lack end-to-end coverage until the first real feature endpoint exists.
+**Known limitations / handoffs:** OQ4 (`error.fields`) confirmed by user at the 2026-07-13 checkpoint (stable contract now); rules.md `string? Uuid` → `string Uuid` synced per the same checkpoint; DB smoke tests never executed against a live server yet; Redis wired but unused; auth feature must delete the stubs, own the Swagger padlock filter and `HandleForbidAsync` wrapping; `ResponseWrapped` auto-wrap of plain DTOs and `ValidationException`→400 mapping lack end-to-end coverage until the first real feature endpoint exists.
 
 ## Future Improvements
 
