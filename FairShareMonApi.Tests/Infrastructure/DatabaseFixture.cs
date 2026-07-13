@@ -36,7 +36,16 @@ public sealed class DatabaseFixture
 
         try
         {
-            var builder = new MySqlConnectionStringBuilder(connectionString) { ConnectionTimeout = 3 };
+            // AllowUserVariables/UseAffectedRows: Pomelo amends the connection string itself only
+            // when it OWNS connection creation. The harness (IntegrationTestBase) hands UseMySql
+            // an already-open external MySqlConnection, so the string must carry both flags up
+            // front - otherwise Pomelo throws InvalidOperationException on first use.
+            var builder = new MySqlConnectionStringBuilder(connectionString)
+            {
+                ConnectionTimeout = 3,
+                AllowUserVariables = true,
+                UseAffectedRows = false
+            };
             using var connection = new MySqlConnection(builder.ConnectionString);
             connection.Open();
             using var command = connection.CreateCommand();

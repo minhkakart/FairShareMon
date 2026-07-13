@@ -213,6 +213,13 @@ Licensing note (2026-07-13): FluentValidation is **Apache-2.0** — free for com
 - Orchestrator verification: build 0 errors; `dotnet test` **Failed: 0, Passed: 39, Skipped: 3, Total: 42**; live boot on :5200 — `GET /api/v1/health` → 200 success envelope (Vietnamese message), `GET /api/v1/authprobe` → 401 wrapped envelope (`error.code=1002`), `swagger/v1/swagger.json` → 200.
 - Committed as the infrastructure-initialization milestone.
 
+### 2026-07-13 (harness fix after first live-DB run — 42/42 green, 0 skips)
+
+- Local MariaDB + Redis brought up (credentials updated in `appsettings.json`; database `fairsharemon` created). First live execution of the 3 DB smoke tests: 2 passed, 1 failed — `DatabaseFixtureSmokeTest.CreateContext_BoundToHarnessTransaction_ExecutesSql` threw `InvalidOperationException: The connection string of a connection used by Pomelo.EntityFrameworkCore.MySql must contain "AllowUserVariables=True;UseAffectedRows=False"`. Root cause: Pomelo amends the connection string itself only when it **owns** connection creation; the harness passes an already-**open** external `MySqlConnection` to `UseMySql`, so the string must carry both flags up front (Pomelo can't change the string on an open connection).
+- **Test-project-only fix** (test-engineer): `FairShareMonApi.Tests/Infrastructure/DatabaseFixture.cs` now normalizes the probed connection string via `MySqlConnectionStringBuilder { AllowUserVariables = true, UseAffectedRows = false }`. Single-point fix — the fixture's probed string is the sole source consumed by `IntegrationTestBase` and the smoke tests. The main project's `appsettings.json` connection string is untouched (Pomelo handles its own when it creates connections).
+- Environment note: the live server reports **11.8.8-MariaDB** while the `ServerVersion` pin stays `MariaDbServerVersion(11.7.2)` (design-time factory, `Program.cs`, test harness) — compatible; bump the pin deliberately when the target major/minor is officially raised.
+- `dotnet test .\FairShareMonApi.sln`: **Failed: 0, Passed: 42, Skipped: 0, Total: 42** — the DB smoke tests now run for real (connect, `AppDbContext` on the harness transaction, insert-then-rollback isolation) and the earlier "never executed against a live server" gap is closed.
+
 ## Final Outcome
 
 Infrastructure skeleton delivered per plan (Steps 1–6), reviewed and approved with zero blocking findings.
