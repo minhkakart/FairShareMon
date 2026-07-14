@@ -862,6 +862,15 @@ the suggested-category step; "unique active name" and "exactly one default" enfo
   new M4), deterministic across two consecutive runs; post-run sweep left the DB clean. Milestone 4
   complete.
 
+### 2026-07-14 (post-M4 refactor — hosted-service registration)
+
+- `SuggestedCategoriesBackfillHostedService` now inherits from `Microsoft.Extensions.Hosting.BackgroundService`
+  (work moved to `ExecuteAsync`) and is registered **solely** via DiDecoration's `[BackgroundService]`
+  attribute. Removed the manual `AddHostedService` call in `Program.cs` — which had been a **double
+  registration** (the class already carried `[BackgroundService]`), so the backfill previously ran twice
+  each boot and now runs once. Behavior otherwise unchanged. See
+  `planning/hosted-service-di-registration.md`.
+
 ## Final Outcome
 
 Milestone 4 (Categories + Tags) implemented per the approved plan and closed after code review. Delivered:

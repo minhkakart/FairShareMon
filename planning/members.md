@@ -556,6 +556,13 @@ suggested-category bootstrap to M4 (M3 builds the shared seam M4 extends).
 - **2 informational (recorded, not defects):** the "exactly one owner-rep per user" invariant is app-level only (a boot-time backfill racing a simultaneous registration could theoretically double it — already in Future Improvements as a generated-column fix; single-instance boot makes it practically impossible pre-release); and the out-of-scope hard-deleted-user cached-token item (users aren't deletable in production).
 - Final state: build clean, **`dotnet test` = 202 passed / 0 failed / 0 skipped**. Milestone 3 complete.
 
+### 2026-07-14 (post-M4 refactor — hosted-service registration)
+
+- `OwnerRepresentativeBackfillHostedService` now inherits from `Microsoft.Extensions.Hosting.BackgroundService`
+  (work moved to `ExecuteAsync`) and is registered via DiDecoration's `[BackgroundService]` attribute
+  instead of a manual `AddHostedService` call in `Program.cs`. Behavior (idempotent, own-scope,
+  log-and-swallow) is unchanged. See `planning/hosted-service-di-registration.md`.
+
 ## Final Outcome
 
 Milestone 3 (Members) implemented per the approved plan. Delivered: `members` table + `AddMembers`

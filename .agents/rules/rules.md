@@ -23,6 +23,7 @@
 ## Dependency Injection
 - Prefer attribute-driven registration via DiDecoration: `[ScopedService]`, `[SingletonService]`, `[TransientService]`.
 - For multiple implementations of one interface, set `Multiple = true` (property initializer); otherwise `TryAdd` drops later registrations.
+- Hosted background workers inherit from `Microsoft.Extensions.Hosting.BackgroundService` (override `ExecuteAsync`) and are registered with `[BackgroundService]`, picked up by the same `RegisterDecorators(...)` scan — no manual `AddHostedService`. Bare `[BackgroundService]` yields a dedicated instance; to share one singleton instance use `[SingletonService(typeof(self))]` + `[BackgroundService(typeof(self))]`. Never pair `[BackgroundService]` with a non-singleton lifetime attribute — DiDecoration throws.
 - Avoid manual DI registration for app services unless there's a clear exception.
 
 ## Data Access and Transactions

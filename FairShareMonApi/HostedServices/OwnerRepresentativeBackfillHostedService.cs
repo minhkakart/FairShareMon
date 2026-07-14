@@ -1,3 +1,4 @@
+using DiDecoration.Attributes;
 using FairShareMonApi.Services.Api.Members;
 
 namespace FairShareMonApi.HostedServices;
@@ -9,18 +10,19 @@ namespace FairShareMonApi.HostedServices;
 /// own DI scope and never crashes startup - a failure (e.g. DB unreachable) is logged and the boot
 /// continues (the next boot retries).
 /// </summary>
+[BackgroundService]
 public sealed class OwnerRepresentativeBackfillHostedService(
     IServiceScopeFactory scopeFactory,
-    ILogger<OwnerRepresentativeBackfillHostedService> logger) : IHostedService
+    ILogger<OwnerRepresentativeBackfillHostedService> logger) : BackgroundService
 {
-    public async Task StartAsync(CancellationToken cancellationToken)
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         try
         {
             using var scope = scopeFactory.CreateScope();
             var membersService = scope.ServiceProvider.GetRequiredService<IMembersService>();
 
-            var created = await membersService.EnsureOwnerRepresentativeForAllAsync(cancellationToken);
+            var created = await membersService.EnsureOwnerRepresentativeForAllAsync(stoppingToken);
             if (created > 0)
                 logger.LogInformation("Owner-representative backfill created {Count} member(s).", created);
         }
@@ -29,6 +31,4 @@ public sealed class OwnerRepresentativeBackfillHostedService(
             logger.LogError(exception, "Owner-representative backfill failed on startup; will retry on next boot.");
         }
     }
-
-    public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 }

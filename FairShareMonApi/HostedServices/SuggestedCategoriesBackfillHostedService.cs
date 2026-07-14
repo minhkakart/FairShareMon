@@ -1,3 +1,4 @@
+using DiDecoration.Attributes;
 using FairShareMonApi.Services.Api.Categories;
 
 namespace FairShareMonApi.HostedServices;
@@ -10,18 +11,19 @@ namespace FairShareMonApi.HostedServices;
 /// its own DI scope and never crashes startup - a failure (e.g. DB unreachable) is logged and the
 /// boot continues (the next boot retries).
 /// </summary>
+[BackgroundService]
 public sealed class SuggestedCategoriesBackfillHostedService(
     IServiceScopeFactory scopeFactory,
-    ILogger<SuggestedCategoriesBackfillHostedService> logger) : IHostedService
+    ILogger<SuggestedCategoriesBackfillHostedService> logger) : BackgroundService
 {
-    public async Task StartAsync(CancellationToken cancellationToken)
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         try
         {
             using var scope = scopeFactory.CreateScope();
             var categoriesService = scope.ServiceProvider.GetRequiredService<ICategoriesService>();
 
-            var created = await categoriesService.EnsureSuggestedCategoriesForAllAsync(cancellationToken);
+            var created = await categoriesService.EnsureSuggestedCategoriesForAllAsync(stoppingToken);
             if (created > 0)
                 logger.LogInformation("Suggested-category backfill seeded/fixed {Count} user(s).", created);
         }
@@ -30,6 +32,4 @@ public sealed class SuggestedCategoriesBackfillHostedService(
             logger.LogError(exception, "Suggested-category backfill failed on startup; will retry on next boot.");
         }
     }
-
-    public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 }

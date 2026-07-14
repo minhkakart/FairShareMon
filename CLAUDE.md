@@ -41,7 +41,7 @@ Core building blocks to establish/orient (see `The-ideal.md` for the domain):
 
 **Controllers** map to the feature areas in `The-ideal.md`: Auth, Members, Categories, Tags, Expenses (+ shares sub-routes), Events, Stats, Wallet (bank accounts + bank-transfer QR generation). User tiers (Premium/Free usage limits) cut across features. Endpoint design is decided per-feature in its planning doc. Service implementations live under `Services/Api/<Area>/`.
 
-**Dependency injection** is attribute-driven via the DiDecoration package. Annotate services with `[ScopedService]`, `[SingletonService]`, or `[TransientService]` instead of registering manually. For multiple implementations of one interface, set `Multiple = true` (property initializer), otherwise `TryAdd` silently drops later ones.
+**Dependency injection** is attribute-driven via the DiDecoration package. Annotate services with `[ScopedService]`, `[SingletonService]`, or `[TransientService]` instead of registering manually. For multiple implementations of one interface, set `Multiple = true` (property initializer), otherwise `TryAdd` silently drops later ones. Hosted background workers inherit from `Microsoft.Extensions.Hosting.BackgroundService` (override `ExecuteAsync`) and are registered with `[BackgroundService]` — the single `RegisterDecorators(...)` scan in `Program.cs` picks them up; never call `AddHostedService` manually.
 
 **Database (`Database/`):**
 - All EF entity mappings go in `AppDbContext.cs` (or per-entity static `ConfigureModel(ModelBuilder)` methods invoked from it — see Style).

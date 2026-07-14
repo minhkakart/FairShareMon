@@ -3,7 +3,6 @@ using DiDecoration.Extensions;
 using FairShareMonApi.Attributes.MvcFilters;
 using FairShareMonApi.Auth;
 using FairShareMonApi.Database;
-using FairShareMonApi.HostedServices;
 using FairShareMonApi.Middlewares;
 using FairShareMonApi.Swagger;
 using FluentValidation;
@@ -104,13 +103,9 @@ builder.Services
 builder.Services.AddAuthorization(options =>
     options.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
 
-// Startup backfill: ensure every existing user has an owner-representative member (idempotent,
-// self-healing, no-op when none are missing) - planning/members.md OQ2.
-builder.Services.AddHostedService<OwnerRepresentativeBackfillHostedService>();
-
-// Startup backfill: ensure every existing user has the suggested categories with one default
-// (idempotent, self-healing, no-op when none are missing) - planning/categories-and-tags.md OQ3.
-builder.Services.AddHostedService<SuggestedCategoriesBackfillHostedService>();
+// Startup backfills (owner-representative members, suggested categories) are [BackgroundService]-
+// annotated and registered by the DiDecoration RegisterDecorators scan above - see
+// planning/hosted-service-di-registration.md. No manual AddHostedService here.
 
 var app = builder.Build();
 

@@ -7,7 +7,7 @@
 
 ## Architecture Map (read these first)
 - Bootstrap + DI + middleware pipeline: `FairShareMonApi/Program.cs`.
-- Attribute-driven DI scanning via the **DiDecoration** package (`[ScopedService]`, `[SingletonService]`, `[TransientService]`).
+- Attribute-driven DI scanning via the **DiDecoration** package (`[ScopedService]`, `[SingletonService]`, `[TransientService]`, and `[BackgroundService]` for `BackgroundService`-derived hosted workers).
 - API shape: `AppController` enforces wrapped responses via `[ResponseWrapped]` → `ApiResult<T>`.
 - Request flow: `Controllers/* -> Services/Api/* -> Repositories/* -> AppDbContext`.
 - Data access helpers: `Repositories/Abstractions/BaseRepository.cs` (`ExecuteQueryAsync`, `ExecuteTransactionAsync`, `Query<T>` with AsNoTracking + soft-delete).
