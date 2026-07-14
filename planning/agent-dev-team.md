@@ -73,6 +73,15 @@ Maps 1:1 onto the repo's mandatory process (planning doc → clarify → impleme
 - Separate doc-keeper agent — folded into planner (pre) and implementer/test-engineer (progress log) to avoid a low-value handoff.
 
 ### Decision
+Migration apply timing (2026-07-13, resolves the reviewer's Milestone-2 process note): during **Implement**, the api-implementer authors the migration, self-reviews it, and applies it to the **local dev DB** when the orchestrator's assignment says so. The code-reviewer still audits the migration in **Review**; a defect found there produces a corrective migration (or a dev-DB reset) before the milestone closes. For any non-dev environment, applying always waits for Review.
+
+### Reason
+Integration/endpoint tests need the schema live during the Test step, which precedes Review in the protocol; the dev DB is disposable, so the cost of a post-review correction is near zero while blocking Test on Review would serialize the whole cycle.
+
+### Alternatives Considered
+- Apply only after Review (the auth plan's original wording) — would force Test to run before the tables exist or insert a second review round-trip per feature.
+
+### Decision
 Agent files at `FairShareMon/.claude/agents/` (workspace root), not inside this repo.
 
 ### Reason
