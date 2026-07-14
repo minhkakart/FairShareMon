@@ -44,6 +44,10 @@ public class ErrorException(int code, string message, int? httpStatus = null) : 
         ErrorCodes.EventClosed => StatusCodes.Status400BadRequest,
         ErrorCodes.ExpenseTimeOutOfEventRange => StatusCodes.Status400BadRequest,
         ErrorCodes.EventRangeExcludesAssignedExpenses => StatusCodes.Status400BadRequest,
+        ErrorCodes.BankAccountNotFound => StatusCodes.Status404NotFound,
+        ErrorCodes.NoBankAccountForQr => StatusCodes.Status400BadRequest,
+        ErrorCodes.EventNotClosedForQr => StatusCodes.Status400BadRequest,
+        ErrorCodes.NoOutstandingDebtForQr => StatusCodes.Status400BadRequest,
         _ => StatusCodes.Status500InternalServerError
     };
 }

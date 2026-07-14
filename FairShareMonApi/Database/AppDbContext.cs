@@ -35,6 +35,8 @@ public partial class AppDbContext : DbContext
 
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
+    public DbSet<BankAccount> BankAccounts => Set<BankAccount>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -53,6 +55,7 @@ public partial class AppDbContext : DbContext
         Share.ConfigureModel(modelBuilder);
         ExpenseTag.ConfigureModel(modelBuilder);
         AuditLog.ConfigureModel(modelBuilder);
+        BankAccount.ConfigureModel(modelBuilder);
 
         ConfigureQueryFilters(modelBuilder);
     }

@@ -4,6 +4,7 @@ using FairShareMonApi.Models.Shares;
 using FairShareMonApi.Services.Api.Expenses;
 using FairShareMonApi.Services.Api.Export;
 using FairShareMonApi.Services.Api.Shares;
+using FairShareMonApi.Services.Api.Wallet;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
 
@@ -16,7 +17,7 @@ namespace FairShareMonApi.Controllers;
 /// resource-owned - an expense/share that isn't the caller's yields 404 (never 403). Thin - all
 /// business logic in <see cref="IExpensesService"/> / <see cref="ISharesService"/>.
 /// </summary>
-public class ExpensesController(IExpensesService expensesService, ISharesService sharesService, IExportService exportService) : AppController
+public class ExpensesController(IExpensesService expensesService, ISharesService sharesService, IExportService exportService, IWalletQrService walletQrService) : AppController
 {
     [HttpGet]
     [SwaggerOperation(
@@ -155,6 +156,25 @@ public class ExpensesController(IExpensesService expensesService, ISharesService
     {
         var file = await exportService.ExportExpenseAsync(AuthenticatedUser.Id, uuid, format, cancellationToken);
         return File(file.Content, file.ContentType, file.FileName);
+    }
+
+    [HttpGet("{uuid}/qr")]
+    [Produces("image/png", "application/json")]
+    [SwaggerOperation(
+        Summary = "Tạo mã QR chuyển khoản cho phiếu",
+        Description = "Tạo mã VietQR chuyển khoản cho cả phiếu chi tiêu (số tiền = tổng tiền phiếu = tổng các phần gánh). Đích nhận là tài khoản ngân hàng mặc định, hoặc tài khoản chỉ định qua tham số bankAccountUuid (phải thuộc tài khoản). Mặc định trả về ảnh PNG; đặt format=payload để lấy chuỗi VietQR thô (dạng JSON) cho client tự vẽ. Chỉ đọc, resource-owned - phiếu không thuộc tài khoản trả về 404; chưa có tài khoản ngân hàng trả về 400.")]
+    [SwaggerResponse(StatusCodes.Status200OK, "Tạo mã QR thành công (ảnh PNG, hoặc chuỗi payload khi format=payload).", typeof(FileContentResult))]
+    [SwaggerResponse(StatusCodes.Status400BadRequest, "Chưa có tài khoản ngân hàng để tạo mã QR.", typeof(ApiResult))]
+    [SwaggerResponse(StatusCodes.Status401Unauthorized, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", typeof(ApiResult))]
+    [SwaggerResponse(StatusCodes.Status404NotFound, "Không tìm thấy phiếu chi tiêu hoặc tài khoản ngân hàng.", typeof(ApiResult))]
+    public async Task<IActionResult> GetQrAsync([FromRoute] string uuid, [FromQuery] string? bankAccountUuid, [FromQuery] string? format, CancellationToken cancellationToken)
+    {
+        var result = await walletQrService.GenerateExpenseQrAsync(AuthenticatedUser.Id, uuid, bankAccountUuid, format, cancellationToken);
+        if (result.IsPayload)
+            return ApiResult<string>.Success(result.Payload!);
+
+        var image = result.Image!;
+        return File(image.Content, image.ContentType, image.FileName);
     }
 
     [HttpGet("{uuid}/history")]

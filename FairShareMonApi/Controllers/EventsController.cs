@@ -4,6 +4,7 @@ using FairShareMonApi.Models.Stats;
 using FairShareMonApi.Services.Api.Events;
 using FairShareMonApi.Services.Api.Export;
 using FairShareMonApi.Services.Api.Stats;
+using FairShareMonApi.Services.Api.Wallet;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
 
@@ -16,7 +17,7 @@ namespace FairShareMonApi.Controllers;
 /// edit/delete are OPEN-only; a closed event rejects every write to its expenses/shares except the
 /// settled flag (§4.4). Thin - all business logic in <see cref="IEventsService"/>.
 /// </summary>
-public class EventsController(IEventsService eventsService, IStatsService statsService, IExportService exportService) : AppController
+public class EventsController(IEventsService eventsService, IStatsService statsService, IExportService exportService, IWalletQrService walletQrService) : AppController
 {
     [HttpGet]
     [SwaggerOperation(
@@ -96,6 +97,21 @@ public class EventsController(IEventsService eventsService, IStatsService statsS
     {
         var file = await exportService.ExportEventAsync(AuthenticatedUser.Id, uuid, format, cancellationToken);
         return File(file.Content, file.ContentType, file.FileName);
+    }
+
+    [HttpGet("{uuid}/qr")]
+    [Produces("image/png", "application/json")]
+    [SwaggerOperation(
+        Summary = "Tạo mã QR chuyển khoản cho đợt đã chốt",
+        Description = "Tạo ảnh QR tổng hợp cho một đợt đã chốt: mỗi thành viên còn nợ (cân bằng âm) một mã VietQR với số tiền đúng bằng khoản nợ, kèm nhãn tên + số tiền, gộp tất cả vào một ảnh PNG để chia sẻ vào nhóm chat. Cân bằng dùng lại từ thống kê M7 (không tính lại). Đích nhận là tài khoản ngân hàng mặc định, hoặc tài khoản chỉ định qua tham số bankAccountUuid. Chỉ áp dụng cho đợt đã chốt; đợt đang mở trả về 400; không còn ai nợ trả về 400. Chỉ đọc, resource-owned - đợt không thuộc tài khoản trả về 404.")]
+    [SwaggerResponse(StatusCodes.Status200OK, "Tạo mã QR tổng hợp thành công (ảnh PNG).", typeof(FileContentResult))]
+    [SwaggerResponse(StatusCodes.Status400BadRequest, "Đợt chưa chốt, không còn ai nợ, hoặc chưa có tài khoản ngân hàng.", typeof(ApiResult))]
+    [SwaggerResponse(StatusCodes.Status401Unauthorized, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", typeof(ApiResult))]
+    [SwaggerResponse(StatusCodes.Status404NotFound, "Không tìm thấy đợt chi tiêu hoặc tài khoản ngân hàng.", typeof(ApiResult))]
+    public async Task<IActionResult> GetQrAsync([FromRoute] string uuid, [FromQuery] string? bankAccountUuid, CancellationToken cancellationToken)
+    {
+        var image = await walletQrService.GenerateEventQrAsync(AuthenticatedUser.Id, uuid, bankAccountUuid, cancellationToken);
+        return File(image.Content, image.ContentType, image.FileName);
     }
 
     [HttpPut("{uuid}/close")]

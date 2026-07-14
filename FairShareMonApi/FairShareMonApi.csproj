@@ -28,9 +28,23 @@
         </PackageReference>
         <PackageReference Include="NLog.Extensions.Logging" Version="5.3.15" />
         <PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="8.0.3" />
+        <!-- M9 Wallet + QR runtime deps (planning/wallet-and-qr.md, all license-clean):
+             QRCoder MIT - single-expense QR PNG via PngByteQRCode (no System.Drawing);
+             SkiaSharp MIT binding / BSD-3 native - event composite PNG;
+             SkiaSharp.NativeAssets.Linux.NoDependencies - headless Docker/Linux rendering. -->
+        <PackageReference Include="QRCoder" Version="1.6.0" />
+        <PackageReference Include="SkiaSharp" Version="2.88.9" />
+        <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="2.88.9" />
         <PackageReference Include="StackExchange.Redis" Version="2.8.58" />
         <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
         <PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="6.6.2" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- Bundled SIL-OFL Vietnamese font for the SkiaSharp event-QR composite labels
+             (Be Vietnam Pro, OFL 1.1 - Assets/Fonts/OFL.txt). Embedded so headless Linux/Docker
+             renders Vietnamese diacritics without depending on system fonts (planning/wallet-and-qr.md OQ3). -->
+        <EmbeddedResource Include="Assets\Fonts\BeVietnamPro-Regular.ttf" />
     </ItemGroup>
 
 </Project>

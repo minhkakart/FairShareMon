@@ -121,4 +121,18 @@ public static class ErrorCodes
     // an unsupported ?format value is a ValidationFailed (1001) and a resource-owned expense/event miss
     // reuses ExpenseNotFound (6000) / EventNotFound (9000). No codes are defined yet (OQ19a); this block
     // is reserved for any future Export-specific failure state.
+
+    // 12xxx - Wallet / QR (block claimed by planning/wallet-and-qr.md).
+
+    /// <summary>Bank account not found - also used for every resource-owned ownership miss (HTTP 404, never 403).</summary>
+    public const int BankAccountNotFound = 12000;
+
+    /// <summary>No bank account (or no default and no override) to generate a QR against (HTTP 400).</summary>
+    public const int NoBankAccountForQr = 12001;
+
+    /// <summary>Event QR requested on an event that is not closed - only closed events may generate the event QR (§4.4, HTTP 400).</summary>
+    public const int EventNotClosedForQr = 12002;
+
+    /// <summary>Event QR requested but no member still owes (all balances ≥ 0) - nothing to bill (HTTP 400).</summary>
+    public const int NoOutstandingDebtForQr = 12003;
 }
