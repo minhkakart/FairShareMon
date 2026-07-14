@@ -44,7 +44,7 @@ public class ExpensesController(IExpensesService expensesService, ISharesService
         Summary = "Thêm phiếu chi tiêu",
         Description = "Tạo một phiếu chi tiêu mới cùng các phần gánh trong một giao dịch. Bỏ trống người trả để mặc định là thành viên đại diện chủ sổ; bỏ trống danh mục để dùng danh mục mặc định; phần gánh 0đ của thành viên đại diện chủ sổ được tự thêm nếu thiếu.")]
     [SwaggerResponse(StatusCodes.Status200OK, "Thêm phiếu chi tiêu thành công.", typeof(ApiResult<ExpenseResponse>))]
-    [SwaggerResponse(StatusCodes.Status400BadRequest, "Dữ liệu không hợp lệ, liên kết không hợp lệ hoặc trùng thành viên phần gánh.", typeof(ApiResult))]
+    [SwaggerResponse(StatusCodes.Status400BadRequest, "Dữ liệu không hợp lệ, liên kết không hợp lệ, trùng thành viên phần gánh, hoặc tài khoản Free đã đạt giới hạn số phiếu chi tiêu trong tháng (nâng cấp Premium để bỏ giới hạn).", typeof(ApiResult))]
     public async Task<IActionResult> CreateAsync([FromBody] CreateExpenseRequest request, CancellationToken cancellationToken) =>
         ApiResult<ExpenseResponse>.Success(
             await expensesService.CreateAsync(AuthenticatedUser.Id, request, cancellationToken));
@@ -166,6 +166,7 @@ public class ExpensesController(IExpensesService expensesService, ISharesService
     [SwaggerResponse(StatusCodes.Status200OK, "Tạo mã QR thành công (ảnh PNG, hoặc chuỗi payload khi format=payload).", typeof(FileContentResult))]
     [SwaggerResponse(StatusCodes.Status400BadRequest, "Chưa có tài khoản ngân hàng để tạo mã QR.", typeof(ApiResult))]
     [SwaggerResponse(StatusCodes.Status401Unauthorized, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", typeof(ApiResult))]
+    [SwaggerResponse(StatusCodes.Status403Forbidden, "Tính năng tạo mã QR chỉ dành cho tài khoản Premium (nâng cấp để sử dụng).", typeof(ApiResult))]
     [SwaggerResponse(StatusCodes.Status404NotFound, "Không tìm thấy phiếu chi tiêu hoặc tài khoản ngân hàng.", typeof(ApiResult))]
     public async Task<IActionResult> GetQrAsync([FromRoute] string uuid, [FromQuery] string? bankAccountUuid, [FromQuery] string? format, CancellationToken cancellationToken)
     {

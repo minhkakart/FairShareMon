@@ -31,6 +31,9 @@ public interface IMemberRepository : IBaseRepository, IQueryRepository<Member>
     /// <summary>True when the user already has an active owner-representative member (idempotency guard).</summary>
     Task<bool> HasOwnerRepresentativeAsync(string userUuid, CancellationToken cancellationToken = default);
 
+    /// <summary>DB-side count of the user's active (non-soft-deleted) members, owner-rep included (M10 tier limit, OQ3a).</summary>
+    Task<int> CountActiveByUserAsync(string userUuid, CancellationToken cancellationToken = default);
+
     /// <summary>UUIDs of users lacking an active owner-representative member (for the backfill, OQ2).</summary>
     Task<IReadOnlyList<string>> GetUserUuidsWithoutOwnerRepresentativeAsync(CancellationToken cancellationToken = default);
 }
@@ -105,6 +108,11 @@ public sealed class MemberRepository(AppDbContext dbContext) : BaseRepository(db
     public Task<bool> HasOwnerRepresentativeAsync(string userUuid, CancellationToken cancellationToken = default) =>
         ExecuteQueryAsync((_, ct) => Query()
             .AnyAsync(member => member.User.Uuid == userUuid && member.IsOwnerRepresentative, ct), cancellationToken);
+
+    public Task<int> CountActiveByUserAsync(string userUuid, CancellationToken cancellationToken = default) =>
+        ExecuteQueryAsync((_, ct) => Query()
+            .Where(member => member.User.Uuid == userUuid)
+            .CountAsync(ct), cancellationToken);
 
     public Task<IReadOnlyList<string>> GetUserUuidsWithoutOwnerRepresentativeAsync(CancellationToken cancellationToken = default) =>
         ExecuteQueryAsync(async (db, ct) =>

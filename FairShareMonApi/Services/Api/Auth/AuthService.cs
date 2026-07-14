@@ -86,7 +86,7 @@ public sealed class AuthService(
         if (user is null || !passwordValid)
             throw new ErrorException(ErrorCodes.InvalidCredentials, "Tên đăng nhập hoặc mật khẩu không đúng.");
 
-        var pair = await tokenService.IssueAsync(user.Uuid, user.Username, cancellationToken)
+        var pair = await tokenService.IssueAsync(user.Uuid, user.Username, user.Tier, cancellationToken)
             ?? throw new ErrorException(ErrorCodes.InternalError, "Đã xảy ra lỗi hệ thống. Vui lòng thử lại sau.");
 
         return mapper.Map<TokenPairResponse>(pair);

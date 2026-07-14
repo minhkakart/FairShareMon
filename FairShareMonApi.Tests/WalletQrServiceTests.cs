@@ -8,6 +8,7 @@ using FairShareMonApi.Repositories;
 using FairShareMonApi.Services.Api.Expenses;
 using FairShareMonApi.Services.Api.Stats;
 using FairShareMonApi.Services.Api.Wallet;
+using FairShareMonApi.Tests.Infrastructure;
 using Xunit;
 
 namespace FairShareMonApi.Tests;
@@ -30,9 +31,12 @@ public class WalletQrServiceTests
     private readonly FakeExpensesService _expenses = new();
     private readonly FakeStatsService _stats = new();
     private readonly CapturingQrImageService _images = new();
+    // Pass-through tier double for the orchestration tests; the Premium QR gate is proved separately
+    // (below + at the endpoint level).
+    private readonly FakeTierService _tier = new();
 
     private WalletQrService CreateService() =>
-        new(_accounts, _expenses, _stats, new VietQrPayloadBuilder(), _images);
+        new(_accounts, _expenses, _stats, _tier, new VietQrPayloadBuilder(), _images);
 
     private BankAccount AddDefaultAccount(string bin = "970436", string number = "0123456789")
     {
@@ -223,6 +227,32 @@ public class WalletQrServiceTests
             CreateService().GenerateEventQrAsync(UserUuid, EventUuid, null));
 
         Assert.Equal(ErrorCodes.EventNotFound, exception.Code);
+    }
+
+    // ---- M10 Premium feature-gate (both QR ops gated, fires before anything is resolved) ----------
+
+    [Fact]
+    public async Task GenerateExpenseQr_FreeCaller_Throws13003BeforeResolvingDestination()
+    {
+        // No bank account added: if the gate did NOT fire first, destination resolution would throw
+        // 12001 instead - asserting 13003 proves the gate runs before anything is resolved.
+        _tier.PremiumFeatureCode = ErrorCodes.PremiumFeatureRequired;
+
+        var exception = await Assert.ThrowsAsync<ErrorException>(() =>
+            CreateService().GenerateExpenseQrAsync(UserUuid, ExpenseUuid, null, null));
+
+        Assert.Equal(ErrorCodes.PremiumFeatureRequired, exception.Code);
+    }
+
+    [Fact]
+    public async Task GenerateEventQr_FreeCaller_Throws13003BeforeResolvingDestination()
+    {
+        _tier.PremiumFeatureCode = ErrorCodes.PremiumFeatureRequired;
+
+        var exception = await Assert.ThrowsAsync<ErrorException>(() =>
+            CreateService().GenerateEventQrAsync(UserUuid, EventUuid, null));
+
+        Assert.Equal(ErrorCodes.PremiumFeatureRequired, exception.Code);
     }
 
     private static MemberBalanceRow Row(string name, decimal balance) =>

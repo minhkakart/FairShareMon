@@ -43,7 +43,7 @@ public class BankAccountsEndpointTests(WebApplicationFactory<Program> factory, D
     [SkippableFact]
     public async Task Create_FirstAccount_Returns200AutoDefaultWrapped()
     {
-        using var client = await CreateAuthorizedClientAsync();
+        using var client = await CreatePremiumClientAsync();
 
         using var response = await client.PostAsJsonAsync(Route, ValidBody());
 
@@ -61,7 +61,7 @@ public class BankAccountsEndpointTests(WebApplicationFactory<Program> factory, D
     [SkippableFact]
     public async Task List_KebabRoute_ReturnsOwnedAccountsDefaultFirst()
     {
-        using var client = await CreateAuthorizedClientAsync();
+        using var client = await CreatePremiumClientAsync();
         await CreateAccountAsync(client, ValidBody(bankName: "Vietcombank"));
         await CreateAccountAsync(client, ValidBody(bankName: "Techcombank"));
 
@@ -77,7 +77,7 @@ public class BankAccountsEndpointTests(WebApplicationFactory<Program> factory, D
     [SkippableFact]
     public async Task Get_OwnedAccount_Returns200()
     {
-        using var client = await CreateAuthorizedClientAsync();
+        using var client = await CreatePremiumClientAsync();
         var created = await CreateAccountAsync(client, ValidBody());
         var uuid = created.GetProperty("uuid").GetString();
 
@@ -91,7 +91,7 @@ public class BankAccountsEndpointTests(WebApplicationFactory<Program> factory, D
     [SkippableFact]
     public async Task Update_OwnedAccount_PersistsFieldsKeepsDefault()
     {
-        using var client = await CreateAuthorizedClientAsync();
+        using var client = await CreatePremiumClientAsync();
         var created = await CreateAccountAsync(client, ValidBody());
         var uuid = created.GetProperty("uuid").GetString();
 
@@ -108,7 +108,7 @@ public class BankAccountsEndpointTests(WebApplicationFactory<Program> factory, D
     [SkippableFact]
     public async Task SetDefault_SwapsAtomicallyOverHttp()
     {
-        using var client = await CreateAuthorizedClientAsync();
+        using var client = await CreatePremiumClientAsync();
         var first = await CreateAccountAsync(client, ValidBody(bankName: "Vietcombank"));  // default
         var second = await CreateAccountAsync(client, ValidBody(bankName: "Techcombank"));
         var secondUuid = second.GetProperty("uuid").GetString();
@@ -129,7 +129,7 @@ public class BankAccountsEndpointTests(WebApplicationFactory<Program> factory, D
     [SkippableFact]
     public async Task Delete_Default_PromotesAnotherOverHttp()
     {
-        using var client = await CreateAuthorizedClientAsync();
+        using var client = await CreatePremiumClientAsync();
         var first = await CreateAccountAsync(client, ValidBody(bankName: "Vietcombank"));  // default
         await CreateAccountAsync(client, ValidBody(bankName: "Techcombank"));
         var firstUuid = first.GetProperty("uuid").GetString();
@@ -148,7 +148,7 @@ public class BankAccountsEndpointTests(WebApplicationFactory<Program> factory, D
     [SkippableFact]
     public async Task Delete_LastAccount_LeavesEmptyWallet()
     {
-        using var client = await CreateAuthorizedClientAsync();
+        using var client = await CreatePremiumClientAsync();
         var only = await CreateAccountAsync(client, ValidBody());
 
         using var deleteResponse = await client.DeleteAsync($"{Route}/{only.GetProperty("uuid").GetString()}");
@@ -164,8 +164,8 @@ public class BankAccountsEndpointTests(WebApplicationFactory<Program> factory, D
     [SkippableFact]
     public async Task Get_AnotherUsersAccount_Returns404Code12000()
     {
-        using var owner = await CreateAuthorizedClientAsync();
-        using var stranger = await CreateAuthorizedClientAsync();
+        using var owner = await CreatePremiumClientAsync();
+        using var stranger = await CreatePremiumClientAsync();
         var account = await CreateAccountAsync(owner, ValidBody());
         var uuid = account.GetProperty("uuid").GetString();
 
@@ -178,8 +178,8 @@ public class BankAccountsEndpointTests(WebApplicationFactory<Program> factory, D
     [SkippableFact]
     public async Task Update_AnotherUsersAccount_Returns404Code12000()
     {
-        using var owner = await CreateAuthorizedClientAsync();
-        using var stranger = await CreateAuthorizedClientAsync();
+        using var owner = await CreatePremiumClientAsync();
+        using var stranger = await CreatePremiumClientAsync();
         var account = await CreateAccountAsync(owner, ValidBody());
         var uuid = account.GetProperty("uuid").GetString();
 
@@ -192,8 +192,8 @@ public class BankAccountsEndpointTests(WebApplicationFactory<Program> factory, D
     [SkippableFact]
     public async Task SetDefault_AnotherUsersAccount_Returns404Code12000()
     {
-        using var owner = await CreateAuthorizedClientAsync();
-        using var stranger = await CreateAuthorizedClientAsync();
+        using var owner = await CreatePremiumClientAsync();
+        using var stranger = await CreatePremiumClientAsync();
         var account = await CreateAccountAsync(owner, ValidBody());
         var uuid = account.GetProperty("uuid").GetString();
 
@@ -206,8 +206,8 @@ public class BankAccountsEndpointTests(WebApplicationFactory<Program> factory, D
     [SkippableFact]
     public async Task Delete_AnotherUsersAccount_Returns404Code12000()
     {
-        using var owner = await CreateAuthorizedClientAsync();
-        using var stranger = await CreateAuthorizedClientAsync();
+        using var owner = await CreatePremiumClientAsync();
+        using var stranger = await CreatePremiumClientAsync();
         var account = await CreateAccountAsync(owner, ValidBody());
         var uuid = account.GetProperty("uuid").GetString();
 
@@ -220,7 +220,7 @@ public class BankAccountsEndpointTests(WebApplicationFactory<Program> factory, D
     [SkippableFact]
     public async Task Get_UnknownUuid_Returns404Code12000()
     {
-        using var client = await CreateAuthorizedClientAsync();
+        using var client = await CreatePremiumClientAsync();
 
         using var response = await client.GetAsync($"{Route}/no-such-uuid");
 
@@ -233,7 +233,7 @@ public class BankAccountsEndpointTests(WebApplicationFactory<Program> factory, D
     [SkippableFact]
     public async Task Create_InvalidBankBin_Returns400WithCamelCaseFields()
     {
-        using var client = await CreateAuthorizedClientAsync();
+        using var client = await CreatePremiumClientAsync();
 
         using var response = await client.PostAsJsonAsync(Route, ValidBody(bankBin: "12"));
 
@@ -248,7 +248,7 @@ public class BankAccountsEndpointTests(WebApplicationFactory<Program> factory, D
     [SkippableFact]
     public async Task Create_InvalidAccountNumber_Returns400WithCamelCaseFields()
     {
-        using var client = await CreateAuthorizedClientAsync();
+        using var client = await CreatePremiumClientAsync();
 
         using var response = await client.PostAsJsonAsync(Route, ValidBody(accountNumber: "abc"));
 

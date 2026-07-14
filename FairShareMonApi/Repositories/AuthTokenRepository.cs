@@ -17,7 +17,8 @@ public record AuthTokenLookup(
     string TokenType,
     string PairUuid,
     DateTime ExpiresAt,
-    DateTime? RevokedAt);
+    DateTime? RevokedAt,
+    string Tier = Constants.UserTiers.Free);
 
 /// <summary>
 /// Data access for the <c>auth_tokens</c> whitelist. Rotation/logout soft-revoke (set
@@ -126,7 +127,8 @@ public sealed class AuthTokenRepository(AppDbContext dbContext) : BaseRepository
                 token.TokenType,
                 token.PairUuid,
                 token.ExpiresAt,
-                token.RevokedAt))
+                token.RevokedAt,
+                token.User.Tier))
             .FirstOrDefaultAsync(ct), cancellationToken);
 
     public Task<IReadOnlyList<string>> RevokeByPairUuidAsync(string pairUuid, CancellationToken cancellationToken = default) =>

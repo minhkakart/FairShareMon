@@ -19,6 +19,11 @@ public sealed class TokenValidator(ITokenWhitelistStore whitelistStore) : IToken
         if (entry is null || entry.TokenType != TokenTypes.Access || entry.ExpiresAt <= AppDateTime.Now)
             return null;
 
-        return new AuthenticatedUser { Id = entry.UserId, Username = entry.Username };
+        return new AuthenticatedUser
+        {
+            Id = entry.UserId,
+            Username = entry.Username,
+            Tier = string.IsNullOrEmpty(entry.Tier) ? UserTiers.Free : entry.Tier
+        };
     }
 }

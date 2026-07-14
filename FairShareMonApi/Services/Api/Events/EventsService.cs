@@ -4,6 +4,7 @@ using FairShareMonApi.Constants;
 using FairShareMonApi.Exceptions;
 using FairShareMonApi.Models.Events;
 using FairShareMonApi.Repositories;
+using FairShareMonApi.Services.Api.Tiers;
 using FluentValidation;
 
 namespace FairShareMonApi.Services.Api.Events;
@@ -33,6 +34,7 @@ public interface IEventsService
 [ScopedService(typeof(IEventsService))]
 public sealed class EventsService(
     IEventRepository eventRepository,
+    ITierService tierService,
     IMapper mapper,
     IValidator<CreateEventRequest> createValidator,
     IValidator<UpdateEventRequest> updateValidator) : IEventsService
@@ -54,6 +56,9 @@ public sealed class EventsService(
     public async Task<EventResponse> CreateAsync(string userUuid, CreateEventRequest request, CancellationToken cancellationToken = default)
     {
         await createValidator.ValidateAndThrowAsync(request, cancellationToken);
+
+        // M10 Free tier limit (create-only): only OPEN events count, so closing one frees a slot.
+        await tierService.EnsureCanCreateOpenEventAsync(userUuid, cancellationToken);
 
         var data = new CreateEventData(request.Name.Trim(), request.Description?.Trim(), request.StartDate, request.EndDate);
         var result = await eventRepository.CreateAsync(userUuid, data, cancellationToken);

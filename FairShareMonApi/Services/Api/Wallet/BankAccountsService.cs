@@ -4,6 +4,7 @@ using FairShareMonApi.Constants;
 using FairShareMonApi.Exceptions;
 using FairShareMonApi.Models.Wallet;
 using FairShareMonApi.Repositories;
+using FairShareMonApi.Services.Api.Tiers;
 using FluentValidation;
 
 namespace FairShareMonApi.Services.Api.Wallet;
@@ -14,6 +15,12 @@ namespace FairShareMonApi.Services.Api.Wallet;
 /// <c>BankAccountNotFound</c> 12000, never 403). Enforces the single-default invariant (first account
 /// auto-default, atomic swap on set-default, promote-another on delete-of-default) delegated to the
 /// repository transaction. Bank accounts are hard-deleted (OQ7).
+/// <para>
+/// M10 Premium feature-gate (OQ5b, read-vs-mutation split): the MUTATIONS (create / update /
+/// set-default / delete) are Premium-only (Free -&gt; 403 <c>PremiumFeatureRequired</c> 13003); the
+/// READS (list / get) stay open to Free so a downgraded user can still see accounts they added on
+/// Premium (§4.9 spirit).
+/// </para>
 /// </summary>
 public interface IBankAccountsService
 {
@@ -33,6 +40,7 @@ public interface IBankAccountsService
 [ScopedService(typeof(IBankAccountsService))]
 public sealed class BankAccountsService(
     IBankAccountRepository bankAccountRepository,
+    ITierService tierService,
     IMapper mapper,
     IValidator<CreateBankAccountRequest> createValidator,
     IValidator<UpdateBankAccountRequest> updateValidator) : IBankAccountsService
@@ -53,6 +61,7 @@ public sealed class BankAccountsService(
 
     public async Task<BankAccountResponse> CreateAsync(string userUuid, CreateBankAccountRequest request, CancellationToken cancellationToken = default)
     {
+        tierService.EnsurePremiumFeature("ví ngân hàng");
         await createValidator.ValidateAndThrowAsync(request, cancellationToken);
 
         var account = await bankAccountRepository.CreateAsync(
@@ -68,6 +77,7 @@ public sealed class BankAccountsService(
 
     public async Task<BankAccountResponse> UpdateAsync(string userUuid, string bankAccountUuid, UpdateBankAccountRequest request, CancellationToken cancellationToken = default)
     {
+        tierService.EnsurePremiumFeature("ví ngân hàng");
         await updateValidator.ValidateAndThrowAsync(request, cancellationToken);
 
         var updated = await bankAccountRepository.UpdateAsync(
@@ -89,6 +99,7 @@ public sealed class BankAccountsService(
 
     public async Task SetDefaultAsync(string userUuid, string bankAccountUuid, CancellationToken cancellationToken = default)
     {
+        tierService.EnsurePremiumFeature("ví ngân hàng");
         var updated = await bankAccountRepository.SetDefaultAsync(userUuid, bankAccountUuid, cancellationToken);
         if (!updated)
             throw NotFound();
@@ -96,6 +107,7 @@ public sealed class BankAccountsService(
 
     public async Task DeleteAsync(string userUuid, string bankAccountUuid, CancellationToken cancellationToken = default)
     {
+        tierService.EnsurePremiumFeature("ví ngân hàng");
         var deleted = await bankAccountRepository.DeleteAsync(userUuid, bankAccountUuid, cancellationToken);
         if (!deleted)
             throw NotFound();

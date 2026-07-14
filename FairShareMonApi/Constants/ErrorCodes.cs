@@ -135,4 +135,18 @@ public static class ErrorCodes
 
     /// <summary>Event QR requested but no member still owes (all balances ≥ 0) - nothing to bill (HTTP 400).</summary>
     public const int NoOutstandingDebtForQr = 12003;
+
+    // 13xxx - Tiers (block claimed by planning/tiers-premium-free.md; M11 Admin takes the next free block, 14xxx).
+
+    /// <summary>Free tier reached its active-member cap; a new member is rejected (HTTP 400). Premium removes the limit.</summary>
+    public const int MemberLimitReached = 13000;
+
+    /// <summary>Free tier reached its open-event cap; a new event is rejected (HTTP 400). Close an event or upgrade to Premium.</summary>
+    public const int OpenEventLimitReached = 13001;
+
+    /// <summary>Free tier reached its expenses-per-month cap; a new expense this month is rejected (HTTP 400). Premium removes the limit.</summary>
+    public const int MonthlyExpenseLimitReached = 13002;
+
+    /// <summary>A Premium-only ("mở rộng") feature was used by a Free account (HTTP 403, distinct from generic Forbidden 1004 so clients can show an upsell).</summary>
+    public const int PremiumFeatureRequired = 13003;
 }

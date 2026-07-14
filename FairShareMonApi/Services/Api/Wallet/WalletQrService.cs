@@ -7,6 +7,7 @@ using FairShareMonApi.Models.Wallet;
 using FairShareMonApi.Repositories;
 using FairShareMonApi.Services.Api.Expenses;
 using FairShareMonApi.Services.Api.Stats;
+using FairShareMonApi.Services.Api.Tiers;
 
 namespace FairShareMonApi.Services.Api.Wallet;
 
@@ -18,7 +19,9 @@ namespace FairShareMonApi.Services.Api.Wallet;
 /// into a single labelled PNG. All inputs are resolved through resource-owned application services, so
 /// ownership misses surface as their existing 404s (<c>ExpenseNotFound</c> 6000 / <c>EventNotFound</c>
 /// 9000); wallet/QR-specific states use the 12xxx codes. Nothing is persisted (OQ17). No tier gate at
-/// M9 - this service is the single seam a later tier mechanism can gate (OQ14).
+/// M9 - this service is the single seam a later tier mechanism can gate (OQ14). M10 activates that
+/// seam (OQ5b): both QR operations are Premium-only - a Free caller gets 403 PremiumFeatureRequired
+/// (13003) before anything is resolved.
 /// </summary>
 public interface IWalletQrService
 {
@@ -32,6 +35,7 @@ public sealed class WalletQrService(
     IBankAccountRepository bankAccountRepository,
     IExpensesService expensesService,
     IStatsService statsService,
+    ITierService tierService,
     IVietQrPayloadBuilder payloadBuilder,
     IQrImageService qrImageService) : IWalletQrService
 {
@@ -40,6 +44,8 @@ public sealed class WalletQrService(
 
     public async Task<ExpenseQrResult> GenerateExpenseQrAsync(string userUuid, string expenseUuid, string? bankAccountUuid, string? format, CancellationToken cancellationToken = default)
     {
+        tierService.EnsurePremiumFeature("tạo mã QR");
+
         var account = await ResolveDestinationAsync(userUuid, bankAccountUuid, cancellationToken);
 
         // Resource-owned expense (miss -> ExpenseNotFound 6000); Total is the derived SUM(shares) (M5).
@@ -56,6 +62,8 @@ public sealed class WalletQrService(
 
     public async Task<QrImageResult> GenerateEventQrAsync(string userUuid, string eventUuid, string? bankAccountUuid, CancellationToken cancellationToken = default)
     {
+        tierService.EnsurePremiumFeature("tạo mã QR");
+
         var account = await ResolveDestinationAsync(userUuid, bankAccountUuid, cancellationToken);
 
         // Reuse the M7 balance (miss -> EventNotFound 9000); never recompute debt.

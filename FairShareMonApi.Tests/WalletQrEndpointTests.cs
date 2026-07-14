@@ -100,7 +100,7 @@ public class WalletQrEndpointTests(WebApplicationFactory<Program> factory, Datab
     [SkippableFact]
     public async Task ExpenseQr_Default_Returns200RawPngNotWrapped()
     {
-        using var client = await CreateAuthorizedClientAsync();
+        using var client = await CreatePremiumClientAsync();
         await CreateBankAccountAsync(client);
         var expense = await CreateSimpleExpenseUuidAsync(client);
 
@@ -117,7 +117,7 @@ public class WalletQrEndpointTests(WebApplicationFactory<Program> factory, Datab
     [SkippableFact]
     public async Task ExpenseQr_FormatPayload_Returns200JsonVietQrStringWithValidCrcAndAmount()
     {
-        using var client = await CreateAuthorizedClientAsync();
+        using var client = await CreatePremiumClientAsync();
         await CreateBankAccountAsync(client);
         var expense = await CreateSimpleExpenseUuidAsync(client, total: 500_000m);
 
@@ -141,7 +141,7 @@ public class WalletQrEndpointTests(WebApplicationFactory<Program> factory, Datab
     [SkippableFact]
     public async Task ExpenseQr_NoBankAccount_Returns400Code12001()
     {
-        using var client = await CreateAuthorizedClientAsync(); // no wallet configured
+        using var client = await CreatePremiumClientAsync(); // no wallet configured
         var expense = await CreateSimpleExpenseUuidAsync(client);
 
         using var response = await client.GetAsync($"api/v1/expenses/{expense}/qr");
@@ -153,8 +153,8 @@ public class WalletQrEndpointTests(WebApplicationFactory<Program> factory, Datab
     [SkippableFact]
     public async Task ExpenseQr_AnotherUsersExpense_Returns404Code6000()
     {
-        using var owner = await CreateAuthorizedClientAsync();
-        using var stranger = await CreateAuthorizedClientAsync();
+        using var owner = await CreatePremiumClientAsync();
+        using var stranger = await CreatePremiumClientAsync();
         await CreateBankAccountAsync(stranger); // requester has an account (resolution precedes resource check)
         var expense = await CreateSimpleExpenseUuidAsync(owner);
 
@@ -167,8 +167,8 @@ public class WalletQrEndpointTests(WebApplicationFactory<Program> factory, Datab
     [SkippableFact]
     public async Task ExpenseQr_OverrideAnotherUsersAccount_Returns404Code12000()
     {
-        using var owner = await CreateAuthorizedClientAsync();
-        using var stranger = await CreateAuthorizedClientAsync();
+        using var owner = await CreatePremiumClientAsync();
+        using var stranger = await CreatePremiumClientAsync();
         await CreateBankAccountAsync(stranger);
         // Owner has an account we will try to target from the stranger's session.
         using var create = await owner.PostAsJsonAsync("api/v1/bank-accounts",
@@ -199,7 +199,7 @@ public class WalletQrEndpointTests(WebApplicationFactory<Program> factory, Datab
     [SkippableFact]
     public async Task EventQr_ClosedWithDebtor_Returns200CompositePngAttachment()
     {
-        using var client = await CreateAuthorizedClientAsync();
+        using var client = await CreatePremiumClientAsync();
         await CreateBankAccountAsync(client);
         var evt = await CreateClosedEventWithDebtorAsync(client);
 
@@ -220,7 +220,7 @@ public class WalletQrEndpointTests(WebApplicationFactory<Program> factory, Datab
     [SkippableFact]
     public async Task EventQr_OpenEvent_Returns400Code12002()
     {
-        using var client = await CreateAuthorizedClientAsync();
+        using var client = await CreatePremiumClientAsync();
         await CreateBankAccountAsync(client);
         var evt = await CreateEventUuidAsync(client, "Đà Lạt", Day14, Day16); // not closed
 
@@ -233,7 +233,7 @@ public class WalletQrEndpointTests(WebApplicationFactory<Program> factory, Datab
     [SkippableFact]
     public async Task EventQr_ClosedButNobodyOwes_Returns400Code12003()
     {
-        using var client = await CreateAuthorizedClientAsync();
+        using var client = await CreatePremiumClientAsync();
         await CreateBankAccountAsync(client);
         var evt = await CreateEventUuidAsync(client, "Đà Lạt", Day14, Day16); // no expenses -> nobody owes
         await CloseEventAsync(client, evt);
@@ -247,7 +247,7 @@ public class WalletQrEndpointTests(WebApplicationFactory<Program> factory, Datab
     [SkippableFact]
     public async Task EventQr_NoBankAccount_Returns400Code12001()
     {
-        using var client = await CreateAuthorizedClientAsync(); // no wallet
+        using var client = await CreatePremiumClientAsync(); // no wallet
         var evt = await CreateClosedEventWithDebtorAsync(client);
 
         using var response = await client.GetAsync($"api/v1/events/{evt}/qr");
@@ -259,8 +259,8 @@ public class WalletQrEndpointTests(WebApplicationFactory<Program> factory, Datab
     [SkippableFact]
     public async Task EventQr_AnotherUsersEvent_Returns404Code9000()
     {
-        using var owner = await CreateAuthorizedClientAsync();
-        using var stranger = await CreateAuthorizedClientAsync();
+        using var owner = await CreatePremiumClientAsync();
+        using var stranger = await CreatePremiumClientAsync();
         await CreateBankAccountAsync(stranger); // requester has an account
         var evt = await CreateClosedEventWithDebtorAsync(owner);
 

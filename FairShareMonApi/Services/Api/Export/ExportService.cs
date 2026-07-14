@@ -82,6 +82,9 @@ public sealed class ExportService(
             _ => throw UnsupportedFormat()
         };
 
+        // M10 Premium feature-gate hook (OQ5/§3.11 "mở rộng"): CSV stays Free. When a non-CSV
+        // ExportFormat is added, gate that branch with ITierService.EnsurePremiumFeature(...) here
+        // (inject ITierService into this service at that point) before returning the formatter.
         return formatters.FirstOrDefault(f => f.Format == target) ?? throw UnsupportedFormat();
     }
 

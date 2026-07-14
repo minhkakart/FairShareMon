@@ -35,6 +35,9 @@ public interface IEventRepository : IBaseRepository, IQueryRepository<Event>
 
     /// <summary>Hard-deletes while OPEN (expenses go loose via ON DELETE SET NULL); closed -&gt; EventClosed; miss -&gt; EventNotFound.</summary>
     Task<EventWriteStatus> DeleteAsync(string userUuid, string eventUuid, CancellationToken cancellationToken = default);
+
+    /// <summary>DB-side count of the user's OPEN events (<c>is_closed = false</c>); closed events never count (M10 tier limit, OQ2/§4.9).</summary>
+    Task<int> CountOpenByUserAsync(string userUuid, CancellationToken cancellationToken = default);
 }
 
 [ScopedService(typeof(IEventRepository))]
@@ -63,6 +66,11 @@ public sealed class EventRepository(AppDbContext dbContext) : BaseRepository(dbC
         ExecuteQueryAsync((_, ct) => Query()
             .Include(evt => evt.Expenses)
             .FirstOrDefaultAsync(evt => evt.Uuid == eventUuid && evt.User.Uuid == userUuid, ct), cancellationToken);
+
+    public Task<int> CountOpenByUserAsync(string userUuid, CancellationToken cancellationToken = default) =>
+        ExecuteQueryAsync((_, ct) => Query()
+            .Where(evt => evt.User.Uuid == userUuid && !evt.IsClosed)
+            .CountAsync(ct), cancellationToken);
 
     public Task<EventWriteResult<Event>> CreateAsync(string userUuid, CreateEventData data, CancellationToken cancellationToken = default) =>
         ExecuteTransactionAsync(async (db, transaction) =>

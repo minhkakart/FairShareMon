@@ -32,7 +32,7 @@ public sealed class TokenService(
     private readonly TimeSpan _refreshTokenLifetime =
         configuration.GetValue("Auth:RefreshTokenLifetime", TimeSpan.FromDays(30));
 
-    public async Task<TokenPair?> IssueAsync(string userId, string username, CancellationToken cancellationToken = default)
+    public async Task<TokenPair?> IssueAsync(string userId, string username, string tier = UserTiers.Free, CancellationToken cancellationToken = default)
     {
         // Opportunistic purge (no scheduler by decision): expired rows, revoked or not.
         await authTokenRepository.DeleteExpiredAsync(cancellationToken);
@@ -53,9 +53,9 @@ public sealed class TokenService(
 
         // Best-effort cache priming; validation self-heals via DB fallback + backfill anyway.
         await TokenWhitelistStore.TryCacheAsync(redis, logger, accessHash,
-            new TokenWhitelistEntry(userId, accessExpiresAt, username, TokenTypes.Access, pairUuid));
+            new TokenWhitelistEntry(userId, accessExpiresAt, username, TokenTypes.Access, pairUuid, tier));
         await TokenWhitelistStore.TryCacheAsync(redis, logger, refreshHash,
-            new TokenWhitelistEntry(userId, refreshExpiresAt, username, TokenTypes.Refresh, pairUuid));
+            new TokenWhitelistEntry(userId, refreshExpiresAt, username, TokenTypes.Refresh, pairUuid, tier));
 
         return new TokenPair(rawAccessToken, accessExpiresAt, rawRefreshToken, refreshExpiresAt);
     }
@@ -80,7 +80,7 @@ public sealed class TokenService(
 
         // Won the claim (the refresh row is now revoked): revoke the paired access token too, then issue a fresh pair.
         await RevokePairAsync(lookup.PairUuid, cancellationToken);
-        return await IssueAsync(lookup.UserUuid, lookup.Username, cancellationToken);
+        return await IssueAsync(lookup.UserUuid, lookup.Username, lookup.Tier, cancellationToken);
     }
 
     public async Task<bool> RevokeAsync(string rawToken, CancellationToken cancellationToken = default)

@@ -1,3 +1,5 @@
+using FairShareMonApi.Constants;
+
 namespace FairShareMonApi.Auth.Abstractions;
 
 /// <summary>Access + refresh token pair, returned to the client exactly once (raw tokens are never stored).</summary>
@@ -14,10 +16,11 @@ public record TokenPair(
 public interface ITokenService
 {
     /// <summary>
-    /// Issues a new access + refresh pair for the user. The username is whitelisted alongside the
-    /// hash so per-request validation needs no DB hit. Null when issuance fails (unknown user).
+    /// Issues a new access + refresh pair for the user. The username and tier are whitelisted
+    /// alongside the hash so per-request validation (and the M10 tier guards/gates) need no DB hit.
+    /// Null when issuance fails (unknown user).
     /// </summary>
-    Task<TokenPair?> IssueAsync(string userId, string username, CancellationToken cancellationToken = default);
+    Task<TokenPair?> IssueAsync(string userId, string username, string tier = UserTiers.Free, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Exchanges a valid refresh token for a new pair (full pair rotation - the old refresh AND

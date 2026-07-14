@@ -48,6 +48,10 @@ public class ErrorException(int code, string message, int? httpStatus = null) : 
         ErrorCodes.NoBankAccountForQr => StatusCodes.Status400BadRequest,
         ErrorCodes.EventNotClosedForQr => StatusCodes.Status400BadRequest,
         ErrorCodes.NoOutstandingDebtForQr => StatusCodes.Status400BadRequest,
+        ErrorCodes.MemberLimitReached => StatusCodes.Status400BadRequest,
+        ErrorCodes.OpenEventLimitReached => StatusCodes.Status400BadRequest,
+        ErrorCodes.MonthlyExpenseLimitReached => StatusCodes.Status400BadRequest,
+        ErrorCodes.PremiumFeatureRequired => StatusCodes.Status403Forbidden,
         _ => StatusCodes.Status500InternalServerError
     };
 }

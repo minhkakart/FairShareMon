@@ -4,6 +4,7 @@ using FairShareMonApi.Constants;
 using FairShareMonApi.Exceptions;
 using FairShareMonApi.Models.Expenses;
 using FairShareMonApi.Repositories;
+using FairShareMonApi.Services.Api.Tiers;
 using FluentValidation;
 
 namespace FairShareMonApi.Services.Api.Expenses;
@@ -40,6 +41,7 @@ public interface IExpensesService
 public sealed class ExpensesService(
     IExpenseRepository expenseRepository,
     IAuditLogRepository auditLogRepository,
+    ITierService tierService,
     IMapper mapper,
     IValidator<CreateExpenseRequest> createValidator,
     IValidator<UpdateExpenseRequest> updateValidator,
@@ -62,6 +64,9 @@ public sealed class ExpensesService(
     public async Task<ExpenseResponse> CreateAsync(string userUuid, CreateExpenseRequest request, CancellationToken cancellationToken = default)
     {
         await createValidator.ValidateAndThrowAsync(request, cancellationToken);
+
+        // M10 Free tier limit (create-only): counts this user's expenses in the current +7 calendar month.
+        await tierService.EnsureCanCreateExpenseAsync(userUuid, cancellationToken);
 
         var data = new CreateExpenseData(
             request.Name.Trim(),

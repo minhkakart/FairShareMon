@@ -8,6 +8,7 @@ using FairShareMonApi.Models.Wallet;
 using FairShareMonApi.Repositories;
 using FairShareMonApi.Repositories.Abstractions;
 using FairShareMonApi.Services.Api.Wallet;
+using FairShareMonApi.Tests.Infrastructure;
 using FairShareMonApi.Validators.Wallet;
 using Xunit;
 
@@ -24,10 +25,13 @@ public class BankAccountsServiceTests
     private const string UserUuid = "0198a5c2-0000-7000-8000-00000000ba01";
 
     private readonly FakeBankAccountRepository _repository = new();
+    // Pass-through tier double: these tests target mapping/trim/miss behaviour, not the Premium gate
+    // (which is proved at the service-throws and endpoint levels), so the gate stays a no-op here.
+    private readonly FakeTierService _tier = new();
     private readonly IMapper _mapper = new MapperConfiguration(config => config.AddProfile<BankAccountProfile>()).CreateMapper();
 
     private BankAccountsService CreateService() =>
-        new(_repository, _mapper, new CreateBankAccountRequestValidator(), new UpdateBankAccountRequestValidator());
+        new(_repository, _tier, _mapper, new CreateBankAccountRequestValidator(), new UpdateBankAccountRequestValidator());
 
     private BankAccount Add(string bankName = "Vietcombank", bool isDefault = false)
     {
@@ -88,6 +92,46 @@ public class BankAccountsServiceTests
             CreateService().CreateAsync(UserUuid, CreateRequest()));
 
         Assert.Equal(ErrorCodes.BankAccountNotFound, exception.Code);
+    }
+
+    // ---- M10 Premium feature-gate (OQ5b read-vs-mutation split) -----------------------------------
+
+    [Theory]
+    [InlineData("create")]
+    [InlineData("update")]
+    [InlineData("setdefault")]
+    [InlineData("delete")]
+    public async Task Mutations_FreeCaller_ThrowPremiumFeatureRequired13003BeforeTouchingData(string operation)
+    {
+        var account = Add(isDefault: true);
+        _tier.PremiumFeatureCode = ErrorCodes.PremiumFeatureRequired; // simulate a Free caller hitting the gate
+
+        var service = CreateService();
+        var exception = await Assert.ThrowsAsync<ErrorException>(() => operation switch
+        {
+            "create" => service.CreateAsync(UserUuid, CreateRequest()),
+            "update" => service.UpdateAsync(UserUuid, account.Uuid, new UpdateBankAccountRequest
+            {
+                BankBin = "970436", BankName = "X", AccountNumber = "0123456789", AccountHolderName = "Y"
+            }),
+            "setdefault" => service.SetDefaultAsync(UserUuid, account.Uuid),
+            _ => service.DeleteAsync(UserUuid, account.Uuid)
+        });
+
+        Assert.Equal(ErrorCodes.PremiumFeatureRequired, exception.Code);
+    }
+
+    [Fact]
+    public async Task Reads_FreeCaller_StayOpenEvenWhenGateWouldThrow()
+    {
+        var account = Add(isDefault: true);
+        _tier.PremiumFeatureCode = ErrorCodes.PremiumFeatureRequired; // gate would fire on a mutation, but reads bypass it
+
+        var list = await CreateService().ListAsync(UserUuid);
+        var single = await CreateService().GetAsync(UserUuid, account.Uuid);
+
+        Assert.Single(list);                 // list read is not gated (OQ5b)
+        Assert.Equal(account.Uuid, single.Uuid); // get read is not gated (OQ5b)
     }
 
     [Fact]

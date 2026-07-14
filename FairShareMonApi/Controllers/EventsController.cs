@@ -44,7 +44,7 @@ public class EventsController(IEventsService eventsService, IStatsService statsS
         Summary = "Thêm đợt chi tiêu",
         Description = "Tạo một đợt chi tiêu mới (tên, mô tả tùy chọn, khoảng thời gian trọn ngày). Ngày kết thúc phải sau hoặc bằng ngày bắt đầu. Đợt mới luôn ở trạng thái đang mở.")]
     [SwaggerResponse(StatusCodes.Status200OK, "Thêm đợt chi tiêu thành công.", typeof(ApiResult<EventResponse>))]
-    [SwaggerResponse(StatusCodes.Status400BadRequest, "Dữ liệu không hợp lệ.", typeof(ApiResult))]
+    [SwaggerResponse(StatusCodes.Status400BadRequest, "Dữ liệu không hợp lệ hoặc tài khoản Free đã đạt giới hạn số đợt đang mở (nâng cấp Premium để bỏ giới hạn).", typeof(ApiResult))]
     public async Task<IActionResult> CreateAsync([FromBody] CreateEventRequest request, CancellationToken cancellationToken) =>
         ApiResult<EventResponse>.Success(
             await eventsService.CreateAsync(AuthenticatedUser.Id, request, cancellationToken));
@@ -107,6 +107,7 @@ public class EventsController(IEventsService eventsService, IStatsService statsS
     [SwaggerResponse(StatusCodes.Status200OK, "Tạo mã QR tổng hợp thành công (ảnh PNG).", typeof(FileContentResult))]
     [SwaggerResponse(StatusCodes.Status400BadRequest, "Đợt chưa chốt, không còn ai nợ, hoặc chưa có tài khoản ngân hàng.", typeof(ApiResult))]
     [SwaggerResponse(StatusCodes.Status401Unauthorized, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", typeof(ApiResult))]
+    [SwaggerResponse(StatusCodes.Status403Forbidden, "Tính năng tạo mã QR chỉ dành cho tài khoản Premium (nâng cấp để sử dụng).", typeof(ApiResult))]
     [SwaggerResponse(StatusCodes.Status404NotFound, "Không tìm thấy đợt chi tiêu hoặc tài khoản ngân hàng.", typeof(ApiResult))]
     public async Task<IActionResult> GetQrAsync([FromRoute] string uuid, [FromQuery] string? bankAccountUuid, CancellationToken cancellationToken)
     {

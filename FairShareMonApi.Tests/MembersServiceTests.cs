@@ -8,6 +8,7 @@ using FairShareMonApi.Models.Members;
 using FairShareMonApi.Repositories;
 using FairShareMonApi.Repositories.Abstractions;
 using FairShareMonApi.Services.Api.Members;
+using FairShareMonApi.Tests.Infrastructure;
 using FairShareMonApi.Validators.Members;
 using Xunit;
 
@@ -24,10 +25,11 @@ public class MembersServiceTests
     private const string UserUuid = "0198a5c2-0000-7000-8000-00000000ab01";
 
     private readonly FakeMemberRepository _repository = new();
+    private readonly FakeTierService _tier = new();
     private readonly IMapper _mapper = new MapperConfiguration(config => config.AddProfile<MemberProfile>()).CreateMapper();
 
     private MembersService CreateService() =>
-        new(_repository, _mapper, new CreateMemberRequestValidator(), new UpdateMemberRequestValidator());
+        new(_repository, _tier, _mapper, new CreateMemberRequestValidator(), new UpdateMemberRequestValidator());
 
     private Member AddMember(string name, bool ownerRep = false, bool deleted = false)
     {
@@ -72,6 +74,18 @@ public class MembersServiceTests
     {
         await Assert.ThrowsAsync<FluentValidation.ValidationException>(() =>
             CreateService().CreateAsync(UserUuid, new CreateMemberRequest { Name = "" }));
+    }
+
+    [Fact]
+    public async Task CreateAsync_TierLimitReached_ThrowsMemberLimitReached13000()
+    {
+        _tier.MemberLimitCode = ErrorCodes.MemberLimitReached; // M10: the guard fires for a Free caller at the cap
+
+        var exception = await Assert.ThrowsAsync<ErrorException>(() =>
+            CreateService().CreateAsync(UserUuid, new CreateMemberRequest { Name = "An" }));
+
+        Assert.Equal(ErrorCodes.MemberLimitReached, exception.Code);
+        Assert.Empty(_repository.Members); // guard fires before the repository insert
     }
 
     [Fact]
@@ -269,6 +283,9 @@ public class MembersServiceTests
 
         public Task<bool> HasOwnerRepresentativeAsync(string userUuid, CancellationToken cancellationToken = default) =>
             Task.FromResult(Members.Any(entry => entry.UserUuid == userUuid && entry.Member.IsOwnerRepresentative && !entry.Member.IsDeleted));
+
+        public Task<int> CountActiveByUserAsync(string userUuid, CancellationToken cancellationToken = default) =>
+            Task.FromResult(Members.Count(entry => entry.UserUuid == userUuid && !entry.Member.IsDeleted));
 
         public Task<IReadOnlyList<string>> GetUserUuidsWithoutOwnerRepresentativeAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<string>>(UsersWithoutOwnerRep.ToList());

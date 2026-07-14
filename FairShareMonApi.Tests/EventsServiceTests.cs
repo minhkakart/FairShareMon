@@ -8,6 +8,7 @@ using FairShareMonApi.Models.Events;
 using FairShareMonApi.Repositories;
 using FairShareMonApi.Repositories.Abstractions;
 using FairShareMonApi.Services.Api.Events;
+using FairShareMonApi.Tests.Infrastructure;
 using FairShareMonApi.Validators.Events;
 using Xunit;
 
@@ -25,11 +26,12 @@ public class EventsServiceTests
     private const string UserUuid = "0198a5c2-0000-7000-8000-0000000000e6";
 
     private readonly FakeEventRepository _events = new();
+    private readonly FakeTierService _tier = new();
 
     private readonly IMapper _mapper = new MapperConfiguration(config => config.AddProfile<EventProfile>()).CreateMapper();
 
     private EventsService CreateService() =>
-        new(_events, _mapper, new CreateEventRequestValidator(), new UpdateEventRequestValidator());
+        new(_events, _tier, _mapper, new CreateEventRequestValidator(), new UpdateEventRequestValidator());
 
     private static readonly DateTime Start = new(2026, 7, 14, 0, 0, 0, DateTimeKind.Utc);
     private static readonly DateTime End = new(2026, 7, 16, 23, 59, 59, DateTimeKind.Utc);
@@ -87,6 +89,17 @@ public class EventsServiceTests
         await Assert.ThrowsAsync<FluentValidation.ValidationException>(() => CreateService().CreateAsync(UserUuid, request));
 
         Assert.Null(_events.LastCreateData); // repo never called
+    }
+
+    [Fact]
+    public async Task CreateAsync_OpenEventLimitReached_ThrowsOpenEventLimitReached13001()
+    {
+        _tier.OpenEventLimitCode = ErrorCodes.OpenEventLimitReached; // M10: Free caller at the open-event cap
+
+        var exception = await Assert.ThrowsAsync<ErrorException>(() => CreateService().CreateAsync(UserUuid, CreateRequest()));
+
+        Assert.Equal(ErrorCodes.OpenEventLimitReached, exception.Code);
+        Assert.Null(_events.LastCreateData); // guard fires before the repository create
     }
 
     [Fact]
@@ -279,6 +292,9 @@ public class EventsServiceTests
             LastCreateData = data;
             return Task.FromResult(CreateResult);
         }
+
+        public Task<int> CountOpenByUserAsync(string userUuid, CancellationToken cancellationToken = default) =>
+            Task.FromResult(StoredEvent is { IsClosed: false } ? 1 : 0);
 
         public Task<EventWriteResult<Event>> UpdateAsync(string userUuid, string eventUuid, UpdateEventData data, CancellationToken cancellationToken = default) =>
             Task.FromResult(UpdateStatus == EventWriteStatus.Success

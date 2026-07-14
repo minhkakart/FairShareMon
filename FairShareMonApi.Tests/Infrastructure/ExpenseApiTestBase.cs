@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using FairShareMonApi.Constants;
 using FairShareMonApi.Database;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -50,6 +51,41 @@ public abstract class ExpenseApiTestBase(WebApplicationFactory<Program> factory,
         var client = Factory.CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
         return client;
+    }
+
+    /// <summary>
+    /// Registers a fresh user, flips its <c>users.tier</c> to PREMIUM directly in the DB (no upgrade
+    /// endpoint exists), then logs in so the freshly issued token carries the PREMIUM tier (M10 OQ8a:
+    /// the tier rides the token, captured at login). Returns an authorized client. Used by tests of the
+    /// Premium-gated "mở rộng" group (wallet mutations + QR) so the gate lifts.
+    /// </summary>
+    protected async Task<HttpClient> CreatePremiumClientAsync()
+    {
+        var username = NewUsername();
+        using var anonymous = Factory.CreateClient();
+        using var register = await anonymous.PostAsJsonAsync("api/v1/auth/register", new { username, password = Password });
+        Assert.Equal(HttpStatusCode.OK, register.StatusCode);
+
+        await SetUserTierAsync(username, UserTiers.Premium);
+
+        using var login = await anonymous.PostAsJsonAsync("api/v1/auth/login", new { username, password = Password });
+        Assert.Equal(HttpStatusCode.OK, login.StatusCode);
+        using var envelope = await ReadEnvelopeAsync(login);
+        var accessToken = envelope.RootElement.GetProperty("data").GetProperty("accessToken").GetString();
+
+        var client = Factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        return client;
+    }
+
+    /// <summary>Sets <c>users.tier</c> for a username directly (the tier only reaches a token on the NEXT login/refresh).</summary>
+    protected async Task SetUserTierAsync(string username, string tier)
+    {
+        using var scope = Factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        await context.Users
+            .Where(user => user.Username == username)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(user => user.Tier, tier));
     }
 
     protected static string Uuid(JsonElement element) => element.GetProperty("uuid").GetString()!;

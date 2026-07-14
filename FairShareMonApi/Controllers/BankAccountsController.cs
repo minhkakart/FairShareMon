@@ -50,6 +50,7 @@ public class BankAccountsController(IBankAccountsService bankAccountsService) : 
         Description = "Thêm một tài khoản ngân hàng vào ví (mã ngân hàng BIN, tên ngân hàng, số tài khoản, tên chủ tài khoản). Tài khoản đầu tiên trong ví tự động được đặt làm mặc định.")]
     [SwaggerResponse(StatusCodes.Status200OK, "Thêm tài khoản ngân hàng thành công.", typeof(ApiResult<BankAccountResponse>))]
     [SwaggerResponse(StatusCodes.Status400BadRequest, "Dữ liệu không hợp lệ.", typeof(ApiResult))]
+    [SwaggerResponse(StatusCodes.Status403Forbidden, "Tính năng ví ngân hàng chỉ dành cho tài khoản Premium (nâng cấp để sử dụng).", typeof(ApiResult))]
     public async Task<IActionResult> CreateAsync([FromBody] CreateBankAccountRequest request, CancellationToken cancellationToken) =>
         ApiResult<BankAccountResponse>.Success(
             await bankAccountsService.CreateAsync(AuthenticatedUser.Id, request, cancellationToken));
@@ -60,6 +61,7 @@ public class BankAccountsController(IBankAccountsService bankAccountsService) : 
         Description = "Cập nhật thông tin một tài khoản ngân hàng. Không thể đổi cờ mặc định qua endpoint này (dùng đặt tài khoản mặc định).")]
     [SwaggerResponse(StatusCodes.Status200OK, "Cập nhật tài khoản ngân hàng thành công.", typeof(ApiResult<BankAccountResponse>))]
     [SwaggerResponse(StatusCodes.Status400BadRequest, "Dữ liệu không hợp lệ.", typeof(ApiResult))]
+    [SwaggerResponse(StatusCodes.Status403Forbidden, "Tính năng ví ngân hàng chỉ dành cho tài khoản Premium (nâng cấp để sử dụng).", typeof(ApiResult))]
     [SwaggerResponse(StatusCodes.Status404NotFound, "Không tìm thấy tài khoản ngân hàng.", typeof(ApiResult))]
     public async Task<IActionResult> UpdateAsync([FromRoute] string uuid, [FromBody] UpdateBankAccountRequest request, CancellationToken cancellationToken) =>
         ApiResult<BankAccountResponse>.Success(
@@ -70,6 +72,7 @@ public class BankAccountsController(IBankAccountsService bankAccountsService) : 
         Summary = "Đặt tài khoản ngân hàng mặc định",
         Description = "Đặt một tài khoản làm mặc định: cờ mặc định của tài khoản cũ được gỡ và gán cho tài khoản này trong cùng một giao dịch.")]
     [SwaggerResponse(StatusCodes.Status200OK, "Đã đặt tài khoản ngân hàng mặc định.", typeof(ApiResult))]
+    [SwaggerResponse(StatusCodes.Status403Forbidden, "Tính năng ví ngân hàng chỉ dành cho tài khoản Premium (nâng cấp để sử dụng).", typeof(ApiResult))]
     [SwaggerResponse(StatusCodes.Status404NotFound, "Không tìm thấy tài khoản ngân hàng.", typeof(ApiResult))]
     public async Task<IActionResult> SetDefaultAsync([FromRoute] string uuid, CancellationToken cancellationToken)
     {
@@ -82,6 +85,7 @@ public class BankAccountsController(IBankAccountsService bankAccountsService) : 
         Summary = "Xóa tài khoản ngân hàng",
         Description = "Xóa một tài khoản ngân hàng khỏi ví. Nếu xóa tài khoản mặc định và ví còn tài khoản khác thì tài khoản tạo gần nhất còn lại được đặt làm mặc định; xóa tài khoản cuối cùng thì ví trở về trạng thái rỗng.")]
     [SwaggerResponse(StatusCodes.Status200OK, "Đã xóa tài khoản ngân hàng.", typeof(ApiResult))]
+    [SwaggerResponse(StatusCodes.Status403Forbidden, "Tính năng ví ngân hàng chỉ dành cho tài khoản Premium (nâng cấp để sử dụng).", typeof(ApiResult))]
     [SwaggerResponse(StatusCodes.Status404NotFound, "Không tìm thấy tài khoản ngân hàng.", typeof(ApiResult))]
     public async Task<IActionResult> DeleteAsync([FromRoute] string uuid, CancellationToken cancellationToken)
     {

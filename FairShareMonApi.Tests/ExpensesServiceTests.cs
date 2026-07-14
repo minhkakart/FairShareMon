@@ -8,6 +8,7 @@ using FairShareMonApi.Models.Expenses;
 using FairShareMonApi.Repositories;
 using FairShareMonApi.Repositories.Abstractions;
 using FairShareMonApi.Services.Api.Expenses;
+using FairShareMonApi.Tests.Infrastructure;
 using FairShareMonApi.Validators.Expenses;
 using Xunit;
 
@@ -26,6 +27,7 @@ public class ExpensesServiceTests
 
     private readonly FakeExpenseRepository _expenses = new();
     private readonly FakeAuditLogRepository _audit = new();
+    private readonly FakeTierService _tier = new();
 
     private readonly IMapper _mapper = new MapperConfiguration(config =>
     {
@@ -38,7 +40,7 @@ public class ExpensesServiceTests
     }).CreateMapper();
 
     private ExpensesService CreateService() =>
-        new(_expenses, _audit, _mapper, new CreateExpenseRequestValidator(), new UpdateExpenseRequestValidator(), new AssignEventRequestValidator());
+        new(_expenses, _audit, _tier, _mapper, new CreateExpenseRequestValidator(), new UpdateExpenseRequestValidator(), new AssignEventRequestValidator());
 
     private static CreateExpenseRequest CreateRequest() =>
         new()
@@ -124,6 +126,18 @@ public class ExpensesServiceTests
             CreateService().CreateAsync(UserUuid, CreateRequest()));
 
         Assert.Equal(expectedCode, exception.Code);
+    }
+
+    [Fact]
+    public async Task CreateAsync_MonthlyExpenseLimitReached_ThrowsMonthlyExpenseLimitReached13002()
+    {
+        _tier.ExpenseLimitCode = ErrorCodes.MonthlyExpenseLimitReached; // M10: Free caller at the per-month cap
+
+        var exception = await Assert.ThrowsAsync<ErrorException>(() =>
+            CreateService().CreateAsync(UserUuid, CreateRequest()));
+
+        Assert.Equal(ErrorCodes.MonthlyExpenseLimitReached, exception.Code);
+        Assert.Null(_expenses.LastCreateData); // guard fires before the repository create
     }
 
     [Fact]
@@ -385,6 +399,11 @@ public class ExpensesServiceTests
             LastCreateData = data;
             return Task.FromResult(CreateResult);
         }
+
+        public Task<int> CountByUserInRangeAsync(string userUuid, DateTime fromUtcInclusive, DateTime toUtcExclusive, CancellationToken cancellationToken = default) =>
+            Task.FromResult(StoredExpense is not null
+                && StoredExpense.ExpenseTime >= fromUtcInclusive
+                && StoredExpense.ExpenseTime < toUtcExclusive ? 1 : 0);
 
         public Task<ExpenseWriteResult<Expense>> UpdateGeneralInfoAsync(string userUuid, string expenseUuid, UpdateExpenseData data, CancellationToken cancellationToken = default) =>
             Task.FromResult(UpdateStatus == ExpenseWriteStatus.Success

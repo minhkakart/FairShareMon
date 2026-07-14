@@ -44,6 +44,9 @@ public interface IExpenseRepository : IBaseRepository, IQueryRepository<Expense>
 
     /// <summary>Removes the expense from its event (-&gt; loose); idempotent no-op if already loose; a CLOSED current event -&gt; EventClosed; expense miss -&gt; ExpenseNotFound (M6, OQ4). No audit (OQ6).</summary>
     Task<ExpenseWriteStatus> RemoveEventAsync(string userUuid, string expenseUuid, CancellationToken cancellationToken = default);
+
+    /// <summary>DB-side count of the user's expenses whose <c>expense_time</c> falls in the UTC half-open window <c>[from, to)</c> (M10 monthly limit; the service computes the +7 calendar-month window, OQ4a).</summary>
+    Task<int> CountByUserInRangeAsync(string userUuid, DateTime fromUtcInclusive, DateTime toUtcExclusive, CancellationToken cancellationToken = default);
 }
 
 [ScopedService(typeof(IExpenseRepository))]
@@ -84,6 +87,13 @@ public sealed class ExpenseRepository(AppDbContext dbContext, IAuditLogFactory a
                 .ToListAsync(ct);
             return (IReadOnlyList<Expense>)expenses;
         }, cancellationToken);
+
+    public Task<int> CountByUserInRangeAsync(string userUuid, DateTime fromUtcInclusive, DateTime toUtcExclusive, CancellationToken cancellationToken = default) =>
+        ExecuteQueryAsync((_, ct) => Query()
+            .Where(expense => expense.User.Uuid == userUuid
+                && expense.ExpenseTime >= fromUtcInclusive
+                && expense.ExpenseTime < toUtcExclusive)
+            .CountAsync(ct), cancellationToken);
 
     public Task<Expense?> GetByUuidAsync(string userUuid, string expenseUuid, CancellationToken cancellationToken = default) =>
         ExecuteQueryAsync((_, ct) => Query()

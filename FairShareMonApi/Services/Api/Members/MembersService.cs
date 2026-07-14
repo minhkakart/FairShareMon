@@ -5,6 +5,7 @@ using FairShareMonApi.Database.Entities;
 using FairShareMonApi.Exceptions;
 using FairShareMonApi.Models.Members;
 using FairShareMonApi.Repositories;
+using FairShareMonApi.Services.Api.Tiers;
 using FluentValidation;
 
 namespace FairShareMonApi.Services.Api.Members;
@@ -34,6 +35,7 @@ public interface IMembersService
 [ScopedService(typeof(IMembersService))]
 public sealed class MembersService(
     IMemberRepository memberRepository,
+    ITierService tierService,
     IMapper mapper,
     IValidator<CreateMemberRequest> createValidator,
     IValidator<UpdateMemberRequest> updateValidator) : IMembersService
@@ -55,6 +57,10 @@ public sealed class MembersService(
     public async Task<MemberResponse> CreateAsync(string userUuid, CreateMemberRequest request, CancellationToken cancellationToken = default)
     {
         await createValidator.ValidateAndThrowAsync(request, cancellationToken);
+
+        // M10 Free tier limit (create-only). The owner-rep bootstrap uses a different path (the
+        // registration bootstrap step / repository create) and never reaches here, so it is exempt.
+        await tierService.EnsureCanCreateMemberAsync(userUuid, cancellationToken);
 
         // A member created through the API is never the owner-representative (that one is bootstrapped).
         var member = new Member { Name = request.Name.Trim() };

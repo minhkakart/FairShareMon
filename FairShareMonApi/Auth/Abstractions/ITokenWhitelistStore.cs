@@ -1,17 +1,22 @@
+using FairShareMonApi.Constants;
+
 namespace FairShareMonApi.Auth.Abstractions;
 
 /// <summary>
 /// A whitelisted token entry, keyed by SHA-256(raw token). Carries the username so per-request
-/// validation can materialize <see cref="AuthenticatedUser"/> without a DB hit, the token type so
-/// refresh tokens can never authenticate as access tokens, and the pair uuid linking the two rows
-/// of one issuance (logout/rotation revoke the whole pair).
+/// validation can materialize <see cref="AuthenticatedUser"/> without a DB hit, the caller's tier
+/// (M10) so tier guards/gates need no extra DB read on a cache hit, the token type so refresh tokens
+/// can never authenticate as access tokens, and the pair uuid linking the two rows of one issuance
+/// (logout/rotation revoke the whole pair). <c>Tier</c> is trailing with a FREE default so entries
+/// cached before M10 (missing the field) deserialize as FREE (fail-safe).
 /// </summary>
 public record TokenWhitelistEntry(
     string UserId,
     DateTime ExpiresAt,
     string Username,
     string TokenType,
-    string PairUuid);
+    string PairUuid,
+    string Tier = UserTiers.Free);
 
 /// <summary>
 /// Hash-keyed token whitelist - a composite of Redis (cache, TTL = expiry) and the

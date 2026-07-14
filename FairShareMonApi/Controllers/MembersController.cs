@@ -39,7 +39,7 @@ public class MembersController(IMembersService membersService) : AppController
         Summary = "Thêm thành viên",
         Description = "Tạo một thành viên mới cho tài khoản. Tên được phép trùng với thành viên khác.")]
     [SwaggerResponse(StatusCodes.Status200OK, "Thêm thành viên thành công.", typeof(ApiResult<MemberResponse>))]
-    [SwaggerResponse(StatusCodes.Status400BadRequest, "Dữ liệu không hợp lệ.", typeof(ApiResult))]
+    [SwaggerResponse(StatusCodes.Status400BadRequest, "Dữ liệu không hợp lệ hoặc tài khoản Free đã đạt giới hạn số thành viên (nâng cấp Premium để bỏ giới hạn).", typeof(ApiResult))]
     public async Task<IActionResult> CreateAsync([FromBody] CreateMemberRequest request, CancellationToken cancellationToken) =>
         ApiResult<MemberResponse>.Success(
             await membersService.CreateAsync(AuthenticatedUser.Id, request, cancellationToken));
