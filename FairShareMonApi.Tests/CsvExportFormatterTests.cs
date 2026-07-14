@@ -159,4 +159,75 @@ public class CsvExportFormatterTests
 
         Assert.Contains("Đợt,Đà Lạt - Bình", text);
     }
+
+    // ---- CSV formula-injection hardening through the formatter path --------------------------------
+
+    [Fact]
+    public void Render_HeaderFieldValueStartingWithFormula_IsNeutralized()
+    {
+        var document = new ExportDocument
+        {
+            Sections =
+            [
+                new ExportSection
+                {
+                    HeaderFields = [new KeyValuePair<string, string>("Tên phiếu", "=cmd")]
+                }
+            ]
+        };
+
+        var bytes = Formatter.Render(document);
+        var text = DecodeBody(bytes);
+
+        // The formula-leading value is neutralized with a leading single-quote through Render.
+        Assert.Contains("Tên phiếu,'=cmd\r\n", text);
+        // BOM and CRLF locked behavior still hold.
+        Assert.Equal(0xEF, bytes[0]);
+        Assert.Equal(0xBB, bytes[1]);
+        Assert.Equal(0xBF, bytes[2]);
+        Assert.EndsWith("\r\n", text);
+    }
+
+    [Fact]
+    public void Render_DataCellStartingWithFormula_IsNeutralized()
+    {
+        var document = new ExportDocument
+        {
+            Sections =
+            [
+                new ExportSection
+                {
+                    ColumnHeaders = ["Thành viên", "Ghi chú"],
+                    Rows = [["@evil", "=HYPERLINK(http://x)"]]
+                }
+            ]
+        };
+
+        var text = DecodeBody(Formatter.Render(document));
+
+        Assert.Contains("'@evil,'=HYPERLINK(http://x)\r\n", text);
+    }
+
+    [Fact]
+    public void Render_MoneyCell_IsNotNeutralized()
+    {
+        // Formatter-level regression: negative money flowing through Render stays raw (no guard prefix).
+        var document = new ExportDocument
+        {
+            Sections =
+            [
+                new ExportSection
+                {
+                    Name = "Cân bằng nợ",
+                    ColumnHeaders = ["Thành viên", "Cân bằng"],
+                    Rows = [["Cường", "-500000.00"]]
+                }
+            ]
+        };
+
+        var text = DecodeBody(Formatter.Render(document));
+
+        Assert.Contains("Cường,-500000.00\r\n", text);
+        Assert.DoesNotContain("'-500000.00", text);
+    }
 }

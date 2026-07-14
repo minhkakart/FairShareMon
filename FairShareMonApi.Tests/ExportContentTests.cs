@@ -173,4 +173,70 @@ public class ExportContentTests(WebApplicationFactory<Program> factory, Database
         var balanceTotal = Lines(csv).Single(line => line.StartsWith("Tổng cộng,") && line.EndsWith(",0.00"));
         Assert.EndsWith(",0.00", balanceTotal);
     }
+
+    // ---- CSV formula-injection hardening (end-to-end) ----------------------------------------------
+
+    [SkippableFact]
+    public async Task ExportExpense_FormulaPayloadInNameAndNote_IsNeutralizedWhileMoneyRaw()
+    {
+        using var client = await CreateAuthorizedClientAsync();
+        var an = await OwnerRepUuidAsync(client);
+        // A member whose name is a spreadsheet-formula payload, plus a formula-leading share note.
+        var evil = await CreateMemberAsync(client, "=cmd");
+
+        var expense = Uuid(await CreateExpenseAsync(client, new
+        {
+            name = "Ăn tối Đà Lạt",
+            expenseTime = Evening1830,
+            payerMemberUuid = an,
+            shares = new[]
+            {
+                new { memberUuid = an, amount = 0m, note = (string?)null },
+                new { memberUuid = evil, amount = 500_000m, note = (string?)"=HYPERLINK(http://x)" }
+            }
+        }));
+
+        var csv = await GetCsvTextAsync(client, $"api/v1/expenses/{expense}/export");
+
+        // Both the formula member name and the formula note are neutralized with a leading single-quote,
+        // while the money amount in the same row stays a raw invariant decimal.
+        Assert.Contains("'=cmd,500000.00,'=HYPERLINK(http://x)", csv);
+        Assert.DoesNotContain(Lines(csv), line => line.StartsWith('=')); // no un-guarded formula line
+        Assert.Contains("Tổng cộng,500000.00,", csv); // derived total unaffected
+    }
+
+    [SkippableFact]
+    public async Task ExportEvent_FormulaMemberName_IsNeutralizedWhileBalanceMoneyRaw()
+    {
+        using var client = await CreateAuthorizedClientAsync();
+        var an = await OwnerRepUuidAsync(client); // owner-rep "Tôi"
+        var evil = await CreateMemberAsync(client, "=evil"); // formula-payload member name
+        var evt = await CreateEventUuidAsync(client, "Đà Lạt", Day14, Day16);
+
+        // =evil advances 500k for a 500k expense split An 300k / =evil 200k → =evil +300k, An -300k.
+        await CreateExpenseAsync(client, new
+        {
+            name = "Ăn tối",
+            expenseTime = Day15Noon,
+            payerMemberUuid = evil,
+            eventUuid = evt,
+            shares = new[]
+            {
+                new { memberUuid = an, amount = 300_000m },
+                new { memberUuid = evil, amount = 200_000m }
+            }
+        });
+
+        var csv = await GetCsvTextAsync(client, $"api/v1/events/{evt}/export");
+
+        // Section 2 balance: the formula member name is neutralized ('=evil), but the money columns
+        // (advanced, owed, balance incl. the negative) remain raw invariant decimals.
+        Assert.Contains("'=evil,500000.00,200000.00,300000.00", csv);
+        Assert.Contains("Tôi,0.00,300000.00,-300000.00", csv);
+        Assert.DoesNotContain("'-300000.00", csv); // negative money NOT guarded (OQ5 preserved)
+
+        var balanceTotal = Lines(csv).Single(line =>
+            line.StartsWith("Tổng cộng,") && line.EndsWith(",0.00"));
+        Assert.EndsWith(",0.00", balanceTotal); // sum-to-zero intact
+    }
 }
