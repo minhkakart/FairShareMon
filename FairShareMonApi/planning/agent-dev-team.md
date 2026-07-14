@@ -55,7 +55,7 @@ Define reusable role agents (planner, implementer, test engineer, reviewer) plus
 
 ## Assumptions
 
-- Agent definitions live outside this repo (workspace root) and are therefore unversioned until the user decides whether `FairShareMon/` becomes its own repo — flagged, accepted for now.
+- Agent definitions live at the workspace root `.claude/agents/`. **Resolved 2026-07-14:** the workspace root became the git repo (monorepo restructure — backend moved under `FairShareMonApi/`, frontend `FairShareMonWeb/` added, 24 commits preserved), so the agent-team setup is now versioned alongside both apps.
 - `FairShareMonWeb` untouched until the API contract stabilizes; the team gains frontend roles then.
 
 ## Impact Analysis
