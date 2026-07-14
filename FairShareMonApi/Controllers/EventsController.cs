@@ -2,6 +2,7 @@ using FairShareMonApi.Models;
 using FairShareMonApi.Models.Events;
 using FairShareMonApi.Models.Stats;
 using FairShareMonApi.Services.Api.Events;
+using FairShareMonApi.Services.Api.Export;
 using FairShareMonApi.Services.Api.Stats;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
@@ -15,7 +16,7 @@ namespace FairShareMonApi.Controllers;
 /// edit/delete are OPEN-only; a closed event rejects every write to its expenses/shares except the
 /// settled flag (§4.4). Thin - all business logic in <see cref="IEventsService"/>.
 /// </summary>
-public class EventsController(IEventsService eventsService, IStatsService statsService) : AppController
+public class EventsController(IEventsService eventsService, IStatsService statsService, IExportService exportService) : AppController
 {
     [HttpGet]
     [SwaggerOperation(
@@ -81,6 +82,21 @@ public class EventsController(IEventsService eventsService, IStatsService statsS
     public async Task<IActionResult> GetBalanceAsync([FromRoute] string uuid, CancellationToken cancellationToken) =>
         ApiResult<EventBalanceResponse>.Success(
             await statsService.GetEventBalanceAsync(AuthenticatedUser.Id, uuid, cancellationToken));
+
+    [HttpGet("{uuid}/export")]
+    [Produces("text/csv", "application/json")]
+    [SwaggerOperation(
+        Summary = "Xuất đợt chi tiêu ra tệp",
+        Description = "Xuất một đợt chi tiêu của tài khoản ra tệp tải về (mặc định CSV): khối thông tin đợt (tên, khoảng thời gian, trạng thái) kèm bảng tổng hợp phần gánh theo thành viên (kèm ghi chú gộp) và bảng cân bằng nợ (đã ứng/phải gánh/cân bằng, tổng cân bằng bằng 0). Cân bằng dùng lại từ thống kê M7. Xem được cho cả đợt đang mở và đã chốt. Chọn định dạng bằng tham số format (mặc định csv); định dạng không hỗ trợ trả về 400. Chỉ đọc, resource-owned - đợt không thuộc tài khoản trả về 404.")]
+    [SwaggerResponse(StatusCodes.Status200OK, "Xuất đợt chi tiêu thành công (tệp CSV).", typeof(FileContentResult))]
+    [SwaggerResponse(StatusCodes.Status400BadRequest, "Định dạng xuất không được hỗ trợ.", typeof(ApiResult))]
+    [SwaggerResponse(StatusCodes.Status401Unauthorized, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", typeof(ApiResult))]
+    [SwaggerResponse(StatusCodes.Status404NotFound, "Không tìm thấy đợt chi tiêu.", typeof(ApiResult))]
+    public async Task<IActionResult> ExportAsync([FromRoute] string uuid, [FromQuery] string? format, CancellationToken cancellationToken)
+    {
+        var file = await exportService.ExportEventAsync(AuthenticatedUser.Id, uuid, format, cancellationToken);
+        return File(file.Content, file.ContentType, file.FileName);
+    }
 
     [HttpPut("{uuid}/close")]
     [SwaggerOperation(

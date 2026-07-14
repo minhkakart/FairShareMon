@@ -116,4 +116,9 @@ public static class ErrorCodes
     // new codes - a resource-owned event miss (balance / by-category?eventUuid) reuses EventNotFound
     // (9000) and a bad time range / both-scopes request is a ValidationFailed (1001, error.fields). No
     // codes are defined yet (OQ13a); this block is reserved for any future Stats-specific failure state.
+
+    // 11xxx - Export (block reserved by planning/export-csv.md; M8 is read-only and needs no new codes -
+    // an unsupported ?format value is a ValidationFailed (1001) and a resource-owned expense/event miss
+    // reuses ExpenseNotFound (6000) / EventNotFound (9000). No codes are defined yet (OQ19a); this block
+    // is reserved for any future Export-specific failure state.
 }

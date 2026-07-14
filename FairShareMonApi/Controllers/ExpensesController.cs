@@ -2,6 +2,7 @@ using FairShareMonApi.Models;
 using FairShareMonApi.Models.Expenses;
 using FairShareMonApi.Models.Shares;
 using FairShareMonApi.Services.Api.Expenses;
+using FairShareMonApi.Services.Api.Export;
 using FairShareMonApi.Services.Api.Shares;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
@@ -15,7 +16,7 @@ namespace FairShareMonApi.Controllers;
 /// resource-owned - an expense/share that isn't the caller's yields 404 (never 403). Thin - all
 /// business logic in <see cref="IExpensesService"/> / <see cref="ISharesService"/>.
 /// </summary>
-public class ExpensesController(IExpensesService expensesService, ISharesService sharesService) : AppController
+public class ExpensesController(IExpensesService expensesService, ISharesService sharesService, IExportService exportService) : AppController
 {
     [HttpGet]
     [SwaggerOperation(
@@ -139,6 +140,21 @@ public class ExpensesController(IExpensesService expensesService, ISharesService
     {
         await sharesService.DeleteAsync(AuthenticatedUser.Id, uuid, shareUuid, cancellationToken);
         return ApiResult.SuccessMessage("Đã xóa phần gánh.");
+    }
+
+    [HttpGet("{uuid}/export")]
+    [Produces("text/csv", "application/json")]
+    [SwaggerOperation(
+        Summary = "Xuất phiếu chi tiêu ra tệp",
+        Description = "Xuất một phiếu chi tiêu của tài khoản ra tệp tải về (mặc định CSV): khối thông tin phiếu (tên, mô tả, thời điểm chi, người trả, danh mục, nhãn, đợt, đã trả, tổng tiền) kèm bảng phần gánh theo từng thành viên và dòng tổng cộng. Chọn định dạng bằng tham số format (mặc định csv); định dạng không hỗ trợ trả về 400. Chỉ đọc, resource-owned - phiếu không thuộc tài khoản trả về 404.")]
+    [SwaggerResponse(StatusCodes.Status200OK, "Xuất phiếu chi tiêu thành công (tệp CSV).", typeof(FileContentResult))]
+    [SwaggerResponse(StatusCodes.Status400BadRequest, "Định dạng xuất không được hỗ trợ.", typeof(ApiResult))]
+    [SwaggerResponse(StatusCodes.Status401Unauthorized, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", typeof(ApiResult))]
+    [SwaggerResponse(StatusCodes.Status404NotFound, "Không tìm thấy phiếu chi tiêu.", typeof(ApiResult))]
+    public async Task<IActionResult> ExportAsync([FromRoute] string uuid, [FromQuery] string? format, CancellationToken cancellationToken)
+    {
+        var file = await exportService.ExportExpenseAsync(AuthenticatedUser.Id, uuid, format, cancellationToken);
+        return File(file.Content, file.ContentType, file.FileName);
     }
 
     [HttpGet("{uuid}/history")]
