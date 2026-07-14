@@ -19,4 +19,24 @@ public static class ErrorCodes
 
     /// <summary>Resource not found - also used for ownership misses (HTTP 404, never 403).</summary>
     public const int NotFound = 1003;
+
+    /// <summary>
+    /// Authenticated but not allowed by an authorization policy (HTTP 403). Only genuine policy
+    /// failures - ownership misses always use <see cref="NotFound"/> (404, never 403).
+    /// </summary>
+    public const int Forbidden = 1004;
+
+    // 2xxx - Auth (block claimed by planning/user-authentication.md).
+
+    /// <summary>Registration username already exists (HTTP 400).</summary>
+    public const int UsernameTaken = 2000;
+
+    /// <summary>Login failed - unknown username or wrong password (HTTP 401).</summary>
+    public const int InvalidCredentials = 2001;
+
+    /// <summary>Refresh token unknown, expired, revoked, or not a refresh token (HTTP 401).</summary>
+    public const int InvalidRefreshToken = 2002;
+
+    /// <summary>Change-password rejected - current password incorrect (HTTP 400).</summary>
+    public const int CurrentPasswordIncorrect = 2003;
 }

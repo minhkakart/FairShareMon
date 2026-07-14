@@ -1,35 +1,19 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Text.Json;
-using FairShareMonApi.Constants;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;
 
 namespace FairShareMonApi.Tests;
 
 /// <summary>
-/// In-process endpoint tests via <see cref="WebApplicationFactory{Program}"/>: the anonymous
-/// health endpoint returns a success envelope; the temporary [Authorize] probe proves the stub
-/// auth pipeline 401s inside the ApiResult envelope (with and without a bogus Bearer token) and
-/// stays hidden from swagger.json. No MariaDB/Redis required - nothing resolves them.
+/// In-process endpoint tests via <see cref="WebApplicationFactory{Program}"/> for the anonymous
+/// health endpoint and the general Swagger document contract. The guarded-endpoint 401-envelope
+/// tests moved to <c>AuthEndpointTests</c> together with the rest of the auth endpoint coverage.
 /// </summary>
 public class HealthEndpointTests(WebApplicationFactory<Program> factory) : IClassFixture<WebApplicationFactory<Program>>
 {
     private static async Task<JsonDocument> ReadEnvelopeAsync(HttpResponseMessage response) =>
         JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-
-    private static void AssertUnauthorizedEnvelope(HttpResponseMessage response, JsonDocument envelope)
-    {
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-
-        var root = envelope.RootElement;
-        Assert.Equal(JsonValueKind.Null, root.GetProperty("data").ValueKind);
-        Assert.False(root.GetProperty("isSuccess").GetBoolean());
-
-        var error = root.GetProperty("error");
-        Assert.Equal(ErrorCodes.Unauthorized, error.GetProperty("code").GetInt32());
-        Assert.False(string.IsNullOrWhiteSpace(error.GetProperty("message").GetString()));
-    }
 
     [Fact]
     public async Task GetHealth_Anonymous_Returns200SuccessEnvelope()
@@ -47,29 +31,6 @@ public class HealthEndpointTests(WebApplicationFactory<Program> factory) : IClas
     }
 
     [Fact]
-    public async Task GetAuthProbe_WithoutToken_Returns401ErrorEnvelope()
-    {
-        using var client = factory.CreateClient();
-
-        using var response = await client.GetAsync("api/v1/authprobe");
-
-        using var envelope = await ReadEnvelopeAsync(response);
-        AssertUnauthorizedEnvelope(response, envelope);
-    }
-
-    [Fact]
-    public async Task GetAuthProbe_WithBogusBearerToken_Returns401ErrorEnvelope()
-    {
-        using var client = factory.CreateClient();
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "bogus-token-that-nobody-issued");
-
-        using var response = await client.GetAsync("api/v1/authprobe");
-
-        using var envelope = await ReadEnvelopeAsync(response);
-        AssertUnauthorizedEnvelope(response, envelope);
-    }
-
-    [Fact]
     public async Task GetSwaggerJson_Generated_HidesAuthProbeButExposesHealth()
     {
         using var client = factory.CreateClient();
@@ -79,6 +40,7 @@ public class HealthEndpointTests(WebApplicationFactory<Program> factory) : IClas
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var swaggerJson = await response.Content.ReadAsStringAsync();
         Assert.Contains("/api/v1/health", swaggerJson, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("/api/v1/auth/login", swaggerJson, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("authprobe", swaggerJson, StringComparison.OrdinalIgnoreCase);
     }
 

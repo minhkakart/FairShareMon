@@ -46,4 +46,16 @@ public sealed class OpaqueTokenAuthenticationHandler(
         Response.StatusCode = result.StatusCode;
         await Response.WriteAsJsonAsync<object>(result, Context.RequestAborted);
     }
+
+    /// <summary>
+    /// Wraps genuine authorization-policy failures (403) in the ApiResult envelope, symmetric with
+    /// the challenge. Business-level ownership misses never reach here - they return 404 per the
+    /// Resource Owned rule (404, never 403).
+    /// </summary>
+    protected override async Task HandleForbiddenAsync(AuthenticationProperties properties)
+    {
+        var result = ApiResult.Failure(ErrorCodes.Forbidden, "Bạn không có quyền thực hiện thao tác này.");
+        Response.StatusCode = result.StatusCode;
+        await Response.WriteAsJsonAsync<object>(result, Context.RequestAborted);
+    }
 }

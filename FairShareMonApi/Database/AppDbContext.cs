@@ -1,16 +1,23 @@
+using FairShareMonApi.Database.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace FairShareMonApi.Database;
 
 /// <summary>
-/// Application DbContext. The model is intentionally EMPTY at this stage - no DbSets, no
-/// migrations; business entities land per feature, each with its own planning doc.
+/// Application DbContext. Business entities land per feature, each with its own planning doc;
+/// every entity ships a static <c>ConfigureModel(ModelBuilder)</c> in
+/// <c>Database/Entities/Partials/&lt;Name&gt;.cs</c> invoked from <see cref="OnModelCreating"/>
+/// (AppDbContext File Ownership Rule, .agents/rules/rules.md).
 /// </summary>
 public partial class AppDbContext : DbContext
 {
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
     {
     }
+
+    public DbSet<User> Users => Set<User>();
+
+    public DbSet<AuthToken> AuthTokens => Set<AuthToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -20,11 +27,8 @@ public partial class AppDbContext : DbContext
         modelBuilder.HasCharSet("utf8mb4");
         modelBuilder.UseCollation("utf8mb4_unicode_ci");
 
-        // Per-entity mapping pattern (AppDbContext File Ownership Rule, .agents/rules/rules.md):
-        // every entity ships a static ConfigureModel(ModelBuilder) in
-        // Database/Entities/Partials/<Name>.cs and is invoked from here, e.g.:
-        //   Member.ConfigureModel(modelBuilder);
-        //   Expense.ConfigureModel(modelBuilder);
+        User.ConfigureModel(modelBuilder);
+        AuthToken.ConfigureModel(modelBuilder);
 
         ConfigureQueryFilters(modelBuilder);
     }

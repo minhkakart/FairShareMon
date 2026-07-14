@@ -4,6 +4,7 @@ using FairShareMonApi.Attributes.MvcFilters;
 using FairShareMonApi.Auth;
 using FairShareMonApi.Database;
 using FairShareMonApi.Middlewares;
+using FairShareMonApi.Swagger;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
@@ -69,16 +70,8 @@ builder.Services.AddSwaggerGen(options =>
         In = ParameterLocation.Header,
         Description = "Nhập access token (opaque token) nhận được sau khi đăng nhập."
     });
-    options.AddSecurityRequirement(new OpenApiSecurityRequirement
-    {
-        {
-            new OpenApiSecurityScheme
-            {
-                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
-            },
-            Array.Empty<string>()
-        }
-    });
+    // Padlock per-operation (guarded endpoints only) instead of a document-wide requirement.
+    options.OperationFilter<AuthorizeOperationFilter>();
 });
 
 // Database: EF Core 8 + Pomelo, MariaDB 11.7.2, pooled context, split queries.
@@ -100,7 +93,7 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
 });
 
 // Authentication: opaque stateful token as the default scheme (validation is delegated to
-// ITokenValidator - currently the stub, so every [Authorize] request 401s until auth lands).
+// ITokenValidator - whitelist lookup, Redis cache-first with auth_tokens DB fallback).
 builder.Services
     .AddAuthentication(OpaqueTokenAuthenticationHandler.SchemeName)
     .AddScheme<AuthenticationSchemeOptions, OpaqueTokenAuthenticationHandler>(

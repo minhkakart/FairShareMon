@@ -20,6 +20,11 @@ public class ErrorException(int code, string message, int? httpStatus = null) : 
         ErrorCodes.ValidationFailed => StatusCodes.Status400BadRequest,
         ErrorCodes.Unauthorized => StatusCodes.Status401Unauthorized,
         ErrorCodes.NotFound => StatusCodes.Status404NotFound,
+        ErrorCodes.Forbidden => StatusCodes.Status403Forbidden,
+        ErrorCodes.UsernameTaken => StatusCodes.Status400BadRequest,
+        ErrorCodes.InvalidCredentials => StatusCodes.Status401Unauthorized,
+        ErrorCodes.InvalidRefreshToken => StatusCodes.Status401Unauthorized,
+        ErrorCodes.CurrentPasswordIncorrect => StatusCodes.Status400BadRequest,
         _ => StatusCodes.Status500InternalServerError
     };
 }
