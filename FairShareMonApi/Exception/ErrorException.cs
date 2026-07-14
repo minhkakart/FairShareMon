@@ -25,6 +25,8 @@ public class ErrorException(int code, string message, int? httpStatus = null) : 
         ErrorCodes.InvalidCredentials => StatusCodes.Status401Unauthorized,
         ErrorCodes.InvalidRefreshToken => StatusCodes.Status401Unauthorized,
         ErrorCodes.CurrentPasswordIncorrect => StatusCodes.Status400BadRequest,
+        ErrorCodes.MemberNotFound => StatusCodes.Status404NotFound,
+        ErrorCodes.OwnerRepresentativeNotDeletable => StatusCodes.Status400BadRequest,
         _ => StatusCodes.Status500InternalServerError
     };
 }

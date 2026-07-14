@@ -3,10 +3,12 @@ using DiDecoration.Attributes;
 using FairShareMonApi.Auth;
 using FairShareMonApi.Auth.Abstractions;
 using FairShareMonApi.Constants;
+using FairShareMonApi.Database;
 using FairShareMonApi.Database.Entities;
 using FairShareMonApi.Exceptions;
 using FairShareMonApi.Models.Auth;
 using FairShareMonApi.Repositories;
+using FairShareMonApi.Services.Registration;
 using FluentValidation;
 
 namespace FairShareMonApi.Services.Api.Auth;
@@ -37,6 +39,7 @@ public sealed class AuthService(
     IPasswordHasher passwordHasher,
     ITokenService tokenService,
     IMapper mapper,
+    IEnumerable<IRegistrationBootstrapStep> registrationBootstrapSteps,
     IValidator<RegisterRequest> registerValidator,
     IValidator<LoginRequest> loginValidator,
     IValidator<RefreshRequest> refreshValidator,
@@ -56,12 +59,22 @@ public sealed class AuthService(
             PasswordHash = passwordHasher.Hash(request.Password)
         };
 
-        // CreateAsync re-checks uniqueness inside the transaction and absorbs the unique-index
-        // race - null means another request took the username first.
-        var created = await userRepository.CreateAsync(user, cancellationToken)
+        // CreateWithBootstrapAsync re-checks uniqueness inside the transaction and absorbs the
+        // unique-index race - null means another request took the username first. The bootstrap
+        // steps (owner-representative member, and later suggested categories) run in the SAME
+        // transaction, so a registration that rolls back leaves neither a user nor a member.
+        var created = await userRepository.CreateWithBootstrapAsync(user, RunRegistrationBootstrapAsync, cancellationToken)
             ?? throw new ErrorException(ErrorCodes.UsernameTaken, "Tên đăng nhập đã tồn tại.");
 
         return mapper.Map<UserResponse>(created);
+    }
+
+    // Runs every registered bootstrap step inside the user-creation transaction (after user.Id is
+    // assigned). Steps only stage rows on the context; the repository owns the commit.
+    private async Task RunRegistrationBootstrapAsync(AppDbContext dbContext, User user, CancellationToken cancellationToken)
+    {
+        foreach (var step in registrationBootstrapSteps)
+            await step.RunAsync(dbContext, user, cancellationToken);
     }
 
     public async Task<TokenPairResponse> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)

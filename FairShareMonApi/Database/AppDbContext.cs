@@ -19,6 +19,8 @@ public partial class AppDbContext : DbContext
 
     public DbSet<AuthToken> AuthTokens => Set<AuthToken>();
 
+    public DbSet<Member> Members => Set<Member>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -29,6 +31,7 @@ public partial class AppDbContext : DbContext
 
         User.ConfigureModel(modelBuilder);
         AuthToken.ConfigureModel(modelBuilder);
+        Member.ConfigureModel(modelBuilder);
 
         ConfigureQueryFilters(modelBuilder);
     }

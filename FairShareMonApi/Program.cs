@@ -3,6 +3,7 @@ using DiDecoration.Extensions;
 using FairShareMonApi.Attributes.MvcFilters;
 using FairShareMonApi.Auth;
 using FairShareMonApi.Database;
+using FairShareMonApi.HostedServices;
 using FairShareMonApi.Middlewares;
 using FairShareMonApi.Swagger;
 using FluentValidation;
@@ -102,6 +103,10 @@ builder.Services
 // Authorization: everything requires an authenticated user unless [AllowAnonymous].
 builder.Services.AddAuthorization(options =>
     options.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
+
+// Startup backfill: ensure every existing user has an owner-representative member (idempotent,
+// self-healing, no-op when none are missing) - planning/members.md OQ2.
+builder.Services.AddHostedService<OwnerRepresentativeBackfillHostedService>();
 
 var app = builder.Build();
 

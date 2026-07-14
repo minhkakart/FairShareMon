@@ -23,6 +23,18 @@ public interface IUserRepository : IBaseRepository, IQueryRepository<User>
     /// </summary>
     Task<User?> CreateAsync(User user, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Creates the user and then runs <paramref name="bootstrap"/> INSIDE the same transaction,
+    /// after an intermediate flush has assigned <see cref="User.Id"/> (so bootstrap steps can set
+    /// FKs to it). The whole thing is atomic - a failure in the bootstrap rolls the user back too;
+    /// the in-transaction uniqueness re-check and the unique-index race absorption are preserved
+    /// exactly as in <see cref="CreateAsync"/>. Null when the username is already taken.
+    /// </summary>
+    Task<User?> CreateWithBootstrapAsync(
+        User user,
+        Func<AppDbContext, User, CancellationToken, Task> bootstrap,
+        CancellationToken cancellationToken = default);
+
     /// <summary>Replaces the user's password hash. False when the user no longer exists.</summary>
     Task<bool> UpdatePasswordAsync(string uuid, string passwordHash, CancellationToken cancellationToken = default);
 }
@@ -42,7 +54,14 @@ public sealed class UserRepository(AppDbContext dbContext) : BaseRepository(dbCo
     public Task<bool> ExistsByUsernameAsync(string username, CancellationToken cancellationToken = default) =>
         ExecuteQueryAsync((_, ct) => Query().AnyAsync(user => user.Username == username, ct), cancellationToken);
 
-    public async Task<User?> CreateAsync(User user, CancellationToken cancellationToken = default)
+    public Task<User?> CreateAsync(User user, CancellationToken cancellationToken = default) =>
+        // No bootstrap: kept for callers/tests that only need the users row.
+        CreateWithBootstrapAsync(user, static (_, _, _) => Task.CompletedTask, cancellationToken);
+
+    public async Task<User?> CreateWithBootstrapAsync(
+        User user,
+        Func<AppDbContext, User, CancellationToken, Task> bootstrap,
+        CancellationToken cancellationToken = default)
     {
         try
         {
@@ -57,6 +76,12 @@ public sealed class UserRepository(AppDbContext dbContext) : BaseRepository(dbCo
                 }
 
                 db.Users.Add(user);
+                // Intermediate flush (allowed exception to the "no trailing SaveChanges" rule):
+                // assigns user.Id so bootstrap steps can set FKs to it. Still one transaction -
+                // the extension's final SaveChanges + commit persists the bootstrapped rows.
+                await db.SaveChangesAsync(cancellationToken);
+
+                await bootstrap(db, user, cancellationToken);
                 return user;
             }, cancellationToken);
         }

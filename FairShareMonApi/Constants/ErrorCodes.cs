@@ -39,4 +39,12 @@ public static class ErrorCodes
 
     /// <summary>Change-password rejected - current password incorrect (HTTP 400).</summary>
     public const int CurrentPasswordIncorrect = 2003;
+
+    // 3xxx - Members (block claimed by planning/members.md).
+
+    /// <summary>Member not found - also used for every resource-owned ownership miss (HTTP 404, never 403).</summary>
+    public const int MemberNotFound = 3000;
+
+    /// <summary>Attempt to delete the owner-representative member, which must always exist (HTTP 400).</summary>
+    public const int OwnerRepresentativeNotDeletable = 3001;
 }

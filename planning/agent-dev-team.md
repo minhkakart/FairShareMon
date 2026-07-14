@@ -35,7 +35,7 @@ Define reusable role agents (planner, implementer, test engineer, reviewer) plus
 
 1. **Infrastructure init** — execute the approved `project-initialization.md` (planning already done → starts at step 3 of the protocol). Needs from user: real MariaDB credentials for `ConnectionStrings:Default`.
 2. **Auth** — `users`/`auth_tokens` + first migration, register/login/refresh/logout, BCrypt, opaque-token whitelist (Redis + DB), delete DI stubs, password change revokes all tokens.
-3. **Members** — CRUD + soft delete; owner-representative member auto-created on register.
+3. **Members** — CRUD + soft delete; owner-representative member auto-created on register. **(implementation done 2026-07-14)** — closed the M2 owner-rep backfill obligation and established the shared registration-bootstrap seam (`IRegistrationBootstrapStep` + `IUserRepository.CreateWithBootstrapAsync`) that M4 extends for suggested categories.
 4. **Categories + Tags** — CRUD, unique active names, default-category invariant, tag reactivation on name reuse.
 5. **Expenses + Shares + Audit** — atomic expense+shares, share sub-routes, settled flag, filters, immutable audit log.
 6. **Events** — lifecycle, expense-date-within-event validation, one-way close, closed-event write blocking (settled exception).
