@@ -108,6 +108,10 @@ builder.Services.AddAuthorization(options =>
 // self-healing, no-op when none are missing) - planning/members.md OQ2.
 builder.Services.AddHostedService<OwnerRepresentativeBackfillHostedService>();
 
+// Startup backfill: ensure every existing user has the suggested categories with one default
+// (idempotent, self-healing, no-op when none are missing) - planning/categories-and-tags.md OQ3.
+builder.Services.AddHostedService<SuggestedCategoriesBackfillHostedService>();
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())

@@ -21,6 +21,10 @@ public partial class AppDbContext : DbContext
 
     public DbSet<Member> Members => Set<Member>();
 
+    public DbSet<Category> Categories => Set<Category>();
+
+    public DbSet<Tag> Tags => Set<Tag>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -32,6 +36,8 @@ public partial class AppDbContext : DbContext
         User.ConfigureModel(modelBuilder);
         AuthToken.ConfigureModel(modelBuilder);
         Member.ConfigureModel(modelBuilder);
+        Category.ConfigureModel(modelBuilder);
+        Tag.ConfigureModel(modelBuilder);
 
         ConfigureQueryFilters(modelBuilder);
     }

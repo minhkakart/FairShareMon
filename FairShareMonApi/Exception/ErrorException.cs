@@ -27,6 +27,11 @@ public class ErrorException(int code, string message, int? httpStatus = null) : 
         ErrorCodes.CurrentPasswordIncorrect => StatusCodes.Status400BadRequest,
         ErrorCodes.MemberNotFound => StatusCodes.Status404NotFound,
         ErrorCodes.OwnerRepresentativeNotDeletable => StatusCodes.Status400BadRequest,
+        ErrorCodes.CategoryNotFound => StatusCodes.Status404NotFound,
+        ErrorCodes.CategoryNameDuplicate => StatusCodes.Status400BadRequest,
+        ErrorCodes.DefaultCategoryNotDeletable => StatusCodes.Status400BadRequest,
+        ErrorCodes.TagNotFound => StatusCodes.Status404NotFound,
+        ErrorCodes.TagNameDuplicate => StatusCodes.Status400BadRequest,
         _ => StatusCodes.Status500InternalServerError
     };
 }

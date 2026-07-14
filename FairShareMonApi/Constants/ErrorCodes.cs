@@ -47,4 +47,23 @@ public static class ErrorCodes
 
     /// <summary>Attempt to delete the owner-representative member, which must always exist (HTTP 400).</summary>
     public const int OwnerRepresentativeNotDeletable = 3001;
+
+    // 4xxx - Categories (block claimed by planning/categories-and-tags.md).
+
+    /// <summary>Category not found - also used for every resource-owned ownership miss (HTTP 404, never 403).</summary>
+    public const int CategoryNotFound = 4000;
+
+    /// <summary>A category with the same active name already exists in the ledger (HTTP 400).</summary>
+    public const int CategoryNameDuplicate = 4001;
+
+    /// <summary>Attempt to delete the default category, which must always exist (HTTP 400).</summary>
+    public const int DefaultCategoryNotDeletable = 4002;
+
+    // 5xxx - Tags (block claimed by planning/categories-and-tags.md).
+
+    /// <summary>Tag not found - also used for every resource-owned ownership miss (HTTP 404, never 403).</summary>
+    public const int TagNotFound = 5000;
+
+    /// <summary>A tag with the same active name already exists in the ledger (HTTP 400).</summary>
+    public const int TagNameDuplicate = 5001;
 }

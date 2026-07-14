@@ -36,7 +36,7 @@ Define reusable role agents (planner, implementer, test engineer, reviewer) plus
 1. **Infrastructure init** — execute the approved `project-initialization.md` (planning already done → starts at step 3 of the protocol). Needs from user: real MariaDB credentials for `ConnectionStrings:Default`.
 2. **Auth** — `users`/`auth_tokens` + first migration, register/login/refresh/logout, BCrypt, opaque-token whitelist (Redis + DB), delete DI stubs, password change revokes all tokens.
 3. **Members** — CRUD + soft delete; owner-representative member auto-created on register. **(implementation done 2026-07-14)** — closed the M2 owner-rep backfill obligation and established the shared registration-bootstrap seam (`IRegistrationBootstrapStep` + `IUserRepository.CreateWithBootstrapAsync`) that M4 extends for suggested categories.
-4. **Categories + Tags** — CRUD, unique active names, default-category invariant, tag reactivation on name reuse.
+4. **Categories + Tags** — CRUD, unique active names, default-category invariant, tag reactivation on name reuse. **(implementation done 2026-07-14)** — reused the M3 `IRegistrationBootstrapStep` seam (`SuggestedCategoriesBootstrapStep` + a mirrored idempotent `SuggestedCategoriesBackfillHostedService`) for suggested-category seeding ("Ăn uống" default + 4 more); shipped the default-category always-exactly-one/not-deletable invariant with an atomic user-scoped swap, and accent/case-insensitive reactivation-on-name-reuse for both categories and tags.
 5. **Expenses + Shares + Audit** — atomic expense+shares, share sub-routes, settled flag, filters, immutable audit log.
 6. **Events** — lifecycle, expense-date-within-event validation, one-way close, closed-event write blocking (settled exception).
 7. **Debt balance + Stats** — per-event balance, overview + per-category stats.
@@ -99,6 +99,12 @@ Claude Code loads project agents from the working directory's `.claude/agents/`;
 - Next: Milestone 1 (infrastructure init) via the protocol, starting at Implement since `project-initialization.md` is already approved.
 - **Milestone 1 executed end-to-end through the protocol** (implementer Steps 1–4 → test-engineer Step 5 → reviewer: 0 blocking + 1 should-fix + nits → implementer fix round → reviewer delta re-review: APPROVE → orchestrator Step 6 verification). Result: 42 tests (39 pass / 3 DB-skips), live boot verified. First full cycle of the team worked as designed.
 - Environment note: MariaDB (3306) and Redis (6379) were both unreachable on this machine during the milestone — boot tolerates it by design; DB integration tests skip until the servers are started.
+
+### 2026-07-14
+
+- **Milestone 4 (Categories + Tags) completed the full protocol cycle:** planner drafted `planning/categories-and-tags.md` with 12 Open Questions → all 12 answered at the user checkpoint (11 at recommended option (a), OQ1 at option (b) — "Ăn uống" default seed set) → api-implementer built Steps 1–8 (entities + `AddCategoriesAndTags` migration applied to the dev DB, 4xxx/5xxx error blocks, repositories/services/validators/DTOs/controllers, the suggested-category bootstrap step on the shared M3 seam + a mirrored idempotent backfill hosted service) → test-engineer added 135 tests (unit + real-MariaDB integration + endpoint), **`dotnet test` 337/337 pass, 0 skipped**, deterministic, DB swept clean → code-reviewer **APPROVE, 0 blocking** (first pass, no fix loop; 4 non-blocking notes accepted).
+- **Milestone 3 was also closed earlier this day** (implementation + tests + review APPROVE — see `planning/members.md`), establishing the shared registration-bootstrap seam that M4 reused.
+- Committed by the orchestrator to `master` (feature commit follows this doc update).
 
 ## Final Outcome
 
