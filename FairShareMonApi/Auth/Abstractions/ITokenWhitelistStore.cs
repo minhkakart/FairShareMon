@@ -7,8 +7,8 @@ namespace FairShareMonApi.Auth.Abstractions;
 /// validation can materialize <see cref="AuthenticatedUser"/> without a DB hit, the caller's tier
 /// (M10) so tier guards/gates need no extra DB read on a cache hit, the token type so refresh tokens
 /// can never authenticate as access tokens, and the pair uuid linking the two rows of one issuance
-/// (logout/rotation revoke the whole pair). <c>Tier</c> is trailing with a FREE default so entries
-/// cached before M10 (missing the field) deserialize as FREE (fail-safe).
+/// (logout/rotation revoke the whole pair). <c>Tier</c> and <c>Role</c> are trailing with FREE/USER
+/// defaults so entries cached before M10/M11 (missing the field) deserialize as FREE/USER (fail-safe).
 /// </summary>
 public record TokenWhitelistEntry(
     string UserId,
@@ -16,7 +16,8 @@ public record TokenWhitelistEntry(
     string Username,
     string TokenType,
     string PairUuid,
-    string Tier = UserTiers.Free);
+    string Tier = UserTiers.Free,
+    string Role = UserRoles.User);
 
 /// <summary>
 /// Hash-keyed token whitelist - a composite of Redis (cache, TTL = expiry) and the

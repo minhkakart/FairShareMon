@@ -52,6 +52,10 @@ public class ErrorException(int code, string message, int? httpStatus = null) : 
         ErrorCodes.OpenEventLimitReached => StatusCodes.Status400BadRequest,
         ErrorCodes.MonthlyExpenseLimitReached => StatusCodes.Status400BadRequest,
         ErrorCodes.PremiumFeatureRequired => StatusCodes.Status403Forbidden,
+        ErrorCodes.AdminUserNotFound => StatusCodes.Status404NotFound,
+        ErrorCodes.AdminCannotTargetSelf => StatusCodes.Status400BadRequest,
+        ErrorCodes.AdminCannotTargetAdmin => StatusCodes.Status400BadRequest,
+        ErrorCodes.AccountDisabled => StatusCodes.Status403Forbidden,
         _ => StatusCodes.Status500InternalServerError
     };
 }

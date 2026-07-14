@@ -11,6 +11,8 @@ public partial class User
         Uuid = Utils.Uuid.NewV7();
         CreatedAt = AppDateTime.Now;
         Tier = UserTiers.Free;
+        Role = UserRoles.User;
+        Status = UserStatuses.Active;
     }
 
     public static void ConfigureModel(ModelBuilder modelBuilder) =>
@@ -30,6 +32,12 @@ public partial class User
             entity.Property(user => user.PasswordHash).HasColumnName("password_hash").HasMaxLength(100);
 
             entity.Property(user => user.Tier).HasColumnName("tier").HasMaxLength(16).HasDefaultValue(UserTiers.Free);
+
+            entity.Property(user => user.Role).HasColumnName("role").HasMaxLength(16).HasDefaultValue(UserRoles.User);
+            entity.HasIndex(user => user.Role);
+
+            entity.Property(user => user.Status).HasColumnName("status").HasMaxLength(16).HasDefaultValue(UserStatuses.Active);
+            entity.HasIndex(user => user.Status);
 
             entity.Property(user => user.CreatedAt).HasColumnName("created_at");
             entity.Property(user => user.UpdatedAt)

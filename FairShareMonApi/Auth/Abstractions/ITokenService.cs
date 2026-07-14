@@ -16,11 +16,19 @@ public record TokenPair(
 public interface ITokenService
 {
     /// <summary>
-    /// Issues a new access + refresh pair for the user. The username and tier are whitelisted
-    /// alongside the hash so per-request validation (and the M10 tier guards/gates) need no DB hit.
-    /// Null when issuance fails (unknown user).
+    /// Issues a new access + refresh pair for the user. The username, tier and role are whitelisted
+    /// alongside the hash so per-request validation (and the M10 tier guards / M11 admin policy) need
+    /// no DB hit. Null when issuance fails (unknown user).
     /// </summary>
-    Task<TokenPair?> IssueAsync(string userId, string username, string tier = UserTiers.Free, CancellationToken cancellationToken = default);
+    Task<TokenPair?> IssueAsync(string userId, string username, string tier = UserTiers.Free, string role = UserRoles.User, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Cache-bust primitive (M11, OQ3a): evicts only the user's Redis token cache keys (the DB rows
+    /// are kept, so sessions stay alive). The next request falls through to the DB-fallback read and
+    /// picks up the live <c>users.tier</c>/<c>users.role</c> immediately, without a forced logout.
+    /// Called after a committed tier grant/revoke or role change.
+    /// </summary>
+    Task RefreshCachedStateAsync(string userUuid, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Exchanges a valid refresh token for a new pair (full pair rotation - the old refresh AND

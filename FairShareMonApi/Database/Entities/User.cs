@@ -22,6 +22,12 @@ public partial class User : IEntity
     /// <summary>Tier per <see cref="Constants.UserTiers"/>; FREE by default on registration.</summary>
     public string Tier { get; set; }
 
+    /// <summary>Role per <see cref="Constants.UserRoles"/>; USER by default (M11). ADMIN unlocks admin management.</summary>
+    public string Role { get; set; }
+
+    /// <summary>Account status per <see cref="Constants.UserStatuses"/>; ACTIVE by default (M11). DISABLED blocks login.</summary>
+    public string Status { get; set; }
+
     public DateTime CreatedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }

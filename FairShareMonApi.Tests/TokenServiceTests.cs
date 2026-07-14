@@ -312,6 +312,16 @@ public class TokenServiceTests
             return Task.FromResult(expiredRows.Count);
         }
 
+        public Task<IReadOnlyList<string>> GetActiveHashesByUserAsync(string userUuid, CancellationToken cancellationToken = default)
+        {
+            var now = DateTime.UtcNow;
+            var hashes = Rows
+                .Where(row => row.UserUuid == userUuid && row.RevokedAt is null && row.ExpiresAt > now)
+                .Select(row => row.TokenHash)
+                .ToList();
+            return Task.FromResult<IReadOnlyList<string>>(hashes);
+        }
+
         // Surface not used by TokenService.
         public IQueryable<AuthToken> Query(bool tracking = false, bool includeDeleted = false) =>
             throw new NotSupportedException();

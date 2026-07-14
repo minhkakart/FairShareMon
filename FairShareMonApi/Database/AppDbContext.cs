@@ -37,6 +37,8 @@ public partial class AppDbContext : DbContext
 
     public DbSet<BankAccount> BankAccounts => Set<BankAccount>();
 
+    public DbSet<TierGrant> TierGrants => Set<TierGrant>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -56,6 +58,7 @@ public partial class AppDbContext : DbContext
         ExpenseTag.ConfigureModel(modelBuilder);
         AuditLog.ConfigureModel(modelBuilder);
         BankAccount.ConfigureModel(modelBuilder);
+        TierGrant.ConfigureModel(modelBuilder);
 
         ConfigureQueryFilters(modelBuilder);
     }

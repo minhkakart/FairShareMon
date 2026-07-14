@@ -46,7 +46,7 @@ public sealed class TokenWhitelistStore(
         if (row is null || row.RevokedAt is not null || row.ExpiresAt <= AppDateTime.Now)
             return null;
 
-        var entry = new TokenWhitelistEntry(row.UserUuid, row.ExpiresAt, row.Username, row.TokenType, row.PairUuid, row.Tier);
+        var entry = new TokenWhitelistEntry(row.UserUuid, row.ExpiresAt, row.Username, row.TokenType, row.PairUuid, row.Tier, row.Role);
         await TryCacheAsync(redis, logger, tokenHash, entry); // self-heal: backfill the cache on a DB-fallback hit
 
         // Guard the backfill race: a revocation committing between the read above and the cache

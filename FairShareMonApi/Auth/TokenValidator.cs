@@ -23,7 +23,8 @@ public sealed class TokenValidator(ITokenWhitelistStore whitelistStore) : IToken
         {
             Id = entry.UserId,
             Username = entry.Username,
-            Tier = string.IsNullOrEmpty(entry.Tier) ? UserTiers.Free : entry.Tier
+            Tier = string.IsNullOrEmpty(entry.Tier) ? UserTiers.Free : entry.Tier,
+            Role = string.IsNullOrEmpty(entry.Role) ? UserRoles.User : entry.Role
         };
     }
 }

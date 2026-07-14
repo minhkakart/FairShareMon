@@ -86,7 +86,12 @@ public sealed class AuthService(
         if (user is null || !passwordValid)
             throw new ErrorException(ErrorCodes.InvalidCredentials, "Tên đăng nhập hoặc mật khẩu không đúng.");
 
-        var pair = await tokenService.IssueAsync(user.Uuid, user.Username, user.Tier, cancellationToken)
+        // A disabled account cannot authenticate (M11, OQ2). Checked AFTER the credential check so a
+        // wrong password still reports invalid-credentials (no account-existence leak on bad password).
+        if (user.Status == UserStatuses.Disabled)
+            throw new ErrorException(ErrorCodes.AccountDisabled, "Tài khoản đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên.");
+
+        var pair = await tokenService.IssueAsync(user.Uuid, user.Username, user.Tier, user.Role, cancellationToken)
             ?? throw new ErrorException(ErrorCodes.InternalError, "Đã xảy ra lỗi hệ thống. Vui lòng thử lại sau.");
 
         return mapper.Map<TokenPairResponse>(pair);

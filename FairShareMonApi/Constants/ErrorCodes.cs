@@ -149,4 +149,18 @@ public static class ErrorCodes
 
     /// <summary>A Premium-only ("mở rộng") feature was used by a Free account (HTTP 403, distinct from generic Forbidden 1004 so clients can show an upsell).</summary>
     public const int PremiumFeatureRequired = 13003;
+
+    // 14xxx - Admin (block claimed by planning/admin-management.md, M11).
+
+    /// <summary>Admin target user not found by uuid (HTTP 404).</summary>
+    public const int AdminUserNotFound = 14000;
+
+    /// <summary>Admin attempted a destructive action on their own account (disable/demote/revoke-tokens/reset-password) (HTTP 400).</summary>
+    public const int AdminCannotTargetSelf = 14001;
+
+    /// <summary>Admin attempted a destructive action on another admin, or one that would leave the system with zero admins (HTTP 400).</summary>
+    public const int AdminCannotTargetAdmin = 14002;
+
+    /// <summary>Login rejected because the account is disabled (HTTP 403).</summary>
+    public const int AccountDisabled = 14003;
 }

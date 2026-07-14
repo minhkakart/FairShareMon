@@ -18,7 +18,8 @@ public record AuthTokenLookup(
     string PairUuid,
     DateTime ExpiresAt,
     DateTime? RevokedAt,
-    string Tier = Constants.UserTiers.Free);
+    string Tier = Constants.UserTiers.Free,
+    string Role = Constants.UserRoles.User);
 
 /// <summary>
 /// Data access for the <c>auth_tokens</c> whitelist. Rotation/logout soft-revoke (set
@@ -48,6 +49,13 @@ public interface IAuthTokenRepository : IBaseRepository, IQueryRepository<AuthTo
 
     /// <summary>Hash -> joined row including revoked ones; null when the hash is unknown.</summary>
     Task<AuthTokenLookup?> GetByHashWithUserAsync(string tokenHash, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns the hashes of the user's still-active (not revoked, not expired) tokens - used by the
+    /// M11 cache-bust primitive to evict only the Redis cache keys (keeping the DB rows) so a
+    /// grant/revoke/role change is picked up on the next request without logging the user out (OQ3a).
+    /// </summary>
+    Task<IReadOnlyList<string>> GetActiveHashesByUserAsync(string userUuid, CancellationToken cancellationToken = default);
 
     /// <summary>Soft-revokes every not-yet-revoked row of the pair. Returns ALL of the pair's token hashes (for cache deletion).</summary>
     Task<IReadOnlyList<string>> RevokeByPairUuidAsync(string pairUuid, CancellationToken cancellationToken = default);
@@ -128,8 +136,20 @@ public sealed class AuthTokenRepository(AppDbContext dbContext) : BaseRepository
                 token.PairUuid,
                 token.ExpiresAt,
                 token.RevokedAt,
-                token.User.Tier))
+                token.User.Tier,
+                token.User.Role))
             .FirstOrDefaultAsync(ct), cancellationToken);
+
+    public Task<IReadOnlyList<string>> GetActiveHashesByUserAsync(string userUuid, CancellationToken cancellationToken = default) =>
+        ExecuteQueryAsync(async (_, ct) =>
+        {
+            var now = AppDateTime.Now;
+            var hashes = await Query()
+                .Where(token => token.User.Uuid == userUuid && token.RevokedAt == null && token.ExpiresAt > now)
+                .Select(token => token.TokenHash)
+                .ToListAsync(ct);
+            return (IReadOnlyList<string>)hashes;
+        }, cancellationToken);
 
     public Task<IReadOnlyList<string>> RevokeByPairUuidAsync(string pairUuid, CancellationToken cancellationToken = default) =>
         ExecuteTransactionAsync(async (db, _) =>

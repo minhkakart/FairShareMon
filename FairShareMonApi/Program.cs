@@ -99,9 +99,16 @@ builder.Services
     .AddScheme<AuthenticationSchemeOptions, OpaqueTokenAuthenticationHandler>(
         OpaqueTokenAuthenticationHandler.SchemeName, null);
 
-// Authorization: everything requires an authenticated user unless [AllowAnonymous].
+// Authorization: everything requires an authenticated user unless [AllowAnonymous]; the "Admin"
+// policy (M11) additionally requires the role claim == ADMIN. A non-admin fails it and gets the
+// already-wired 403 Forbidden 1004 (OpaqueTokenAuthenticationHandler.HandleForbiddenAsync).
 builder.Services.AddAuthorization(options =>
-    options.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
+{
+    options.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build();
+    options.AddPolicy(FairShareMonApi.Constants.AuthorizationPolicies.Admin, policy => policy
+        .RequireAuthenticatedUser()
+        .RequireClaim(FairShareMonApi.Constants.AuthorizationPolicies.RoleClaimType, FairShareMonApi.Constants.UserRoles.Admin));
+});
 
 // Startup backfills (owner-representative members, suggested categories) are [BackgroundService]-
 // annotated and registered by the DiDecoration RegisterDecorators scan above - see

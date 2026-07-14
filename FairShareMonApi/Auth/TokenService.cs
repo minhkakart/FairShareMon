@@ -32,7 +32,7 @@ public sealed class TokenService(
     private readonly TimeSpan _refreshTokenLifetime =
         configuration.GetValue("Auth:RefreshTokenLifetime", TimeSpan.FromDays(30));
 
-    public async Task<TokenPair?> IssueAsync(string userId, string username, string tier = UserTiers.Free, CancellationToken cancellationToken = default)
+    public async Task<TokenPair?> IssueAsync(string userId, string username, string tier = UserTiers.Free, string role = UserRoles.User, CancellationToken cancellationToken = default)
     {
         // Opportunistic purge (no scheduler by decision): expired rows, revoked or not.
         await authTokenRepository.DeleteExpiredAsync(cancellationToken);
@@ -53,9 +53,9 @@ public sealed class TokenService(
 
         // Best-effort cache priming; validation self-heals via DB fallback + backfill anyway.
         await TokenWhitelistStore.TryCacheAsync(redis, logger, accessHash,
-            new TokenWhitelistEntry(userId, accessExpiresAt, username, TokenTypes.Access, pairUuid, tier));
+            new TokenWhitelistEntry(userId, accessExpiresAt, username, TokenTypes.Access, pairUuid, tier, role));
         await TokenWhitelistStore.TryCacheAsync(redis, logger, refreshHash,
-            new TokenWhitelistEntry(userId, refreshExpiresAt, username, TokenTypes.Refresh, pairUuid, tier));
+            new TokenWhitelistEntry(userId, refreshExpiresAt, username, TokenTypes.Refresh, pairUuid, tier, role));
 
         return new TokenPair(rawAccessToken, accessExpiresAt, rawRefreshToken, refreshExpiresAt);
     }
@@ -79,8 +79,9 @@ public sealed class TokenService(
         }
 
         // Won the claim (the refresh row is now revoked): revoke the paired access token too, then issue a fresh pair.
+        // Tier AND role are read LIVE from users (via the join in GetByHashWithUserAsync), so a refresh busts staleness.
         await RevokePairAsync(lookup.PairUuid, cancellationToken);
-        return await IssueAsync(lookup.UserUuid, lookup.Username, lookup.Tier, cancellationToken);
+        return await IssueAsync(lookup.UserUuid, lookup.Username, lookup.Tier, lookup.Role, cancellationToken);
     }
 
     public async Task<bool> RevokeAsync(string rawToken, CancellationToken cancellationToken = default)
@@ -100,6 +101,15 @@ public sealed class TokenService(
             await TokenWhitelistStore.TryDeleteCachedAsync(redis, logger, tokenHash);
 
         return deletedHashes.Count;
+    }
+
+    public async Task RefreshCachedStateAsync(string userUuid, CancellationToken cancellationToken = default)
+    {
+        // Evict only the Redis cache keys (DB rows stay) so the next request re-reads live tier/role
+        // via the DB-fallback path - a grant/revoke/role change applies promptly without a logout (OQ3a).
+        var activeHashes = await authTokenRepository.GetActiveHashesByUserAsync(userUuid, cancellationToken);
+        foreach (var tokenHash in activeHashes)
+            await TokenWhitelistStore.TryDeleteCachedAsync(redis, logger, tokenHash);
     }
 
     private async Task RevokePairAsync(string pairUuid, CancellationToken cancellationToken)

@@ -2,6 +2,7 @@ using DiDecoration.Attributes;
 using FairShareMonApi.Database;
 using FairShareMonApi.Database.Entities;
 using FairShareMonApi.Repositories.Abstractions;
+using FairShareMonApi.Repositories.Admin;
 using Microsoft.EntityFrameworkCore;
 using MySqlConnector;
 
@@ -37,6 +38,24 @@ public interface IUserRepository : IBaseRepository, IQueryRepository<User>
 
     /// <summary>Replaces the user's password hash. False when the user no longer exists.</summary>
     Task<bool> UpdatePasswordAsync(string uuid, string passwordHash, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Paged, filtered, sorted admin listing of ACCOUNT METADATA only (M11, OQ7) - never any ledger
+    /// data (R10). Returns the page rows plus the total matching count.
+    /// </summary>
+    Task<(IReadOnlyList<AdminUserAccount> Rows, int Total)> ListForAdminAsync(AdminUserQuery query, CancellationToken cancellationToken = default);
+
+    /// <summary>Sets the user's tier (grant/revoke). False when the user no longer exists.</summary>
+    Task<bool> SetTierAsync(string uuid, string tier, CancellationToken cancellationToken = default);
+
+    /// <summary>Sets the user's account status (disable/enable). False when the user no longer exists.</summary>
+    Task<bool> SetStatusAsync(string uuid, string status, CancellationToken cancellationToken = default);
+
+    /// <summary>Sets the user's role (promote/demote). False when the user no longer exists.</summary>
+    Task<bool> SetRoleAsync(string uuid, string role, CancellationToken cancellationToken = default);
+
+    /// <summary>Counts users holding the given role - feeds the last-admin guard (M11, OQ10).</summary>
+    Task<int> CountByRoleAsync(string role, CancellationToken cancellationToken = default);
 }
 
 [ScopedService(typeof(IUserRepository))]
@@ -107,4 +126,66 @@ public sealed class UserRepository(AppDbContext dbContext) : BaseRepository(dbCo
             user.PasswordHash = passwordHash;
             return true;
         }, cancellationToken);
+
+    public Task<(IReadOnlyList<AdminUserAccount> Rows, int Total)> ListForAdminAsync(AdminUserQuery query, CancellationToken cancellationToken = default) =>
+        ExecuteQueryAsync(async (_, ct) =>
+        {
+            var users = Query();
+
+            if (!string.IsNullOrEmpty(query.Tier))
+                users = users.Where(user => user.Tier == query.Tier);
+            if (!string.IsNullOrEmpty(query.Status))
+                users = users.Where(user => user.Status == query.Status);
+            if (!string.IsNullOrEmpty(query.Role))
+                users = users.Where(user => user.Role == query.Role);
+            if (!string.IsNullOrEmpty(query.Search))
+                users = users.Where(user => user.Username.Contains(query.Search));
+
+            var total = await users.CountAsync(ct);
+
+            users = ApplyAdminSort(users, query.Sort, query.Descending);
+
+            var rows = await users
+                .Skip((query.Page - 1) * query.PageSize)
+                .Take(query.PageSize)
+                .Select(user => new AdminUserAccount(
+                    user.Id, user.Uuid, user.Username, user.Tier, user.Role, user.Status, user.CreatedAt))
+                .ToListAsync(ct);
+
+            return ((IReadOnlyList<AdminUserAccount>)rows, total);
+        }, cancellationToken);
+
+    public Task<bool> SetTierAsync(string uuid, string tier, CancellationToken cancellationToken = default) =>
+        SetUserFieldAsync(uuid, user => user.Tier = tier, cancellationToken);
+
+    public Task<bool> SetStatusAsync(string uuid, string status, CancellationToken cancellationToken = default) =>
+        SetUserFieldAsync(uuid, user => user.Status = status, cancellationToken);
+
+    public Task<bool> SetRoleAsync(string uuid, string role, CancellationToken cancellationToken = default) =>
+        SetUserFieldAsync(uuid, user => user.Role = role, cancellationToken);
+
+    public Task<int> CountByRoleAsync(string role, CancellationToken cancellationToken = default) =>
+        ExecuteQueryAsync((_, ct) => Query().CountAsync(user => user.Role == role, ct), cancellationToken);
+
+    private Task<bool> SetUserFieldAsync(string uuid, Action<User> mutate, CancellationToken cancellationToken) =>
+        ExecuteTransactionAsync(async (db, transaction) =>
+        {
+            var user = await db.Users.FirstOrDefaultAsync(existing => existing.Uuid == uuid, cancellationToken);
+            if (user is null)
+            {
+                transaction.NoCommit();
+                return false;
+            }
+
+            mutate(user);
+            return true;
+        }, cancellationToken);
+
+    private static IQueryable<User> ApplyAdminSort(IQueryable<User> users, string sort, bool descending) => sort switch
+    {
+        "username" => descending ? users.OrderByDescending(user => user.Username) : users.OrderBy(user => user.Username),
+        "tier" => descending ? users.OrderByDescending(user => user.Tier) : users.OrderBy(user => user.Tier),
+        "status" => descending ? users.OrderByDescending(user => user.Status) : users.OrderBy(user => user.Status),
+        _ => descending ? users.OrderByDescending(user => user.CreatedAt) : users.OrderBy(user => user.CreatedAt)
+    };
 }
