@@ -111,4 +111,9 @@ public static class ErrorCodes
 
     /// <summary>Editing the event's range would leave an already-assigned expense out of range (OQ7, HTTP 400).</summary>
     public const int EventRangeExcludesAssignedExpenses = 9003;
+
+    // 10xxx - Stats (block reserved by planning/debt-balance-and-stats.md; M7 is read-only and needs no
+    // new codes - a resource-owned event miss (balance / by-category?eventUuid) reuses EventNotFound
+    // (9000) and a bad time range / both-scopes request is a ValidationFailed (1001, error.fields). No
+    // codes are defined yet (OQ13a); this block is reserved for any future Stats-specific failure state.
 }

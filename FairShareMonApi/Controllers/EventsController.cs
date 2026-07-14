@@ -1,6 +1,8 @@
 using FairShareMonApi.Models;
 using FairShareMonApi.Models.Events;
+using FairShareMonApi.Models.Stats;
 using FairShareMonApi.Services.Api.Events;
+using FairShareMonApi.Services.Api.Stats;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
 
@@ -13,7 +15,7 @@ namespace FairShareMonApi.Controllers;
 /// edit/delete are OPEN-only; a closed event rejects every write to its expenses/shares except the
 /// settled flag (§4.4). Thin - all business logic in <see cref="IEventsService"/>.
 /// </summary>
-public class EventsController(IEventsService eventsService) : AppController
+public class EventsController(IEventsService eventsService, IStatsService statsService) : AppController
 {
     [HttpGet]
     [SwaggerOperation(
@@ -68,6 +70,17 @@ public class EventsController(IEventsService eventsService) : AppController
         await eventsService.DeleteAsync(AuthenticatedUser.Id, uuid, cancellationToken);
         return ApiResult.SuccessMessage("Đã xóa đợt chi tiêu.");
     }
+
+    [HttpGet("{uuid}/balance")]
+    [SwaggerOperation(
+        Summary = "Cân bằng nợ của đợt chi tiêu",
+        Description = "Trả về cân bằng nợ của một đợt: với mỗi thành viên tham gia (người trả phiếu hoặc người gánh, kể cả thành viên đại diện ở mức 0đ và thành viên đã xóa mềm) là số tiền đã ứng, phải gánh và cân bằng (= đã ứng - phải gánh). Tổng cân bằng của tất cả thành viên luôn bằng 0. Xem được cho cả đợt đang mở và đã chốt; bỏ qua trạng thái đã trả. Đợt chưa có phiếu -> danh sách rỗng.")]
+    [SwaggerResponse(StatusCodes.Status200OK, "Lấy cân bằng nợ thành công.", typeof(ApiResult<EventBalanceResponse>))]
+    [SwaggerResponse(StatusCodes.Status401Unauthorized, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", typeof(ApiResult))]
+    [SwaggerResponse(StatusCodes.Status404NotFound, "Không tìm thấy đợt chi tiêu.", typeof(ApiResult))]
+    public async Task<IActionResult> GetBalanceAsync([FromRoute] string uuid, CancellationToken cancellationToken) =>
+        ApiResult<EventBalanceResponse>.Success(
+            await statsService.GetEventBalanceAsync(AuthenticatedUser.Id, uuid, cancellationToken));
 
     [HttpPut("{uuid}/close")]
     [SwaggerOperation(
