@@ -36,8 +36,14 @@ public interface IExpenseRepository : IBaseRepository, IQueryRepository<Expense>
     /// <summary>Hard-deletes the expense (cascades shares + expense_tags); stages Delete audits before removal.</summary>
     Task<ExpenseWriteStatus> DeleteAsync(string userUuid, string expenseUuid, CancellationToken cancellationToken = default);
 
-    /// <summary>Sets the settled flag + settled_at; no audit (OQ11). A dedicated seam for M6's closed-event exception.</summary>
+    /// <summary>Sets the settled flag + settled_at; no audit (OQ11). The sole §4.4 exception: NOT guarded against a closed event (M6, OQ13).</summary>
     Task<ExpenseWriteStatus> SetSettledAsync(string userUuid, string expenseUuid, bool isSettled, CancellationToken cancellationToken = default);
+
+    /// <summary>Assigns/moves the expense to an event (owned + OPEN + within range); a CLOSED source or target -&gt; EventClosed (M6, OQ4/OQ16). No audit (OQ6).</summary>
+    Task<ExpenseWriteResult<Expense>> AssignEventAsync(string userUuid, string expenseUuid, string eventUuid, CancellationToken cancellationToken = default);
+
+    /// <summary>Removes the expense from its event (-&gt; loose); idempotent no-op if already loose; a CLOSED current event -&gt; EventClosed; expense miss -&gt; ExpenseNotFound (M6, OQ4). No audit (OQ6).</summary>
+    Task<ExpenseWriteStatus> RemoveEventAsync(string userUuid, string expenseUuid, CancellationToken cancellationToken = default);
 }
 
 [ScopedService(typeof(IExpenseRepository))]
@@ -62,12 +68,17 @@ public sealed class ExpenseRepository(AppDbContext dbContext, IAuditLogFactory a
                 query = query.Where(expense => expense.ExpenseTags.Any(link => link.Tag.Uuid == filter.TagUuid));
             if (filter.Settled.HasValue)
                 query = query.Where(expense => expense.IsSettled == filter.Settled.Value);
+            if (!string.IsNullOrEmpty(filter.EventUuid))
+                query = query.Where(expense => expense.Event != null && expense.Event.Uuid == filter.EventUuid);
+            if (filter.LooseOnly == true)
+                query = query.Where(expense => expense.EventId == null);
 
             var expenses = await query
                 .Include(expense => expense.Category)
                 .Include(expense => expense.PayerMember)
                 .Include(expense => expense.Shares)
                 .Include(expense => expense.ExpenseTags).ThenInclude(link => link.Tag)
+                .Include(expense => expense.Event)
                 .OrderByDescending(expense => expense.ExpenseTime)
                 .ThenByDescending(expense => expense.CreatedAt)
                 .ToListAsync(ct);
@@ -80,6 +91,7 @@ public sealed class ExpenseRepository(AppDbContext dbContext, IAuditLogFactory a
             .Include(expense => expense.PayerMember)
             .Include(expense => expense.Shares).ThenInclude(share => share.Member)
             .Include(expense => expense.ExpenseTags).ThenInclude(link => link.Tag)
+            .Include(expense => expense.Event)
             .FirstOrDefaultAsync(expense => expense.Uuid == expenseUuid && expense.User.Uuid == userUuid, ct), cancellationToken);
 
     public Task<ExpenseWriteResult<Expense>> CreateAsync(string userUuid, CreateExpenseData data, CancellationToken cancellationToken = default) =>
@@ -132,6 +144,21 @@ public sealed class ExpenseRepository(AppDbContext dbContext, IAuditLogFactory a
             if (ownerRep is not null && memberIds.Add(ownerRep.Id))
                 resolvedShares.Add((ownerRep, 0m, null));
 
+            // 5b. Optional create-into-event (M6, OQ5): the target must be owned + OPEN and hold the
+            // expense_time within its range; else the whole create aborts (9000/9001/9002).
+            ulong? eventId = null;
+            if (!string.IsNullOrEmpty(data.EventUuid))
+            {
+                var targetEvent = await FindEventAsync(db, userId.Value, data.EventUuid, cancellationToken);
+                if (targetEvent is null)
+                    return Abort<Expense>(transaction, ExpenseWriteStatus.EventNotFound);
+                if (targetEvent.IsClosed)
+                    return Abort<Expense>(transaction, ExpenseWriteStatus.EventClosed);
+                if (!IsWithinRange(data.ExpenseTime, targetEvent))
+                    return Abort<Expense>(transaction, ExpenseWriteStatus.ExpenseTimeOutOfEventRange);
+                eventId = targetEvent.Id;
+            }
+
             // 6. Insert expense + shares + expense_tags (FKs filled via the Expense navigation).
             var expense = new Expense
             {
@@ -141,6 +168,7 @@ public sealed class ExpenseRepository(AppDbContext dbContext, IAuditLogFactory a
                 ExpenseTime = data.ExpenseTime,
                 PayerMemberId = payer.Id,
                 CategoryId = category.Id,
+                EventId = eventId,
                 IsSettled = false
             };
             db.Expenses.Add(expense);
@@ -171,9 +199,19 @@ public sealed class ExpenseRepository(AppDbContext dbContext, IAuditLogFactory a
                 .Include(entity => entity.PayerMember)
                 .Include(entity => entity.Category)
                 .Include(entity => entity.ExpenseTags).ThenInclude(link => link.Tag)
+                .Include(entity => entity.Event)
                 .FirstOrDefaultAsync(entity => entity.Uuid == expenseUuid && entity.User.Uuid == userUuid, cancellationToken);
             if (expense is null)
                 return Abort<Expense>(transaction, ExpenseWriteStatus.ExpenseNotFound);
+
+            // Closed-event write block (§4.4, OQ13): a CLOSED event rejects the whole general-info edit.
+            if (EventWriteGuard.IsCurrentEventClosed(expense))
+                return Abort<Expense>(transaction, ExpenseWriteStatus.EventClosed);
+
+            // Within-range re-validation on the expense_time-edit path (OQ1/OQ7): for an (open) assigned
+            // expense the new time must still fall in the event's range.
+            if (expense.Event is not null && !IsWithinRange(data.ExpenseTime, expense.Event))
+                return Abort<Expense>(transaction, ExpenseWriteStatus.ExpenseTimeOutOfEventRange);
 
             var userId = expense.UserId;
 
@@ -230,11 +268,19 @@ public sealed class ExpenseRepository(AppDbContext dbContext, IAuditLogFactory a
                 .Include(entity => entity.Category)
                 .Include(entity => entity.Shares).ThenInclude(share => share.Member)
                 .Include(entity => entity.ExpenseTags).ThenInclude(link => link.Tag)
+                .Include(entity => entity.Event)
                 .FirstOrDefaultAsync(entity => entity.Uuid == expenseUuid && entity.User.Uuid == userUuid, cancellationToken);
             if (expense is null)
             {
                 transaction.NoCommit();
                 return ExpenseWriteStatus.ExpenseNotFound;
+            }
+
+            // Closed-event write block (§4.4, OQ13): a CLOSED event blocks deleting its expense.
+            if (EventWriteGuard.IsCurrentEventClosed(expense))
+            {
+                transaction.NoCommit();
+                return ExpenseWriteStatus.EventClosed;
             }
 
             var userId = expense.UserId;
@@ -264,7 +310,65 @@ public sealed class ExpenseRepository(AppDbContext dbContext, IAuditLogFactory a
 
             expense.IsSettled = isSettled;
             expense.SettledAt = isSettled ? AppDateTime.Now : null;
-            // No audit for a settled toggle (OQ11).
+            // No audit for a settled toggle (OQ11). No closed-event guard - the sole §4.4 exception (OQ13).
+            return ExpenseWriteStatus.Success;
+        }, cancellationToken);
+
+    public Task<ExpenseWriteResult<Expense>> AssignEventAsync(string userUuid, string expenseUuid, string eventUuid, CancellationToken cancellationToken = default) =>
+        ExecuteTransactionAsync(async (db, transaction) =>
+        {
+            var expense = await Query(tracking: true)
+                .Include(entity => entity.Event)
+                .FirstOrDefaultAsync(entity => entity.Uuid == expenseUuid && entity.User.Uuid == userUuid, cancellationToken);
+            if (expense is null)
+                return Abort<Expense>(transaction, ExpenseWriteStatus.ExpenseNotFound);
+
+            // Can't move an expense out of a CLOSED source event (§4.4, OQ16).
+            if (EventWriteGuard.IsCurrentEventClosed(expense))
+                return Abort<Expense>(transaction, ExpenseWriteStatus.EventClosed);
+
+            // The target event must be owned + OPEN and hold the expense_time within its range.
+            var targetEvent = await FindEventAsync(db, expense.UserId, eventUuid, cancellationToken);
+            if (targetEvent is null)
+                return Abort<Expense>(transaction, ExpenseWriteStatus.EventNotFound);
+            if (targetEvent.IsClosed)
+                return Abort<Expense>(transaction, ExpenseWriteStatus.EventClosed);
+            if (!IsWithinRange(expense.ExpenseTime, targetEvent))
+                return Abort<Expense>(transaction, ExpenseWriteStatus.ExpenseTimeOutOfEventRange);
+
+            expense.EventId = targetEvent.Id;
+            // No audit (OQ6).
+            return ExpenseWriteResult<Expense>.Success(expense);
+        }, cancellationToken);
+
+    public Task<ExpenseWriteStatus> RemoveEventAsync(string userUuid, string expenseUuid, CancellationToken cancellationToken = default) =>
+        ExecuteTransactionAsync(async (_, transaction) =>
+        {
+            var expense = await Query(tracking: true)
+                .Include(entity => entity.Event)
+                .FirstOrDefaultAsync(entity => entity.Uuid == expenseUuid && entity.User.Uuid == userUuid, cancellationToken);
+            if (expense is null)
+            {
+                transaction.NoCommit();
+                return ExpenseWriteStatus.ExpenseNotFound;
+            }
+
+            // Already loose: idempotent no-op success (OQ4).
+            if (expense.EventId is null)
+            {
+                transaction.NoCommit();
+                return ExpenseWriteStatus.Success;
+            }
+
+            // Remove only while OPEN - can't detach from a CLOSED event (§3.6/§4.4, OQ13).
+            if (EventWriteGuard.IsCurrentEventClosed(expense))
+            {
+                transaction.NoCommit();
+                return ExpenseWriteStatus.EventClosed;
+            }
+
+            expense.EventId = null;
+            // No audit (OQ6).
             return ExpenseWriteStatus.Success;
         }, cancellationToken);
 
@@ -300,4 +404,11 @@ public sealed class ExpenseRepository(AppDbContext dbContext, IAuditLogFactory a
 
     private static Task<Tag?> FindActiveTagAsync(AppDbContext db, ulong userId, string tagUuid, CancellationToken cancellationToken) =>
         db.Tags.FirstOrDefaultAsync(tag => tag.UserId == userId && tag.Uuid == tagUuid && !tag.IsDeleted, cancellationToken);
+
+    private static Task<Event?> FindEventAsync(AppDbContext db, ulong userId, string eventUuid, CancellationToken cancellationToken) =>
+        db.Events.AsNoTracking().FirstOrDefaultAsync(evt => evt.UserId == userId && evt.Uuid == eventUuid, cancellationToken);
+
+    /// <summary>Whole-day-inclusive range check against the normalized event window (OQ1).</summary>
+    private static bool IsWithinRange(DateTime expenseTime, Event evt) =>
+        expenseTime >= evt.StartDate && expenseTime <= evt.EndDate;
 }

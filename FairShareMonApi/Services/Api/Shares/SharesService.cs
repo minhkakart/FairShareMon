@@ -45,6 +45,8 @@ public sealed class SharesService(
                 throw ShareMemberInvalid();
             case ExpenseWriteStatus.DuplicateShareMember:
                 throw DuplicateShareMember();
+            case ExpenseWriteStatus.EventClosed:
+                throw EventClosed();
             default:
                 throw ExpenseNotFound();
         }
@@ -67,6 +69,8 @@ public sealed class SharesService(
                 throw DuplicateShareMember();
             case ExpenseWriteStatus.OwnerRepresentativeShareNotDeletable:
                 throw new ErrorException(ErrorCodes.OwnerRepresentativeShareNotDeletable, "Không thể đổi thành viên của phần gánh thành viên đại diện chủ sổ.");
+            case ExpenseWriteStatus.EventClosed:
+                throw EventClosed();
             default:
                 throw ShareNotFound();
         }
@@ -82,6 +86,8 @@ public sealed class SharesService(
                 return;
             case ExpenseWriteStatus.OwnerRepresentativeShareNotDeletable:
                 throw new ErrorException(ErrorCodes.OwnerRepresentativeShareNotDeletable, "Không thể xóa phần gánh của thành viên đại diện chủ sổ.");
+            case ExpenseWriteStatus.EventClosed:
+                throw EventClosed();
             default:
                 throw ShareNotFound();
         }
@@ -98,4 +104,7 @@ public sealed class SharesService(
 
     private static ErrorException DuplicateShareMember() =>
         new(ErrorCodes.DuplicateShareMember, "Mỗi thành viên chỉ có một phần gánh trong một phiếu.");
+
+    private static ErrorException EventClosed() =>
+        new(ErrorCodes.EventClosed, "Đợt chi tiêu đã chốt, không thể thay đổi.");
 }

@@ -40,6 +40,10 @@ public class ErrorException(int code, string message, int? httpStatus = null) : 
         ErrorCodes.ShareMemberInvalid => StatusCodes.Status400BadRequest,
         ErrorCodes.OwnerRepresentativeShareNotDeletable => StatusCodes.Status400BadRequest,
         ErrorCodes.DuplicateShareMember => StatusCodes.Status400BadRequest,
+        ErrorCodes.EventNotFound => StatusCodes.Status404NotFound,
+        ErrorCodes.EventClosed => StatusCodes.Status400BadRequest,
+        ErrorCodes.ExpenseTimeOutOfEventRange => StatusCodes.Status400BadRequest,
+        ErrorCodes.EventRangeExcludesAssignedExpenses => StatusCodes.Status400BadRequest,
         _ => StatusCodes.Status500InternalServerError
     };
 }

@@ -101,6 +101,26 @@ public abstract class ExpenseApiTestBase(WebApplicationFactory<Program> factory,
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
+    /// <summary>Creates an event over HTTP and returns the full <c>EventResponse</c> data element.</summary>
+    protected static async Task<JsonElement> CreateEventAsync(HttpClient client, object body)
+    {
+        using var response = await client.PostAsJsonAsync("api/v1/events", body);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var envelope = await ReadEnvelopeAsync(response);
+        return envelope.RootElement.GetProperty("data").Clone();
+    }
+
+    /// <summary>Creates an event over HTTP with a name + calendar-day range and returns its UUID.</summary>
+    protected static async Task<string> CreateEventUuidAsync(HttpClient client, string name, DateTime startDate, DateTime endDate) =>
+        Uuid(await CreateEventAsync(client, new { name, startDate, endDate }));
+
+    /// <summary>Closes an event over HTTP (asserts success).</summary>
+    protected static async Task CloseEventAsync(HttpClient client, string eventUuid)
+    {
+        using var response = await client.PutAsync($"api/v1/events/{eventUuid}/close", null);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
     /// <summary>Creates an expense over HTTP and returns the full <c>ExpenseResponse</c> data element.</summary>
     protected static async Task<JsonElement> CreateExpenseAsync(HttpClient client, object body)
     {
@@ -134,6 +154,9 @@ public abstract class ExpenseApiTestBase(WebApplicationFactory<Program> factory,
             // base class's user-cascade delete. This cascades shares + expense_tags. Then sweep
             // audit_logs (the actor FK also cascades, but entity_uuid/expense_uuid carry no FK).
             await context.Expenses.Where(expense => userIds.Contains(expense.UserId)).ExecuteDeleteAsync();
+            // Events are hard-deleted (M6/OQ3); the user FK cascades on user delete but this explicit
+            // sweep guarantees no event row survives a run.
+            await context.Events.Where(evt => userIds.Contains(evt.UserId)).ExecuteDeleteAsync();
             await context.AuditLogs.Where(log => userIds.Contains(log.ActorUserId)).ExecuteDeleteAsync();
         }
 

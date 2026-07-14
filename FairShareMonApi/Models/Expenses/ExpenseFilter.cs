@@ -1,7 +1,7 @@
 namespace FairShareMonApi.Models.Expenses;
 
 /// <summary>
-/// Bộ lọc danh sách phiếu chi tiêu (kết hợp AND, OQ13). Bộ lọc theo đợt được thêm ở M6.
+/// Bộ lọc danh sách phiếu chi tiêu (kết hợp AND, OQ13).
 /// </summary>
 public class ExpenseFilter
 {
@@ -19,4 +19,10 @@ public class ExpenseFilter
 
     /// <summary>Lọc theo trạng thái đã trả, tùy chọn.</summary>
     public bool? Settled { get; set; }
+
+    /// <summary>Lọc theo UUID đợt chi tiêu, tùy chọn (M6, OQ14).</summary>
+    public string? EventUuid { get; set; }
+
+    /// <summary>Chỉ lấy phiếu chưa thuộc đợt nào (loose), tùy chọn (M6, OQ14).</summary>
+    public bool? LooseOnly { get; set; }
 }

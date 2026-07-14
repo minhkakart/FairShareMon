@@ -38,7 +38,7 @@ public class ExpensesServiceTests
     }).CreateMapper();
 
     private ExpensesService CreateService() =>
-        new(_expenses, _audit, _mapper, new CreateExpenseRequestValidator(), new UpdateExpenseRequestValidator());
+        new(_expenses, _audit, _mapper, new CreateExpenseRequestValidator(), new UpdateExpenseRequestValidator(), new AssignEventRequestValidator());
 
     private static CreateExpenseRequest CreateRequest() =>
         new()
@@ -254,6 +254,106 @@ public class ExpensesServiceTests
         Assert.Empty(history);
     }
 
+    // ---- M6: create-into-event threads the event UUID -----------------------------------------------
+
+    [Fact]
+    public async Task CreateAsync_WithEventUuid_ThreadsEventUuidIntoCreateData()
+    {
+        var expense = FullExpense();
+        _expenses.StoredExpense = expense;
+        _expenses.CreateResult = ExpenseWriteResult<Expense>.Success(expense);
+
+        var request = CreateRequest();
+        request.EventUuid = "evt-1";
+        await CreateService().CreateAsync(UserUuid, request);
+
+        Assert.Equal("evt-1", _expenses.LastCreateData!.EventUuid); // OQ5 create-into-event
+    }
+
+    [Theory]
+    [InlineData(ExpenseWriteStatus.EventNotFound, ErrorCodes.EventNotFound)]
+    [InlineData(ExpenseWriteStatus.EventClosed, ErrorCodes.EventClosed)]
+    [InlineData(ExpenseWriteStatus.ExpenseTimeOutOfEventRange, ErrorCodes.ExpenseTimeOutOfEventRange)]
+    public async Task CreateAsync_EventFailure_MapsToNineThousandCode(ExpenseWriteStatus status, int expectedCode)
+    {
+        _expenses.CreateResult = ExpenseWriteResult<Expense>.Fail(status);
+
+        var request = CreateRequest();
+        request.EventUuid = "evt-1";
+        var exception = await Assert.ThrowsAsync<ErrorException>(() => CreateService().CreateAsync(UserUuid, request));
+
+        Assert.Equal(expectedCode, exception.Code);
+    }
+
+    // ---- M6: assign expense -> event ----------------------------------------------------------------
+
+    [Fact]
+    public async Task AssignEventAsync_Success_ReturnsMappedResponseAndTrimsEventUuid()
+    {
+        var expense = FullExpense();
+        _expenses.StoredExpense = expense;
+        _expenses.AssignStatus = ExpenseWriteStatus.Success;
+
+        var response = await CreateService().AssignEventAsync(UserUuid, expense.Uuid, new AssignEventRequest { EventUuid = "  evt-1  " });
+
+        Assert.Equal(expense.Uuid, response.Uuid);
+        Assert.Equal("evt-1", _expenses.LastAssignEventUuid); // trimmed before hitting the repo
+    }
+
+    [Fact]
+    public async Task AssignEventAsync_EmptyEventUuid_ThrowsValidationExceptionAndSkipsRepository()
+    {
+        await Assert.ThrowsAsync<FluentValidation.ValidationException>(() =>
+            CreateService().AssignEventAsync(UserUuid, "e-1", new AssignEventRequest { EventUuid = "" }));
+
+        Assert.Null(_expenses.LastAssignEventUuid); // repo never called
+    }
+
+    [Theory]
+    [InlineData(ExpenseWriteStatus.EventNotFound, ErrorCodes.EventNotFound)]
+    [InlineData(ExpenseWriteStatus.EventClosed, ErrorCodes.EventClosed)]
+    [InlineData(ExpenseWriteStatus.ExpenseTimeOutOfEventRange, ErrorCodes.ExpenseTimeOutOfEventRange)]
+    [InlineData(ExpenseWriteStatus.ExpenseNotFound, ErrorCodes.ExpenseNotFound)]
+    public async Task AssignEventAsync_RepositoryFailure_MapsToErrorCode(ExpenseWriteStatus status, int expectedCode)
+    {
+        _expenses.AssignStatus = status;
+
+        var exception = await Assert.ThrowsAsync<ErrorException>(() =>
+            CreateService().AssignEventAsync(UserUuid, "e-1", new AssignEventRequest { EventUuid = "evt-1" }));
+
+        Assert.Equal(expectedCode, exception.Code);
+    }
+
+    // ---- M6: remove expense from event --------------------------------------------------------------
+
+    [Fact]
+    public async Task RemoveEventAsync_Success_ThrowsNothing()
+    {
+        _expenses.RemoveEventStatus = ExpenseWriteStatus.Success;
+
+        await CreateService().RemoveEventAsync(UserUuid, "e-1");
+    }
+
+    [Fact]
+    public async Task RemoveEventAsync_ClosedEvent_ThrowsEventClosed9001()
+    {
+        _expenses.RemoveEventStatus = ExpenseWriteStatus.EventClosed;
+
+        var exception = await Assert.ThrowsAsync<ErrorException>(() => CreateService().RemoveEventAsync(UserUuid, "e-1"));
+
+        Assert.Equal(ErrorCodes.EventClosed, exception.Code);
+    }
+
+    [Fact]
+    public async Task RemoveEventAsync_ExpenseMiss_ThrowsExpenseNotFound6000()
+    {
+        _expenses.RemoveEventStatus = ExpenseWriteStatus.ExpenseNotFound;
+
+        var exception = await Assert.ThrowsAsync<ErrorException>(() => CreateService().RemoveEventAsync(UserUuid, "no-such"));
+
+        Assert.Equal(ErrorCodes.ExpenseNotFound, exception.Code);
+    }
+
     private sealed class FakeExpenseRepository : IExpenseRepository
     {
         public Expense? StoredExpense { get; set; }
@@ -265,6 +365,12 @@ public class ExpensesServiceTests
         public ExpenseWriteStatus DeleteStatus { get; set; } = ExpenseWriteStatus.Success;
 
         public ExpenseWriteStatus SetSettledStatus { get; set; } = ExpenseWriteStatus.Success;
+
+        public ExpenseWriteStatus AssignStatus { get; set; } = ExpenseWriteStatus.Success;
+
+        public ExpenseWriteStatus RemoveEventStatus { get; set; } = ExpenseWriteStatus.Success;
+
+        public string? LastAssignEventUuid { get; private set; }
 
         public CreateExpenseData? LastCreateData { get; private set; }
 
@@ -290,6 +396,17 @@ public class ExpensesServiceTests
 
         public Task<ExpenseWriteStatus> SetSettledAsync(string userUuid, string expenseUuid, bool isSettled, CancellationToken cancellationToken = default) =>
             Task.FromResult(SetSettledStatus);
+
+        public Task<ExpenseWriteResult<Expense>> AssignEventAsync(string userUuid, string expenseUuid, string eventUuid, CancellationToken cancellationToken = default)
+        {
+            LastAssignEventUuid = eventUuid;
+            return Task.FromResult(AssignStatus == ExpenseWriteStatus.Success
+                ? ExpenseWriteResult<Expense>.Success(StoredExpense!)
+                : ExpenseWriteResult<Expense>.Fail(AssignStatus));
+        }
+
+        public Task<ExpenseWriteStatus> RemoveEventAsync(string userUuid, string expenseUuid, CancellationToken cancellationToken = default) =>
+            Task.FromResult(RemoveEventStatus);
 
         public IQueryable<Expense> Query(bool tracking = false, bool includeDeleted = false) => throw new NotSupportedException();
 

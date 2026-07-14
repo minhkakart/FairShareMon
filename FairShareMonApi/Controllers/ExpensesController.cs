@@ -82,6 +82,30 @@ public class ExpensesController(IExpensesService expensesService, ISharesService
         return ApiResult.SuccessMessage("Đã cập nhật trạng thái đã trả.");
     }
 
+    [HttpPut("{uuid}/event")]
+    [SwaggerOperation(
+        Summary = "Gán phiếu vào đợt chi tiêu",
+        Description = "Gán (hoặc chuyển) một phiếu chi tiêu vào một đợt. Đợt đích phải thuộc cùng tài khoản, đang mở và chứa thời điểm chi của phiếu. Nếu phiếu đang thuộc một đợt đã chốt thì không thể chuyển.")]
+    [SwaggerResponse(StatusCodes.Status200OK, "Đã gán phiếu vào đợt chi tiêu.", typeof(ApiResult<ExpenseResponse>))]
+    [SwaggerResponse(StatusCodes.Status400BadRequest, "Đợt đã chốt hoặc thời điểm chi không nằm trong khoảng thời gian của đợt.", typeof(ApiResult))]
+    [SwaggerResponse(StatusCodes.Status404NotFound, "Không tìm thấy phiếu chi tiêu hoặc đợt chi tiêu.", typeof(ApiResult))]
+    public async Task<IActionResult> AssignEventAsync([FromRoute] string uuid, [FromBody] AssignEventRequest request, CancellationToken cancellationToken) =>
+        ApiResult<ExpenseResponse>.Success(
+            await expensesService.AssignEventAsync(AuthenticatedUser.Id, uuid, request, cancellationToken));
+
+    [HttpDelete("{uuid}/event")]
+    [SwaggerOperation(
+        Summary = "Gỡ phiếu khỏi đợt chi tiêu",
+        Description = "Gỡ một phiếu chi tiêu khỏi đợt của nó (phiếu trở thành không thuộc đợt nào). Không làm gì nếu phiếu vốn không thuộc đợt nào. Không thể gỡ phiếu khỏi đợt đã chốt.")]
+    [SwaggerResponse(StatusCodes.Status200OK, "Đã gỡ phiếu khỏi đợt chi tiêu.", typeof(ApiResult))]
+    [SwaggerResponse(StatusCodes.Status400BadRequest, "Không thể gỡ phiếu khỏi đợt đã chốt.", typeof(ApiResult))]
+    [SwaggerResponse(StatusCodes.Status404NotFound, "Không tìm thấy phiếu chi tiêu.", typeof(ApiResult))]
+    public async Task<IActionResult> RemoveEventAsync([FromRoute] string uuid, CancellationToken cancellationToken)
+    {
+        await expensesService.RemoveEventAsync(AuthenticatedUser.Id, uuid, cancellationToken);
+        return ApiResult.SuccessMessage("Đã gỡ phiếu khỏi đợt chi tiêu.");
+    }
+
     [HttpPost("{uuid}/shares")]
     [SwaggerOperation(
         Summary = "Thêm phần gánh",

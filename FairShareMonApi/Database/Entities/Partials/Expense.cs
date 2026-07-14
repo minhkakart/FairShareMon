@@ -41,6 +41,9 @@ public partial class Expense
 
             entity.Property(expense => expense.CategoryId).HasColumnName("category_id");
 
+            entity.Property(expense => expense.EventId).HasColumnName("event_id");
+            entity.HasIndex(expense => expense.EventId);
+
             entity.Property(expense => expense.IsSettled)
                 .HasColumnName("is_settled")
                 .HasDefaultValue(false);
@@ -72,5 +75,11 @@ public partial class Expense
                 .WithMany()
                 .HasForeignKey(expense => expense.CategoryId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // Deleting an event nulls its expenses' event_id (they go loose), never cascade-deletes (M6, OQ2).
+            entity.HasOne(expense => expense.Event)
+                .WithMany(evt => evt.Expenses)
+                .HasForeignKey(expense => expense.EventId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 }

@@ -97,4 +97,18 @@ public static class ErrorCodes
 
     // 8xxx - Audit (reserved by planning/expenses-shares-audit.md; the history read reuses
     // ExpenseNotFound/empty-list semantics, so no codes are needed yet).
+
+    // 9xxx - Events (block claimed by planning/events.md).
+
+    /// <summary>Event not found - also used for every resource-owned ownership miss (HTTP 404, never 403).</summary>
+    public const int EventNotFound = 9000;
+
+    /// <summary>The event is closed: every write to its expenses/shares is rejected except the settled flag (§4.4, HTTP 400). Also covers editing/deleting/re-closing a closed event.</summary>
+    public const int EventClosed = 9001;
+
+    /// <summary>The expense's expense_time is outside the event's date range (on assign, create-into-event, or expense_time edit) (HTTP 400).</summary>
+    public const int ExpenseTimeOutOfEventRange = 9002;
+
+    /// <summary>Editing the event's range would leave an already-assigned expense out of range (OQ7, HTTP 400).</summary>
+    public const int EventRangeExcludesAssignedExpenses = 9003;
 }

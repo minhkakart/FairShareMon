@@ -70,6 +70,7 @@ public class SharesServiceTests
     [InlineData(ExpenseWriteStatus.ShareMemberInvalid, ErrorCodes.ShareMemberInvalid)]
     [InlineData(ExpenseWriteStatus.DuplicateShareMember, ErrorCodes.DuplicateShareMember)]
     [InlineData(ExpenseWriteStatus.ExpenseNotFound, ErrorCodes.ExpenseNotFound)]
+    [InlineData(ExpenseWriteStatus.EventClosed, ErrorCodes.EventClosed)]
     public async Task AddAsync_RepositoryFailure_MapsToErrorCode(ExpenseWriteStatus status, int expectedCode)
     {
         _shares.AddResult = ExpenseWriteResult<Share>.Fail(status);
@@ -96,6 +97,7 @@ public class SharesServiceTests
     [InlineData(ExpenseWriteStatus.DuplicateShareMember, ErrorCodes.DuplicateShareMember)]
     [InlineData(ExpenseWriteStatus.OwnerRepresentativeShareNotDeletable, ErrorCodes.OwnerRepresentativeShareNotDeletable)]
     [InlineData(ExpenseWriteStatus.ShareNotFound, ErrorCodes.ShareNotFound)]
+    [InlineData(ExpenseWriteStatus.EventClosed, ErrorCodes.EventClosed)]
     public async Task UpdateAsync_RepositoryFailure_MapsToErrorCode(ExpenseWriteStatus status, int expectedCode)
     {
         _shares.UpdateResult = ExpenseWriteResult<Share>.Fail(status);
@@ -115,6 +117,17 @@ public class SharesServiceTests
             CreateService().DeleteAsync(UserUuid, "e-1", "s-1"));
 
         Assert.Equal(ErrorCodes.OwnerRepresentativeShareNotDeletable, exception.Code);
+    }
+
+    [Fact]
+    public async Task DeleteAsync_ClosedEvent_ThrowsEventClosed9001()
+    {
+        _shares.DeleteStatus = ExpenseWriteStatus.EventClosed;
+
+        var exception = await Assert.ThrowsAsync<ErrorException>(() =>
+            CreateService().DeleteAsync(UserUuid, "e-1", "s-1"));
+
+        Assert.Equal(ErrorCodes.EventClosed, exception.Code);
     }
 
     [Fact]

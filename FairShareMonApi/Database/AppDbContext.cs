@@ -25,6 +25,8 @@ public partial class AppDbContext : DbContext
 
     public DbSet<Tag> Tags => Set<Tag>();
 
+    public DbSet<Event> Events => Set<Event>();
+
     public DbSet<Expense> Expenses => Set<Expense>();
 
     public DbSet<Share> Shares => Set<Share>();
@@ -46,6 +48,7 @@ public partial class AppDbContext : DbContext
         Member.ConfigureModel(modelBuilder);
         Category.ConfigureModel(modelBuilder);
         Tag.ConfigureModel(modelBuilder);
+        Event.ConfigureModel(modelBuilder);
         Expense.ConfigureModel(modelBuilder);
         Share.ConfigureModel(modelBuilder);
         ExpenseTag.ConfigureModel(modelBuilder);

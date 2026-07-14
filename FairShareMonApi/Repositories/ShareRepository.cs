@@ -38,6 +38,10 @@ public sealed class ShareRepository(AppDbContext dbContext, IAuditLogFactory aud
             if (expense is null)
                 return Abort(transaction, ExpenseWriteStatus.ExpenseNotFound);
 
+            // Closed-event write block (§4.4, OQ13): a CLOSED event rejects adding a share.
+            if (EventWriteGuard.IsCurrentEventClosed(expense))
+                return Abort(transaction, ExpenseWriteStatus.EventClosed);
+
             var member = await FindActiveMemberAsync(db, expense.UserId, data.MemberUuid, cancellationToken);
             if (member is null)
                 return Abort(transaction, ExpenseWriteStatus.ShareMemberInvalid);
@@ -61,6 +65,10 @@ public sealed class ShareRepository(AppDbContext dbContext, IAuditLogFactory aud
             var expense = await FindOwnedExpenseAsync(userUuid, expenseUuid, cancellationToken);
             if (expense is null)
                 return Abort(transaction, ExpenseWriteStatus.ShareNotFound);
+
+            // Closed-event write block (§4.4, OQ13): a CLOSED event rejects editing a share.
+            if (EventWriteGuard.IsCurrentEventClosed(expense))
+                return Abort(transaction, ExpenseWriteStatus.EventClosed);
 
             var share = await Query<Share>(tracking: true)
                 .Include(entity => entity.Member)
@@ -115,6 +123,13 @@ public sealed class ShareRepository(AppDbContext dbContext, IAuditLogFactory aud
                 return ExpenseWriteStatus.ShareNotFound;
             }
 
+            // Closed-event write block (§4.4, OQ13): a CLOSED event rejects deleting a share.
+            if (EventWriteGuard.IsCurrentEventClosed(expense))
+            {
+                transaction.NoCommit();
+                return ExpenseWriteStatus.EventClosed;
+            }
+
             var share = await Query<Share>(tracking: true)
                 .Include(entity => entity.Member)
                 .FirstOrDefaultAsync(entity => entity.Uuid == shareUuid && entity.ExpenseId == expense.Id, cancellationToken);
@@ -139,7 +154,9 @@ public sealed class ShareRepository(AppDbContext dbContext, IAuditLogFactory aud
         }, cancellationToken);
 
     private Task<Expense?> FindOwnedExpenseAsync(string userUuid, string expenseUuid, CancellationToken cancellationToken) =>
-        Query<Expense>().FirstOrDefaultAsync(expense => expense.Uuid == expenseUuid && expense.User.Uuid == userUuid, cancellationToken);
+        Query<Expense>()
+            .Include(expense => expense.Event)
+            .FirstOrDefaultAsync(expense => expense.Uuid == expenseUuid && expense.User.Uuid == userUuid, cancellationToken);
 
     private static Task<Member?> FindActiveMemberAsync(AppDbContext db, ulong userId, string memberUuid, CancellationToken cancellationToken) =>
         db.Members.FirstOrDefaultAsync(member => member.UserId == userId && member.Uuid == memberUuid && !member.IsDeleted, cancellationToken);

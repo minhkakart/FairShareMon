@@ -28,6 +28,42 @@ public abstract class ExpenseDbTestBase(DatabaseFixture fixture) : AuthDbTestBas
 
     protected AuditLogRepository CreateAuditLogRepository() => new(CreateContext());
 
+    protected EventRepository CreateEventRepository() => new(CreateContext());
+
+    /// <summary>
+    /// Seeds an event row directly (no repository). Dates are written as-is (the repository normalizes
+    /// on write; direct seeding lets tests pin the exact whole-day UTC window they need).
+    /// </summary>
+    protected async Task<Event> SeedEventAsync(
+        ulong userId,
+        string name,
+        DateTime startDate,
+        DateTime endDate,
+        bool closed = false,
+        string? description = null)
+    {
+        await using var context = CreateContext();
+        var evt = new Event
+        {
+            UserId = userId,
+            Name = name,
+            Description = description,
+            StartDate = startDate,
+            EndDate = endDate,
+            IsClosed = closed,
+            ClosedAt = closed ? DateTime.UtcNow : null
+        };
+        context.Events.Add(evt);
+        await context.SaveChangesAsync();
+        return evt;
+    }
+
+    protected async Task<Event?> ReloadEventAsync(string uuid)
+    {
+        await using var context = CreateContext();
+        return await context.Events.AsNoTracking().FirstOrDefaultAsync(evt => evt.Uuid == uuid);
+    }
+
     /// <summary>Seeds a full ledger: a user, its owner-representative member, and a default category.</summary>
     protected async Task<Ledger> SeedLedgerAsync()
     {
@@ -95,8 +131,14 @@ public abstract class ExpenseDbTestBase(DatabaseFixture fixture) : AuthDbTestBas
                 .ToListAsync();
 
             // Delete expenses FIRST: their RESTRICT FKs to categories/members would otherwise block
-            // the base class's user-cascade delete. This cascades shares + expense_tags.
+            // the base class's user-cascade delete. This cascades shares + expense_tags. (Deleting an
+            // expense clears the event_id SetNull link too.)
             await context.Expenses.Where(expense => userIds.Contains(expense.UserId)).ExecuteDeleteAsync();
+
+            // Sweep events by the prefix's owner. The events.user_id FK cascades on user delete, so the
+            // base class's user-cascade already clears them; this explicit hard-delete sweep guarantees
+            // no event row can survive a run (events are hard-deleted, not soft, M6/OQ3).
+            await context.Events.Where(evt => userIds.Contains(evt.UserId)).ExecuteDeleteAsync();
 
             // Sweep audit_logs by the prefix's actor. The actor_user_id FK also cascades on user
             // delete, but entity_uuid/expense_uuid carry NO FK, so this explicit sweep guarantees no

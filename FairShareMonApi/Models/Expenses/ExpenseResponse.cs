@@ -35,5 +35,14 @@ public class ExpenseResponse
     /// <summary>Các nhãn của phiếu (hiển thị đầy đủ kể cả khi đã xóa mềm - §4.7).</summary>
     public IReadOnlyList<TagResponse> Tags { get; set; } = [];
 
+    /// <summary>UUID đợt chi tiêu của phiếu; null nếu phiếu chưa thuộc đợt nào (M6, OQ14).</summary>
+    public string? EventUuid { get; set; }
+
+    /// <summary>Tên đợt chi tiêu của phiếu; null nếu chưa thuộc đợt nào (M6, OQ14).</summary>
+    public string? EventName { get; set; }
+
+    /// <summary>Trạng thái đã chốt của đợt; null nếu chưa thuộc đợt nào (M6, OQ14).</summary>
+    public bool? EventIsClosed { get; set; }
+
     public DateTime CreatedAt { get; set; }
 }

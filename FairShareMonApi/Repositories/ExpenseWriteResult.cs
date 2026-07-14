@@ -32,7 +32,16 @@ public enum ExpenseWriteStatus
     OwnerRepresentativeShareNotDeletable,
 
     /// <summary>Two shares for the same member in one expense (7003).</summary>
-    DuplicateShareMember
+    DuplicateShareMember,
+
+    /// <summary>The target event (on assign/create-into-event) was not found within the caller's scope (9000).</summary>
+    EventNotFound,
+
+    /// <summary>A write was rejected because the expense's current or target event is closed (§4.4, 9001).</summary>
+    EventClosed,
+
+    /// <summary>The expense's expense_time is outside the (target) event's date range (9002).</summary>
+    ExpenseTimeOutOfEventRange
 }
 
 /// <summary>
@@ -47,7 +56,7 @@ public sealed record ExpenseWriteResult<T>(ExpenseWriteStatus Status, T? Entity)
     public static ExpenseWriteResult<T> Fail(ExpenseWriteStatus status) => new(status, null);
 }
 
-/// <summary>Repository-layer input for creating an expense atomically with its shares (§4.5).</summary>
+/// <summary>Repository-layer input for creating an expense atomically with its shares (§4.5). Optional <paramref name="EventUuid"/> creates the expense into an event (M6, OQ5).</summary>
 public sealed record CreateExpenseData(
     string Name,
     string? Description,
@@ -55,7 +64,8 @@ public sealed record CreateExpenseData(
     string? PayerMemberUuid,
     string? CategoryUuid,
     IReadOnlyList<string> TagUuids,
-    IReadOnlyList<CreateShareData> Shares);
+    IReadOnlyList<CreateShareData> Shares,
+    string? EventUuid = null);
 
 /// <summary>Repository-layer input for one share when creating an expense.</summary>
 public sealed record CreateShareData(string MemberUuid, decimal Amount, string? Note);

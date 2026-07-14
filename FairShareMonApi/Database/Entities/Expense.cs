@@ -36,6 +36,9 @@ public partial class Expense : IEntity
     /// <summary>Category (FK -> <c>categories.id</c>, required, restrict). Defaults to the user's default category (§3.5, OQ7).</summary>
     public ulong CategoryId { get; set; }
 
+    /// <summary>Optional owning event (FK -> <c>events.id</c>, nullable, ON DELETE SET NULL). Null = loose (no event). M6 §3.5/§3.6.</summary>
+    public ulong? EventId { get; set; }
+
     /// <summary>Settled flag (đã trả): payment metadata, does not change amounts (§3.5, OQ11/OQ12).</summary>
     public bool IsSettled { get; set; }
 
@@ -51,6 +54,9 @@ public partial class Expense : IEntity
     public Member PayerMember { get; set; } = null!;
 
     public Category Category { get; set; } = null!;
+
+    /// <summary>The owning event, or null when the expense is loose (M6, OQ2/OQ14).</summary>
+    public Event? Event { get; set; }
 
     /// <summary>The expense's shares (phần gánh); cascade-deleted with the expense.</summary>
     public ICollection<Share> Shares { get; set; } = new List<Share>();

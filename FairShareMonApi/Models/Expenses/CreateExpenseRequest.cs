@@ -23,6 +23,9 @@ public class CreateExpenseRequest
 
     /// <summary>Danh sách phần gánh. Phần gánh của thành viên đại diện chủ sổ sẽ được tự thêm ở mức 0đ nếu thiếu.</summary>
     public IReadOnlyList<CreateShareInput>? Shares { get; set; }
+
+    /// <summary>UUID đợt chi tiêu (tùy chọn, M6 OQ5). Nếu có, đợt phải thuộc cùng tài khoản, đang mở và chứa thời điểm chi; bỏ trống để phiếu không thuộc đợt nào.</summary>
+    public string? EventUuid { get; set; }
 }
 
 /// <summary>Một phần gánh khi tạo phiếu chi tiêu.</summary>

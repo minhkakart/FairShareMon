@@ -29,6 +29,10 @@ public interface IExpensesService
 
     Task SetSettledAsync(string userUuid, string expenseUuid, SetSettledRequest request, CancellationToken cancellationToken = default);
 
+    Task<ExpenseResponse> AssignEventAsync(string userUuid, string expenseUuid, AssignEventRequest request, CancellationToken cancellationToken = default);
+
+    Task RemoveEventAsync(string userUuid, string expenseUuid, CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<AuditLogResponse>> GetHistoryAsync(string userUuid, string expenseUuid, CancellationToken cancellationToken = default);
 }
 
@@ -38,7 +42,8 @@ public sealed class ExpensesService(
     IAuditLogRepository auditLogRepository,
     IMapper mapper,
     IValidator<CreateExpenseRequest> createValidator,
-    IValidator<UpdateExpenseRequest> updateValidator) : IExpensesService
+    IValidator<UpdateExpenseRequest> updateValidator,
+    IValidator<AssignEventRequest> assignEventValidator) : IExpensesService
 {
     public async Task<IReadOnlyList<ExpenseSummaryResponse>> ListAsync(string userUuid, ExpenseFilter filter, CancellationToken cancellationToken = default)
     {
@@ -65,7 +70,8 @@ public sealed class ExpensesService(
             request.PayerMemberUuid,
             request.CategoryUuid,
             request.TagUuids ?? [],
-            (request.Shares ?? []).Select(share => new CreateShareData(share.MemberUuid, share.Amount, share.Note?.Trim())).ToList());
+            (request.Shares ?? []).Select(share => new CreateShareData(share.MemberUuid, share.Amount, share.Note?.Trim())).ToList(),
+            request.EventUuid?.Trim());
 
         var result = await expenseRepository.CreateAsync(userUuid, data, cancellationToken);
         ThrowIfFailed(result.Status);
@@ -94,8 +100,7 @@ public sealed class ExpensesService(
     public async Task DeleteAsync(string userUuid, string expenseUuid, CancellationToken cancellationToken = default)
     {
         var status = await expenseRepository.DeleteAsync(userUuid, expenseUuid, cancellationToken);
-        if (status != ExpenseWriteStatus.Success)
-            throw ExpenseNotFound();
+        ThrowIfFailed(status);
     }
 
     public async Task SetSettledAsync(string userUuid, string expenseUuid, SetSettledRequest request, CancellationToken cancellationToken = default)
@@ -103,6 +108,31 @@ public sealed class ExpensesService(
         var status = await expenseRepository.SetSettledAsync(userUuid, expenseUuid, request.IsSettled, cancellationToken);
         if (status != ExpenseWriteStatus.Success)
             throw ExpenseNotFound();
+    }
+
+    public async Task<ExpenseResponse> AssignEventAsync(string userUuid, string expenseUuid, AssignEventRequest request, CancellationToken cancellationToken = default)
+    {
+        await assignEventValidator.ValidateAndThrowAsync(request, cancellationToken);
+
+        var result = await expenseRepository.AssignEventAsync(userUuid, expenseUuid, request.EventUuid.Trim(), cancellationToken);
+        ThrowIfFailed(result.Status);
+
+        return await LoadResponseAsync(userUuid, expenseUuid, cancellationToken);
+    }
+
+    public async Task RemoveEventAsync(string userUuid, string expenseUuid, CancellationToken cancellationToken = default)
+    {
+        var status = await expenseRepository.RemoveEventAsync(userUuid, expenseUuid, cancellationToken);
+
+        switch (status)
+        {
+            case ExpenseWriteStatus.Success:
+                return;
+            case ExpenseWriteStatus.EventClosed:
+                throw new ErrorException(ErrorCodes.EventClosed, "Không thể gỡ phiếu khỏi đợt đã chốt.");
+            default:
+                throw ExpenseNotFound();
+        }
     }
 
     public async Task<IReadOnlyList<AuditLogResponse>> GetHistoryAsync(string userUuid, string expenseUuid, CancellationToken cancellationToken = default)
@@ -135,6 +165,12 @@ public sealed class ExpensesService(
                 throw new ErrorException(ErrorCodes.ShareMemberInvalid, "Thành viên của phần gánh không hợp lệ hoặc đã bị xóa.");
             case ExpenseWriteStatus.DuplicateShareMember:
                 throw new ErrorException(ErrorCodes.DuplicateShareMember, "Mỗi thành viên chỉ có một phần gánh trong một phiếu.");
+            case ExpenseWriteStatus.EventNotFound:
+                throw new ErrorException(ErrorCodes.EventNotFound, "Không tìm thấy đợt chi tiêu.");
+            case ExpenseWriteStatus.EventClosed:
+                throw new ErrorException(ErrorCodes.EventClosed, "Đợt chi tiêu đã chốt, không thể thay đổi.");
+            case ExpenseWriteStatus.ExpenseTimeOutOfEventRange:
+                throw new ErrorException(ErrorCodes.ExpenseTimeOutOfEventRange, "Thời điểm chi của phiếu không nằm trong khoảng thời gian của đợt.");
             default:
                 throw ExpenseNotFound();
         }
