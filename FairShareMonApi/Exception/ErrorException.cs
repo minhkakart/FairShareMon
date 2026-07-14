@@ -32,6 +32,14 @@ public class ErrorException(int code, string message, int? httpStatus = null) : 
         ErrorCodes.DefaultCategoryNotDeletable => StatusCodes.Status400BadRequest,
         ErrorCodes.TagNotFound => StatusCodes.Status404NotFound,
         ErrorCodes.TagNameDuplicate => StatusCodes.Status400BadRequest,
+        ErrorCodes.ExpenseNotFound => StatusCodes.Status404NotFound,
+        ErrorCodes.ExpensePayerInvalid => StatusCodes.Status400BadRequest,
+        ErrorCodes.ExpenseCategoryInvalid => StatusCodes.Status400BadRequest,
+        ErrorCodes.ExpenseTagInvalid => StatusCodes.Status400BadRequest,
+        ErrorCodes.ShareNotFound => StatusCodes.Status404NotFound,
+        ErrorCodes.ShareMemberInvalid => StatusCodes.Status400BadRequest,
+        ErrorCodes.OwnerRepresentativeShareNotDeletable => StatusCodes.Status400BadRequest,
+        ErrorCodes.DuplicateShareMember => StatusCodes.Status400BadRequest,
         _ => StatusCodes.Status500InternalServerError
     };
 }

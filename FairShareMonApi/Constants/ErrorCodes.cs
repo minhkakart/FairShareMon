@@ -66,4 +66,35 @@ public static class ErrorCodes
 
     /// <summary>A tag with the same active name already exists in the ledger (HTTP 400).</summary>
     public const int TagNameDuplicate = 5001;
+
+    // 6xxx - Expenses (block claimed by planning/expenses-shares-audit.md).
+
+    /// <summary>Expense not found - also used for every resource-owned ownership miss (HTTP 404, never 403).</summary>
+    public const int ExpenseNotFound = 6000;
+
+    /// <summary>The chosen payer member is foreign or soft-deleted, so not selectable (§4.2/§4.8, HTTP 400).</summary>
+    public const int ExpensePayerInvalid = 6001;
+
+    /// <summary>The chosen category is foreign or soft-deleted, so not selectable (§4.2/§4.8, HTTP 400).</summary>
+    public const int ExpenseCategoryInvalid = 6002;
+
+    /// <summary>A chosen tag is foreign or soft-deleted, so not selectable (§4.2/§4.8, HTTP 400).</summary>
+    public const int ExpenseTagInvalid = 6003;
+
+    // 7xxx - Shares (block claimed by planning/expenses-shares-audit.md).
+
+    /// <summary>Share not found - also used for every resource-owned ownership miss (HTTP 404, never 403).</summary>
+    public const int ShareNotFound = 7000;
+
+    /// <summary>A share's member is foreign or soft-deleted, so not selectable (§4.2/§4.8, HTTP 400).</summary>
+    public const int ShareMemberInvalid = 7001;
+
+    /// <summary>Attempt to delete the owner-representative member's share, which must always exist (§5, HTTP 400).</summary>
+    public const int OwnerRepresentativeShareNotDeletable = 7002;
+
+    /// <summary>Two shares for the same member in one expense - forbidden (OQ5, HTTP 400).</summary>
+    public const int DuplicateShareMember = 7003;
+
+    // 8xxx - Audit (reserved by planning/expenses-shares-audit.md; the history read reuses
+    // ExpenseNotFound/empty-list semantics, so no codes are needed yet).
 }

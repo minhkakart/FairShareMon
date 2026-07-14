@@ -25,6 +25,14 @@ public partial class AppDbContext : DbContext
 
     public DbSet<Tag> Tags => Set<Tag>();
 
+    public DbSet<Expense> Expenses => Set<Expense>();
+
+    public DbSet<Share> Shares => Set<Share>();
+
+    public DbSet<ExpenseTag> ExpenseTags => Set<ExpenseTag>();
+
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -38,6 +46,10 @@ public partial class AppDbContext : DbContext
         Member.ConfigureModel(modelBuilder);
         Category.ConfigureModel(modelBuilder);
         Tag.ConfigureModel(modelBuilder);
+        Expense.ConfigureModel(modelBuilder);
+        Share.ConfigureModel(modelBuilder);
+        ExpenseTag.ConfigureModel(modelBuilder);
+        AuditLog.ConfigureModel(modelBuilder);
 
         ConfigureQueryFilters(modelBuilder);
     }
