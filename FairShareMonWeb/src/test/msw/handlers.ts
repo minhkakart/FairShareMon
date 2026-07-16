@@ -40,12 +40,38 @@ function fail(
   );
 }
 
-const users = new Map<string, string>([["demo", "password123"]]);
+interface Profile {
+  uuid: string;
+  tier: string;
+  role: string;
+  createdAt: string;
+}
+
+// username → password. `demo` is a Free USER, `admin` is a Premium ADMIN, and
+// `degraded` exercises the OQ3a non-401 `/auth/me` failure (valid tokens, but the
+// profile fetch 500s → stays authenticated, degraded).
+const users = new Map<string, string>([
+  ["demo", "password123"],
+  ["admin", "password123"],
+  ["degraded", "password123"],
+]);
+// username → profile served by /auth/me. A user without a profile (e.g. `degraded`)
+// makes /auth/me fail with a non-401 server error.
+const profiles = new Map<string, Profile>([
+  ["demo", { uuid: "uuid-demo", tier: "FREE", role: "USER", createdAt: "2026-01-01T00:00:00+00:00" }],
+  ["admin", { uuid: "uuid-admin", tier: "PREMIUM", role: "ADMIN", createdAt: "2026-01-01T00:00:00+00:00" }],
+]);
 const validRefreshTokens = new Set<string>();
 let lastLoggedInUser: string | null = null;
 
 function rand(): string {
   return Math.random().toString(36).slice(2);
+}
+
+/** Extract the username seeded into the `access-<username>-...` bearer token. */
+function usernameFromAuthHeader(authorization: string | null): string | null {
+  if (!authorization?.startsWith("Bearer ")) return null;
+  return authorization.slice("Bearer ".length).split("-")[1] ?? null;
 }
 
 function issueTokens(username: string) {
@@ -67,12 +93,27 @@ export const handlers = [
       return fail(2000, "Tên đăng nhập đã tồn tại.", 400);
     }
     users.set(body.username, body.password);
-    return ok({
+    const profile: Profile = {
       uuid: `uuid-${rand()}`,
-      username: body.username,
       tier: "FREE",
+      role: "USER",
       createdAt: new Date().toISOString(),
-    });
+    };
+    profiles.set(body.username, profile);
+    return ok({ username: body.username, ...profile });
+  }),
+
+  http.get("*/api/v1/auth/me", ({ request }) => {
+    const username = usernameFromAuthHeader(request.headers.get("Authorization"));
+    if (!username) {
+      return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
+    }
+    const profile = profiles.get(username);
+    if (!profile) {
+      // Valid token but no profile → simulate a non-401 server error (OQ3a).
+      return fail(1000, "Đã xảy ra lỗi máy chủ.", 500);
+    }
+    return ok({ username, ...profile });
   }),
 
   http.post("*/api/v1/auth/login", async ({ request }) => {

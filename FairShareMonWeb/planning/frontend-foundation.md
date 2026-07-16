@@ -908,6 +908,29 @@ substrate (CSS Modules + CSS-custom-property tokens + Radix), and the web-implem
   unwired this cycle (no screen consumes them yet) so only their code→intent
   classification is tested, not rendering.
 
+### 2026-07-16 (unblock — backend shipped the current-user/role source)
+
+- The carried-forward gap in this doc's **Final Outcome** and **Assumptions** (the
+  admin `role` source, plus the `AdminRoute` fail-safe deny-all seam and the
+  boot-rehydrate account-label nit — nit #3 from the close checkpoint) now has a
+  **backend source, committed + pushed on origin/master.** See
+  `FairShareMonApi/planning/expose-current-user-profile-and-role.md` (Final Outcome).
+- What landed: `UserResponse` now carries **`role`** — the DTO is
+  `{ uuid, username, tier, role, createdAt }` (camelCase JSON). A new **guarded
+  `GET api/v1/auth/me`** → `ApiResult<UserResponse>` returns the caller's own
+  profile from a **live DB read** (always-fresh tier/role); anonymous / revoked
+  token → **401 `1002`**. **Login and refresh contracts are UNCHANGED**
+  (`ApiResult<TokenPairResponse>`); `register` now also returns `role` (benign,
+  always `USER` at registration).
+- **Next move owned by the frontend team:** wiring `/auth/me` into the SPA is
+  planned in a dedicated doc — see
+  `FairShareMonWeb/planning/wire-current-user-profile.md` (fetch `/auth/me` after
+  login + after boot-refresh rehydrate to populate the session `user`, activate
+  `AdminRoute` off the now-present `role`, fix the reload account label, handle the
+  `/auth/me` edge paths). The code-adjacent `CLAUDE.md` "Auth-guard seam (flagged)"
+  note and the seam comments in `src/lib/api/types/auth.ts` / `src/lib/auth/session.ts`
+  / `src/routes/AdminRoute.tsx` are tracked as implementer to-dos in that plan.
+
 ### 2026-07-16 — Close checkpoint
 
 - Review returned **APPROVE, 0 blocking** (4 non-blocking nits). At the user

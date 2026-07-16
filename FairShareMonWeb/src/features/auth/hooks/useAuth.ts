@@ -1,7 +1,17 @@
 import { useMutation } from "@tanstack/react-query";
 import { authApi } from "../api/authApi";
 import { useSession } from "@/lib/auth/session";
-import type { SessionStatus, SessionUser } from "@/lib/auth/session";
+import type {
+  ProfileStatus,
+  SessionStatus,
+  SessionUser,
+} from "@/lib/auth/session";
+
+export {
+  useCurrentUserQuery,
+  invalidateCurrentUser,
+  currentUserQueryKey,
+} from "./useCurrentUserQuery";
 
 /** TanStack Query mutations over the auth endpoints. Session/navigation
  *  side-effects are orchestrated by the calling page. */
@@ -28,6 +38,11 @@ export function useCurrentUser(): SessionUser | null {
 
 export function useSessionStatus(): SessionStatus {
   return useSession((state) => state.status);
+}
+
+/** Lifecycle of the `/auth/me` profile fetch (drives the admin-guard splash). */
+export function useProfileStatus(): ProfileStatus {
+  return useSession((state) => state.profileStatus);
 }
 
 export function useIsAuthenticated(): boolean {

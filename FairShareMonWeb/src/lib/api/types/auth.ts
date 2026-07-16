@@ -22,19 +22,17 @@ export interface ChangePasswordRequest {
   newPassword: string;
 }
 
-/** `UserResponse { uuid, username, tier, createdAt }`. */
+/**
+ * `UserResponse { uuid, username, tier, role, createdAt }` — the caller's own
+ * profile from `GET /v1/auth/me`. `role` is `USER` | `ADMIN` (the backend always
+ * populates it); the admin guard branches on it.
+ */
 export interface UserResponse {
   uuid: string;
   username: string;
   tier: string;
+  role: string;
   createdAt: string;
-  /**
-   * ADMIN-guard seam. The backend `UserResponse` does NOT currently expose a
-   * role field (see planning/frontend-foundation.md Assumptions + OQ), so this
-   * is always undefined today and the admin route fails safe (denies). Confirm
-   * the role source against the live payload during the admin cycle.
-   */
-  role?: string;
 }
 
 /** `TokenPairResponse` — returned once by login/refresh; the client persists it. */

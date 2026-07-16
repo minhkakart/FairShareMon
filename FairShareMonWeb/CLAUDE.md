@@ -88,13 +88,20 @@ src/
   `localStorage`; rehydrate on boot via `/auth/refresh`. The Zustand vanilla store
   (`src/lib/auth/session.ts`) is readable outside React by the client.
 
-### Auth-guard seam (flagged)
+### Auth-guard seam (wired)
 
-The backend `UserResponse` is `{ uuid, username, tier, createdAt }` — **no `role`
-field**, and login returns only a token pair (no user payload, no `/auth/me`).
-`AdminRoute` reads `user?.role === "ADMIN"`, which is always undefined today → it
-**fails safe (denies)**. When the admin cycle adds a role source, the guard
-starts admitting ADMINs unchanged. Do not fabricate a role.
+The backend `UserResponse` is `{ uuid, username, tier, role, createdAt }` and
+`GET /v1/auth/me` returns the caller's own profile (incl. `role`: `USER` |
+`ADMIN`). `useCurrentUserQuery` (`src/features/auth/hooks/`) is mounted at
+`ProtectedRoute` and fetches `/auth/me` once the session is authenticated — after
+both login and boot-refresh rehydrate — syncing the profile into the Zustand
+session store (`setUser`), which stays the canonical read for guards + shell.
+`AdminRoute` admits `role === "ADMIN"` and denies otherwise; while the profile is
+still resolving (`profileStatus` `idle`/`pending`) it shows the boot splash rather
+than flash `Forbidden`. A **non-401** `/auth/me` failure stays authenticated but
+degraded (`profileStatus: "error"`, no `user`) → the guard fails safe (denies),
+never an infinite splash; a `401` rides the client's `401 → refresh` flow. Never
+fabricate a role — an absent/unknown role is never ADMIN.
 
 ## Money & time
 

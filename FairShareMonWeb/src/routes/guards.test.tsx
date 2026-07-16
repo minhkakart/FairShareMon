@@ -12,6 +12,7 @@ import type { SessionUser } from "@/lib/auth/session";
 function setStatus(
   status: "idle" | "authenticated" | "unauthenticated",
   user: SessionUser | null = null,
+  profileStatus: "idle" | "pending" | "resolved" | "error" = "idle",
 ) {
   const future = new Date(Date.now() + 3_600_000).toISOString();
   sessionStore.setState({
@@ -21,6 +22,7 @@ function setStatus(
     refreshToken: null,
     refreshTokenExpiresAt: null,
     user,
+    profileStatus,
   });
 }
 
@@ -107,24 +109,23 @@ describe("AdminRoute", () => {
     );
   }
 
-  it("AdminRoute_NonAdminUser_DeniesWithForbidden", () => {
-    // Fail-safe seam: no role field on the payload today → always denied.
-    setStatus("authenticated", { username: "demo" });
+  it("AdminRoute_NoRoleResolved_DeniesWithForbidden", () => {
+    // Profile settled with no role (fail-safe) → denied, never ADMIN.
+    setStatus("authenticated", { username: "demo" }, "resolved");
     renderAdmin();
     expect(screen.getByText("Không có quyền truy cập")).toBeInTheDocument();
     expect(screen.queryByText("Admin Panel")).not.toBeInTheDocument();
   });
 
-  it("AdminRoute_NonAdminRole_DeniesWithForbidden", () => {
-    setStatus("authenticated", { username: "demo", role: "USER" });
+  it("AdminRoute_NonAdminRoleResolved_DeniesWithForbidden", () => {
+    setStatus("authenticated", { username: "demo", role: "USER" }, "resolved");
     renderAdmin();
     expect(screen.getByText("Không có quyền truy cập")).toBeInTheDocument();
     expect(screen.queryByText("Admin Panel")).not.toBeInTheDocument();
   });
 
-  it("AdminRoute_AdminRole_AdmitsSeamWhenRoleSourceExists", () => {
-    // Documents the seam: once a role source is wired, ADMIN is admitted.
-    setStatus("authenticated", { username: "root", role: "ADMIN" });
+  it("AdminRoute_AdminRoleResolved_AdmitsOutlet", () => {
+    setStatus("authenticated", { username: "root", role: "ADMIN" }, "resolved");
     renderAdmin();
     expect(screen.getByText("Admin Panel")).toBeInTheDocument();
     expect(getSession().user?.role).toBe("ADMIN");

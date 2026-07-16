@@ -66,7 +66,7 @@ export const router = createBrowserRouter([
                 path: "settings/change-password",
                 element: <ChangePasswordPage />,
               },
-              // Admin area — gated on role == ADMIN (see AdminRoute seam).
+              // Admin area — gated on role == ADMIN (from /auth/me; see AdminRoute).
               {
                 path: "admin",
                 element: <AdminRoute />,

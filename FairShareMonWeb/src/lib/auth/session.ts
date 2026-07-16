@@ -8,12 +8,13 @@ import {
 } from "./storage";
 
 /**
- * What the client actually knows about the signed-in user. Login returns only
- * a token pair (no user payload, and there is no `/auth/me` endpoint yet), so
- * only `username` — captured from the login form — is guaranteed. The rest are
- * populated when a real payload provides them. `role` is the ADMIN-guard seam:
- * the backend `UserResponse` does not expose it today (see planning doc), so it
- * is always undefined and the admin route fails safe.
+ * What the client knows about the signed-in user. Login returns only a token
+ * pair, so immediately after login only `username` — captured optimistically
+ * from the form — is guaranteed. The full profile (`uuid`/`tier`/`role`/
+ * `createdAt`) is reconciled by `GET /auth/me` (see `useCurrentUserQuery`), which
+ * runs after both login and boot-refresh rehydrate. `role` (`USER` | `ADMIN`)
+ * drives the admin guard; it is absent until `/auth/me` resolves, so the guard
+ * waits on `profileStatus` rather than reading a half-populated user.
  */
 export interface SessionUser {
   username: string;
@@ -30,6 +31,17 @@ export interface SessionUser {
  */
 export type SessionStatus = "idle" | "authenticated" | "unauthenticated";
 
+/**
+ * Lifecycle of the `/auth/me` profile fetch, tracked separately from the token
+ * `status` so an authenticated user can render immediately while the profile is
+ * still resolving (OQ2a), and so guards have a definite "settled" signal (OQ5a).
+ * `idle` — no fetch yet (unauthenticated / just cleared); `pending` — authenticated,
+ * profile in flight; `resolved` — profile populated; `error` — a non-401 failure
+ * left the session authenticated but degraded (`user` stays absent), settling
+ * guards into a fail-safe deny rather than an infinite splash (OQ3a).
+ */
+export type ProfileStatus = "idle" | "pending" | "resolved" | "error";
+
 export interface SessionState {
   status: SessionStatus;
   /** In-memory only — never persisted (OQ3a). */
@@ -39,11 +51,24 @@ export interface SessionState {
   refreshToken: string | null;
   refreshTokenExpiresAt: string | null;
   user: SessionUser | null;
+  profileStatus: ProfileStatus;
 
-  /** Store a fresh token pair (login / refresh); persists the refresh token. */
+  /**
+   * Store a fresh token pair (login / refresh); persists the refresh token and
+   * marks the profile `pending` (a `/auth/me` fetch follows the authenticated
+   * transition).
+   */
   setSession: (tokens: TokenPairResponse, user?: SessionUser | null) => void;
-  /** Attach/replace the current-user payload without touching tokens. */
+  /**
+   * Attach/replace the resolved current-user payload (from `/auth/me`) without
+   * touching tokens; settles `profileStatus` to `resolved`.
+   */
   setUser: (user: SessionUser | null) => void;
+  /**
+   * A non-401 `/auth/me` failure: stay authenticated but degraded — settle
+   * `profileStatus` to `error` (guards fail-safe deny), leaving `user` as-is.
+   */
+  markProfileUnavailable: () => void;
   /** Terminal: wipe tokens + user, clear storage, mark unauthenticated. */
   clearSession: () => void;
   /** Boot finished with no valid session. */
@@ -63,6 +88,7 @@ export const sessionStore = createStore<SessionState>((set) => ({
   refreshToken: loadRefreshToken(),
   refreshTokenExpiresAt: null,
   user: null,
+  profileStatus: "idle",
 
   setSession: (tokens, user) => {
     saveRefreshToken(tokens.refreshToken);
@@ -73,10 +99,13 @@ export const sessionStore = createStore<SessionState>((set) => ({
       refreshToken: tokens.refreshToken,
       refreshTokenExpiresAt: tokens.refreshTokenExpiresAt,
       user: user ?? state.user,
+      profileStatus: "pending",
     }));
   },
 
-  setUser: (user) => set({ user }),
+  setUser: (user) => set({ user, profileStatus: "resolved" }),
+
+  markProfileUnavailable: () => set({ profileStatus: "error" }),
 
   clearSession: () => {
     clearRefreshToken();
@@ -87,10 +116,11 @@ export const sessionStore = createStore<SessionState>((set) => ({
       refreshToken: null,
       refreshTokenExpiresAt: null,
       user: null,
+      profileStatus: "idle",
     });
   },
 
-  markUnauthenticated: () => set({ status: "unauthenticated" }),
+  markUnauthenticated: () => set({ status: "unauthenticated", profileStatus: "idle" }),
 }));
 
 /** Non-React accessors for the API client. */

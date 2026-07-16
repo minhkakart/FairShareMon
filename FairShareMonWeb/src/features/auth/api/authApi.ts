@@ -20,6 +20,9 @@ export const authApi = {
   login: (body: LoginRequest) =>
     api.post<TokenPairResponse>("/v1/auth/login", body, { anonymous: true }),
 
+  /** Current-user profile (authenticated; rides the client's 401→refresh flow). */
+  me: () => api.get<UserResponse>("/v1/auth/me"),
+
   logout: () => api.post<MessageResponse>("/v1/auth/logout"),
 
   changePassword: (body: ChangePasswordRequest) =>
