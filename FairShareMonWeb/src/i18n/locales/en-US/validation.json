@@ -15,5 +15,9 @@
   },
   "newPassword": {
     "required": "Please enter a new password."
+  },
+  "member": {
+    "nameRequired": "Member name is required.",
+    "nameTooLong": "Member name must not exceed 100 characters."
   }
 }

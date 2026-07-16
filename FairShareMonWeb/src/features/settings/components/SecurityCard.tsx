@@ -18,11 +18,11 @@ export function SecurityCard() {
             {t("settings:security.changePasswordHint")}
           </p>
           <div>
-            <Link to="/settings/change-password">
-              <Button variant="secondary" size="sm">
+            <Button asChild variant="secondary" size="sm">
+              <Link to="/settings/change-password">
                 {t("settings:security.changePassword")}
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </div>
         </Stack>
       </CardBody>

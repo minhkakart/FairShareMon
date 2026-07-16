@@ -1,0 +1,151 @@
+/* =============================================================================
+ * Table — the design-system list surface (Members M2, then M3/M4/M5).
+ * Semantic <table> only; every color/space through tokens; theme-aware.
+ * Vietnamese runs long → cells wrap; numeric columns stay tabular + right-aligned.
+ * ========================================================================== */
+
+/* Horizontal scroll container so a wide table never forces the PAGE to scroll
+   sideways — the overflow lives here, on its own box. */
+.scroll {
+  width: 100%;
+  overflow-x: auto;
+  /* Contain the rounded frame so row hover/zebra never bleed past the corners. */
+  border: 1px solid var(--fs-color-border-subtle);
+  border-radius: var(--fs-radius-lg);
+  background-color: var(--fs-color-surface);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-text-sm);
+  line-height: var(--fs-leading-snug);
+  color: var(--fs-color-text);
+  /* Let long member names/labels wrap rather than blow out the column. */
+  text-align: left;
+}
+
+.caption {
+  padding: var(--fs-space-3) var(--fs-space-4);
+  text-align: left;
+  font-size: var(--fs-text-sm);
+  color: var(--fs-color-text-secondary);
+  caption-side: top;
+}
+
+/* Visually-hidden caption still names the table for AT (used when the surface
+   already carries a visible <h1>/PageHeader). */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* == Cells ================================================================= */
+.table th,
+.table td {
+  padding: var(--fs-space-3) var(--fs-space-4);
+  vertical-align: middle;
+  overflow-wrap: break-word;
+}
+
+.dense th,
+.dense td {
+  padding: var(--fs-space-2) var(--fs-space-3);
+}
+
+/* == Header =============================================================== */
+.head {
+  background-color: var(--fs-color-surface-sunken);
+}
+
+.headerCell {
+  font-weight: var(--fs-weight-semibold);
+  font-size: var(--fs-text-xs);
+  letter-spacing: var(--fs-tracking-wide);
+  text-transform: uppercase;
+  color: var(--fs-color-text-secondary);
+  white-space: nowrap;
+  border-bottom: 1px solid var(--fs-color-border);
+}
+
+/* A row-scoped header (the primary label column) reads as body text, not an
+   uppercase column label. */
+.body .headerCell {
+  font-weight: var(--fs-weight-semibold);
+  font-size: var(--fs-text-sm);
+  letter-spacing: var(--fs-tracking-normal);
+  text-transform: none;
+  color: var(--fs-color-text);
+  white-space: normal;
+  border-bottom: 0;
+}
+
+/* == Body rows: separators, zebra, hover ================================== */
+.body .row td {
+  border-top: 1px solid var(--fs-color-border-subtle);
+  transition: background-color var(--fs-duration-fast) var(--fs-ease-standard);
+}
+
+/* Zebra — even rows sit on the sunken plane. */
+.body .row:nth-child(even) td {
+  background-color: var(--fs-color-surface-sunken);
+}
+
+/* Hover comes AFTER zebra (equal specificity → source order wins). */
+.body .row:hover td {
+  background-color: var(--fs-color-surface-hover);
+}
+
+/* == Soft-deleted / inactive row ========================================== */
+/* Muted text carries the state alongside a "(đã xóa)" Badge — never color
+   alone, and readable (secondary text stays AA). No strike-through: it wrecks
+   Vietnamese diacritics. */
+.deleted td {
+  color: var(--fs-color-text-secondary);
+}
+
+/* == Numeric / alignment ================================================== */
+.numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.alignCenter {
+  text-align: center;
+}
+.alignRight {
+  text-align: right;
+}
+
+/* == Trailing row-actions cell ============================================ */
+.actionsCell {
+  text-align: right;
+  white-space: nowrap;
+  width: 1%; /* shrink to content so the label columns take the slack */
+}
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--fs-space-1);
+}
+
+/* == Empty-state cell (spans the full row) =============================== */
+.empty {
+  padding: var(--fs-space-8) var(--fs-space-4);
+  text-align: center;
+  color: var(--fs-color-text-secondary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .body .row td {
+    transition: none;
+  }
+}

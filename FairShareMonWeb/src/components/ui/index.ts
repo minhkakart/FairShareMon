@@ -19,6 +19,23 @@ export { Form, FieldStack, FormError, FormActions } from "./Form/Form";
 export { Card, CardHeader, CardBody } from "./Card/Card";
 export type { CardProps } from "./Card/Card";
 
+export {
+  Table,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableHeaderCell,
+  TableCell,
+  TableEmpty,
+} from "./Table/Table";
+export type {
+  TableProps,
+  TableRowProps,
+  TableHeaderCellProps,
+  TableCellProps,
+  TableEmptyProps,
+} from "./Table/Table";
+
 export { Badge } from "./Badge/Badge";
 export type { BadgeProps, BadgeTone } from "./Badge/Badge";
 

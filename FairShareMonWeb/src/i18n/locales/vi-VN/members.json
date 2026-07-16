@@ -1,0 +1,58 @@
+{
+  "title": "Thành viên",
+  "subtitle": "Quản lý các thành viên trong sổ của bạn — người đã trả và người còn nợ.",
+  "add": "Thêm thành viên",
+  "showDeleted": "Hiện thành viên đã xóa",
+  "activeCount_one": "{{count}} thành viên đang hoạt động",
+  "activeCount_other": "{{count}} thành viên đang hoạt động",
+  "table": {
+    "caption": "Danh sách thành viên",
+    "name": "Tên",
+    "status": "Trạng thái",
+    "actions": "Hành động"
+  },
+  "badge": {
+    "ownerRep": "Đại diện chủ sổ",
+    "deleted": "Đã xóa"
+  },
+  "actions": {
+    "rename": "Đổi tên",
+    "delete": "Xóa",
+    "renameNamed": "Đổi tên {{name}}",
+    "deleteNamed": "Xóa {{name}}"
+  },
+  "ownerRep": {
+    "notDeletable": "Thành viên đại diện chủ sổ không thể xóa."
+  },
+  "form": {
+    "createTitle": "Thêm thành viên",
+    "renameTitle": "Đổi tên thành viên",
+    "nameLabel": "Tên thành viên",
+    "namePlaceholder": "Ví dụ: An Nguyễn",
+    "submitCreate": "Thêm",
+    "submitRename": "Lưu",
+    "cancel": "Hủy"
+  },
+  "delete": {
+    "title": "Xóa {{name}}?",
+    "body": "Thành viên sẽ không còn xuất hiện khi tạo dữ liệu mới, nhưng toàn bộ dữ liệu lịch sử vẫn được giữ nguyên. Bạn có thể xem lại thành viên đã xóa bằng cách bật \"Hiện thành viên đã xóa\".",
+    "confirmButton": "Xóa thành viên",
+    "cancel": "Hủy"
+  },
+  "limit": {
+    "title": "Đã đạt giới hạn số thành viên"
+  },
+  "toast": {
+    "created": "Đã thêm thành viên.",
+    "renamed": "Đã cập nhật tên thành viên.",
+    "deleted": "Đã xóa thành viên."
+  },
+  "empty": {
+    "title": "Chưa có thành viên nào",
+    "body": "Danh sách thành viên hiện đang trống."
+  },
+  "error": {
+    "title": "Không tải được danh sách thành viên",
+    "retry": "Thử lại"
+  }
+}

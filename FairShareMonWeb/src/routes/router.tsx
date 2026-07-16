@@ -11,6 +11,7 @@ import { RegisterPage } from "@/features/auth/pages/RegisterPage";
 import { ChangePasswordPage } from "@/features/auth/pages/ChangePasswordPage";
 import { DashboardPage } from "@/features/dashboard/pages/DashboardPage";
 import { SettingsPage } from "@/features/settings/pages/SettingsPage";
+import { MembersPage } from "@/features/members/pages/MembersPage";
 import { AdminPage } from "@/features/admin/pages/AdminPage";
 
 export const router = createBrowserRouter([
@@ -35,10 +36,7 @@ export const router = createBrowserRouter([
             children: [
               { index: true, element: <Navigate to="/dashboard" replace /> },
               { path: "dashboard", element: <DashboardPage /> },
-              {
-                path: "members",
-                element: <StubPage titleKey="common:nav.members" />,
-              },
+              { path: "members", element: <MembersPage /> },
               {
                 path: "categories",
                 element: <StubPage titleKey="common:nav.categories" />,

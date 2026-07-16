@@ -25,6 +25,7 @@ export const ErrorCodes = {
 
   // 3xxx members / 4xxx categories / 5xxx tags / 6xxx expenses / 7xxx shares
   MemberNotFound: 3000,
+  OwnerRepresentativeNotDeletable: 3001,
   CategoryNotFound: 4000,
   TagNotFound: 5000,
   ExpenseNotFound: 6000,

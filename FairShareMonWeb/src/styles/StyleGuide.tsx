@@ -27,6 +27,13 @@ import {
   Skeleton,
   Spinner,
   Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableEmpty,
+  TableHead,
+  TableHeaderCell,
+  TableRow,
   TextField,
   ThemeToggle,
   TierBadge,
@@ -339,6 +346,161 @@ export function StyleGuide() {
               </CardBody>
             </Card>
           </Stack>
+        </Section>
+
+        {/* TABLE */}
+        <Section title="Bảng (Table) — danh sách, hành động & dòng đã xóa">
+          <p className={styles.note}>
+            Bảng ngữ nghĩa: tiêu đề cột <code>scope="col"</code>, tên có thể đặt{" "}
+            <code>scope="row"</code>. Cột số căn phải + chữ số đều
+            (tabular-nums). Ô hành động ở cuối dòng. Dòng đã xóa được làm mờ và
+            luôn kèm badge chữ — không chỉ dựa vào màu.
+          </p>
+          <Table caption="Danh sách thành viên (ví dụ)" captionHidden>
+            <TableHead>
+              <TableRow>
+                <TableHeaderCell scope="col">Tên thành viên</TableHeaderCell>
+                <TableHeaderCell scope="col">Trạng thái</TableHeaderCell>
+                <TableHeaderCell scope="col" numeric>
+                  Số dư
+                </TableHeaderCell>
+                <TableHeaderCell scope="col">
+                  <span className={styles.srOnly}>Hành động</span>
+                </TableHeaderCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {/* Owner-representative: renamable, never deletable. */}
+              <TableRow>
+                <TableHeaderCell scope="row">Minh (bạn)</TableHeaderCell>
+                <TableCell>
+                  <Badge tone="info" icon={<Star />}>
+                    Đại diện chủ sổ
+                  </Badge>
+                </TableCell>
+                <TableCell numeric>
+                  <Money amount={0} variant="balance" size="sm" />
+                </TableCell>
+                <TableCell actions>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-label="Đổi tên Minh (bạn)"
+                  >
+                    Đổi tên
+                  </Button>
+                </TableCell>
+              </TableRow>
+              {/* Normal members: rename + delete. */}
+              <TableRow>
+                <TableHeaderCell scope="row">An Nguyễn</TableHeaderCell>
+                <TableCell>
+                  <Badge tone="neutral">Thành viên</Badge>
+                </TableCell>
+                <TableCell numeric>
+                  <Money amount={320_000} variant="balance" size="sm" />
+                </TableCell>
+                <TableCell actions>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-label="Đổi tên An Nguyễn"
+                  >
+                    Đổi tên
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-label="Xóa An Nguyễn"
+                  >
+                    Xóa
+                  </Button>
+                </TableCell>
+              </TableRow>
+              <TableRow>
+                <TableHeaderCell scope="row">
+                  Trần Thị Bích Ngọc
+                </TableHeaderCell>
+                <TableCell>
+                  <Badge tone="neutral">Thành viên</Badge>
+                </TableCell>
+                <TableCell numeric>
+                  <Money amount={-150_000} variant="balance" size="sm" />
+                </TableCell>
+                <TableCell actions>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-label="Đổi tên Trần Thị Bích Ngọc"
+                  >
+                    Đổi tên
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-label="Xóa Trần Thị Bích Ngọc"
+                  >
+                    Xóa
+                  </Button>
+                </TableCell>
+              </TableRow>
+              {/* Soft-deleted: muted row + "(đã xóa)" badge, read-only. */}
+              <TableRow deleted>
+                <TableHeaderCell scope="row">Bảo (cũ)</TableHeaderCell>
+                <TableCell>
+                  <Badge tone="neutral">Đã xóa</Badge>
+                </TableCell>
+                <TableCell numeric>
+                  <Money amount={0} variant="balance" size="sm" />
+                </TableCell>
+                <TableCell actions>
+                  <span className={styles.note}>—</span>
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+
+          <p className={styles.note}>Trạng thái rỗng (phòng thủ):</p>
+          <Table caption="Bảng rỗng (ví dụ)" captionHidden dense>
+            <TableHead>
+              <TableRow>
+                <TableHeaderCell scope="col">Tên</TableHeaderCell>
+                <TableHeaderCell scope="col">Trạng thái</TableHeaderCell>
+                <TableHeaderCell scope="col" numeric>
+                  Số dư
+                </TableHeaderCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              <TableEmpty colSpan={3}>
+                <EmptyState
+                  icon={<Receipt />}
+                  title="Chưa có dữ liệu"
+                  description="Khi có bản ghi, chúng sẽ hiển thị ở đây."
+                />
+              </TableEmpty>
+            </TableBody>
+          </Table>
+        </Section>
+
+        {/* LINK-STYLED-AS-BUTTON (asChild) */}
+        <Section title="Liên kết dạng nút (Button asChild)">
+          <p className={styles.note}>
+            <code>asChild</code> hợp nhất kiểu nút vào phần tử con — một{" "}
+            <code>&lt;a&gt;</code> duy nhất, không lồng nút trong liên kết. Ở đây
+            dùng thẻ <code>&lt;a&gt;</code> minh họa; trong ứng dụng là{" "}
+            <code>&lt;Link&gt;</code> của router.
+          </p>
+          <div className={styles.row}>
+            <Button asChild variant="secondary">
+              <a href="#top">Về đầu trang</a>
+            </Button>
+            <Button asChild variant="ghost" size="sm">
+              <a href="#top" aria-label="Mở cài đặt">
+                Cài đặt
+              </a>
+            </Button>
+          </div>
         </Section>
 
         <Section title="Empty / Loading / Dialog">

@@ -13,6 +13,8 @@
   white-space: nowrap;
   cursor: pointer;
   user-select: none;
+  /* asChild renders an <a>; never inherit the global link underline/color. */
+  text-decoration: none;
   transition:
     background-color var(--fs-duration-fast) var(--fs-ease-standard),
     border-color var(--fs-duration-fast) var(--fs-ease-standard),

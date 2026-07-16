@@ -142,8 +142,10 @@ describe("NotFound", () => {
     expect(
       screen.getByText(/không tồn tại hoặc bạn không có quyền xem/),
     ).toBeInTheDocument();
+    // The back-home affordance is a router Link rendered via `Button asChild`,
+    // so it is a single <a> (role="link"), not a nested button.
     expect(
-      screen.getByRole("button", { name: "Về trang chính" }),
+      screen.getByRole("link", { name: "Về trang chính" }),
     ).toBeInTheDocument();
   });
 });

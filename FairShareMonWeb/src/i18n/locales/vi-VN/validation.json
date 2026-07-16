@@ -15,5 +15,9 @@
   },
   "newPassword": {
     "required": "Vui lòng nhập mật khẩu mới."
+  },
+  "member": {
+    "nameRequired": "Tên thành viên không được để trống.",
+    "nameTooLong": "Tên thành viên không được vượt quá 100 ký tự."
   }
 }

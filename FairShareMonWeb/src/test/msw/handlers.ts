@@ -84,6 +84,85 @@ function rand(): string {
   return Math.random().toString(36).slice(2);
 }
 
+// --- Members store (mock backend) -----------------------------------------
+interface MemberRecord {
+  uuid: string;
+  name: string;
+  isOwnerRepresentative: boolean;
+  isDeleted: boolean;
+  createdAt: string;
+}
+
+/** Free-tier active-member cap enforced by this mock so 13000 is demonstrable. */
+const FREE_MEMBER_LIMIT = 5;
+
+// username → their members. Seeded lazily on first access.
+const membersByUser = new Map<string, MemberRecord[]>();
+
+function seedMembers(): MemberRecord[] {
+  const base = "2026-01-01T00:00:00+00:00";
+  return [
+    {
+      uuid: `m-${rand()}`,
+      name: "Bạn (chủ sổ)",
+      isOwnerRepresentative: true,
+      isDeleted: false,
+      createdAt: base,
+    },
+    {
+      uuid: `m-${rand()}`,
+      name: "An Nguyễn",
+      isOwnerRepresentative: false,
+      isDeleted: false,
+      createdAt: base,
+    },
+    {
+      uuid: `m-${rand()}`,
+      name: "Bình Trần",
+      isOwnerRepresentative: false,
+      isDeleted: false,
+      createdAt: base,
+    },
+    {
+      uuid: `m-${rand()}`,
+      name: "Cũ (đã xóa)",
+      isOwnerRepresentative: false,
+      isDeleted: true,
+      createdAt: base,
+    },
+  ];
+}
+
+function getMembers(username: string): MemberRecord[] {
+  let list = membersByUser.get(username);
+  if (!list) {
+    list = seedMembers();
+    membersByUser.set(username, list);
+  }
+  return list;
+}
+
+/** Owner-rep first, then name A→Z (vi collation) — matches the backend order. */
+function sortMembers(list: MemberRecord[]): MemberRecord[] {
+  return [...list].sort((a, b) => {
+    if (a.isOwnerRepresentative !== b.isOwnerRepresentative) {
+      return a.isOwnerRepresentative ? -1 : 1;
+    }
+    return a.name.localeCompare(b.name, "vi");
+  });
+}
+
+function toResponse(m: MemberRecord): MemberRecord {
+  return { ...m };
+}
+
+/** Validate a member name the way the backend validator does (1–100, trimmed). */
+function validateName(raw: unknown): string | { code: number } {
+  const name = typeof raw === "string" ? raw.trim() : "";
+  if (name.length === 0 || name.length > 100) return { code: 1001 };
+  return name;
+}
+
 /** Extract the username seeded into the `access-<username>-...` bearer token. */
 function usernameFromAuthHeader(authorization: string | null): string | null {
   if (!authorization?.startsWith("Bearer ")) return null;
@@ -165,5 +244,101 @@ export const handlers = [
     users.set(username, body.newPassword);
     validRefreshTokens.clear(); // change-password revokes ALL tokens
     return ok({ message: "Đổi mật khẩu thành công." });
+  }),
+
+  // --- Members ------------------------------------------------------------
+  http.get("*/api/v1/members", ({ request }) => {
+    const username = usernameFromAuthHeader(
+      request.headers.get("Authorization"),
+    );
+    if (!username) {
+      return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
+    }
+    const includeDeleted =
+      new URL(request.url).searchParams.get("includeDeleted") === "true";
+    const list = getMembers(username).filter(
+      (m) => includeDeleted || !m.isDeleted,
+    );
+    return ok(sortMembers(list).map(toResponse));
+  }),
+
+  http.post("*/api/v1/members", async ({ request }) => {
+    const username = usernameFromAuthHeader(
+      request.headers.get("Authorization"),
+    );
+    if (!username) {
+      return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
+    }
+    const body = (await request.json()) as { name?: unknown };
+    const name = validateName(body.name);
+    if (typeof name !== "string") {
+      return fail(1001, "Dữ liệu không hợp lệ.", 400, {
+        name: ["Tên thành viên không được để trống."],
+      });
+    }
+    const list = getMembers(username);
+    const profile = profiles.get(username);
+    const isFree = (profile?.tier ?? "FREE").toUpperCase() === "FREE";
+    const activeCount = list.filter((m) => !m.isDeleted).length;
+    if (isFree && activeCount >= FREE_MEMBER_LIMIT) {
+      return fail(
+        13000,
+        `Tài khoản Free chỉ có thể có tối đa ${FREE_MEMBER_LIMIT} thành viên đang hoạt động. Nâng cấp Premium để bỏ giới hạn.`,
+        400,
+      );
+    }
+    const record: MemberRecord = {
+      uuid: `m-${rand()}`,
+      name,
+      isOwnerRepresentative: false,
+      isDeleted: false,
+      createdAt: new Date().toISOString(),
+    };
+    list.push(record);
+    return ok(toResponse(record));
+  }),
+
+  http.put("*/api/v1/members/:uuid", async ({ request, params }) => {
+    const username = usernameFromAuthHeader(
+      request.headers.get("Authorization"),
+    );
+    if (!username) {
+      return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
+    }
+    const body = (await request.json()) as { name?: unknown };
+    const name = validateName(body.name);
+    if (typeof name !== "string") {
+      return fail(1001, "Dữ liệu không hợp lệ.", 400, {
+        name: ["Tên thành viên không được để trống."],
+      });
+    }
+    const member = getMembers(username).find(
+      (m) => m.uuid === params.uuid && !m.isDeleted,
+    );
+    if (!member) {
+      return fail(3000, "Không tìm thấy thành viên.", 404);
+    }
+    member.name = name;
+    return ok(toResponse(member));
+  }),
+
+  http.delete("*/api/v1/members/:uuid", ({ request, params }) => {
+    const username = usernameFromAuthHeader(
+      request.headers.get("Authorization"),
+    );
+    if (!username) {
+      return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
+    }
+    const member = getMembers(username).find(
+      (m) => m.uuid === params.uuid && !m.isDeleted,
+    );
+    if (!member) {
+      return fail(3000, "Không tìm thấy thành viên.", 404);
+    }
+    if (member.isOwnerRepresentative) {
+      return fail(3001, "Không thể xóa thành viên đại diện chủ sổ.", 400);
+    }
+    member.isDeleted = true;
+    return ok({ message: "Đã xóa thành viên." });
   }),
 ];

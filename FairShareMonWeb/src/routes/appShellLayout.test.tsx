@@ -135,7 +135,8 @@ describe("AppShellLayout nav", () => {
 
   it("Shell_ProfileResolved_AccountButtonShowsUsername", () => {
     renderShell();
-    expect(screen.getByRole("button", { name: "demo" })).toBeInTheDocument();
+    // Account affordance is a Link (`Button asChild`) → role="link".
+    expect(screen.getByRole("link", { name: "demo" })).toBeInTheDocument();
   });
 
   it("Shell_ProfilePending_AccountButtonShowsNeutralFallbackNotSkeleton", () => {
@@ -146,7 +147,7 @@ describe("AppShellLayout nav", () => {
     renderShell();
 
     expect(
-      screen.getByRole("button", { name: "Tài khoản" }),
+      screen.getByRole("link", { name: "Tài khoản" }),
     ).toBeInTheDocument();
   });
 });

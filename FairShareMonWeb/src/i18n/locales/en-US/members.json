@@ -1,0 +1,58 @@
+{
+  "title": "Members",
+  "subtitle": "Manage the members in your ledger — who paid and who owes.",
+  "add": "Add member",
+  "showDeleted": "Show deleted members",
+  "activeCount_one": "{{count}} active member",
+  "activeCount_other": "{{count}} active members",
+  "table": {
+    "caption": "Members list",
+    "name": "Name",
+    "status": "Status",
+    "actions": "Actions"
+  },
+  "badge": {
+    "ownerRep": "Owner",
+    "deleted": "Deleted"
+  },
+  "actions": {
+    "rename": "Rename",
+    "delete": "Delete",
+    "renameNamed": "Rename {{name}}",
+    "deleteNamed": "Delete {{name}}"
+  },
+  "ownerRep": {
+    "notDeletable": "The owner representative member cannot be deleted."
+  },
+  "form": {
+    "createTitle": "Add member",
+    "renameTitle": "Rename member",
+    "nameLabel": "Member name",
+    "namePlaceholder": "e.g. An Nguyen",
+    "submitCreate": "Add",
+    "submitRename": "Save",
+    "cancel": "Cancel"
+  },
+  "delete": {
+    "title": "Delete {{name}}?",
+    "body": "This member will no longer appear when creating new data, but all historical data is preserved. You can review deleted members by turning on \"Show deleted members\".",
+    "confirmButton": "Delete member",
+    "cancel": "Cancel"
+  },
+  "limit": {
+    "title": "Member limit reached"
+  },
+  "toast": {
+    "created": "Member added.",
+    "renamed": "Member name updated.",
+    "deleted": "Member deleted."
+  },
+  "empty": {
+    "title": "No members yet",
+    "body": "The members list is currently empty."
+  },
+  "error": {
+    "title": "Couldn't load the members list",
+    "retry": "Try again"
+  }
+}

@@ -64,11 +64,11 @@ export function AppShellLayout() {
             labels={themeLabels}
             groupLabel={t("common:theme.label")}
           />
-          <Link to="/settings">
-            <Button variant="ghost" size="sm">
+          <Button asChild variant="ghost" size="sm">
+            <Link to="/settings">
               {user?.username ?? t("common:account")}
-            </Button>
-          </Link>
+            </Link>
+          </Button>
           <Button
             variant="secondary"
             size="sm"

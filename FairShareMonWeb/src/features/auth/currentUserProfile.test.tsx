@@ -227,8 +227,9 @@ describe("profile population", () => {
 
     // Landed in the shell; `/auth/me` reconciled the full profile into the store.
     expect(await screen.findByText("Dashboard Screen")).toBeInTheDocument();
+    // Account affordance is a Link (`Button asChild`) → role="link".
     expect(
-      await screen.findByRole("button", { name: "admin" }),
+      await screen.findByRole("link", { name: "admin" }),
     ).toBeInTheDocument();
     await waitFor(() => expect(getSession().user?.role).toBe("ADMIN"));
     expect(getSession().user?.uuid).toBe("uuid-admin");
@@ -243,16 +244,17 @@ describe("profile population", () => {
     renderShell();
 
     // Before `/auth/me` resolves: generic fallback label, not the username.
+    // The account affordance is a Link (`Button asChild`) → role="link".
     expect(
-      screen.getByRole("button", { name: "Tài khoản" }),
+      screen.getByRole("link", { name: "Tài khoản" }),
     ).toBeInTheDocument();
 
     // After `/auth/me`: the real username replaces the fallback.
     expect(
-      await screen.findByRole("button", { name: "demo" }),
+      await screen.findByRole("link", { name: "demo" }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "Tài khoản" }),
+      screen.queryByRole("link", { name: "Tài khoản" }),
     ).not.toBeInTheDocument();
     expect(getSession().user?.username).toBe("demo");
   });
@@ -331,9 +333,9 @@ describe("degraded profile (non-401)", () => {
     expect(getSession().status).toBe("authenticated");
     expect(getSession().accessToken).toBe("access-degraded-t");
     expect(getSession().user).toBeNull();
-    // Account label falls back to the neutral generic label.
+    // Account label falls back to the neutral generic label (Link → role="link").
     expect(
-      screen.getByRole("button", { name: "Tài khoản" }),
+      screen.getByRole("link", { name: "Tài khoản" }),
     ).toBeInTheDocument();
     expect(screen.getByText("Dashboard Screen")).toBeInTheDocument();
   });
@@ -346,7 +348,7 @@ describe("degraded profile (non-401)", () => {
     renderShell();
 
     expect(
-      await screen.findByRole("button", { name: "Account" }),
+      await screen.findByRole("link", { name: "Account" }),
     ).toBeInTheDocument();
     await waitFor(() => expect(getSession().profileStatus).toBe("error"));
     expect(getSession().status).toBe("authenticated");
@@ -487,9 +489,9 @@ describe("freshness + invalidation", () => {
     authedSession("demo");
 
     renderShell("/dashboard", { queryClient });
-    // Profile cached after the first fetch.
+    // Profile cached after the first fetch (account affordance is a Link).
     expect(
-      await screen.findByRole("button", { name: "demo" }),
+      await screen.findByRole("link", { name: "demo" }),
     ).toBeInTheDocument();
     expect(queryClient.getQueryData(currentUserQueryKey)).toBeDefined();
 

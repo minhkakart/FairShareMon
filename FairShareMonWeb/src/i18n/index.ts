@@ -8,11 +8,13 @@ import viAuth from "./locales/vi-VN/auth.json";
 import viErrors from "./locales/vi-VN/errors.json";
 import viValidation from "./locales/vi-VN/validation.json";
 import viSettings from "./locales/vi-VN/settings.json";
+import viMembers from "./locales/vi-VN/members.json";
 import enCommon from "./locales/en-US/common.json";
 import enAuth from "./locales/en-US/auth.json";
 import enErrors from "./locales/en-US/errors.json";
 import enValidation from "./locales/en-US/validation.json";
 import enSettings from "./locales/en-US/settings.json";
+import enMembers from "./locales/en-US/members.json";
 
 export const SUPPORTED_LOCALES = ["vi-VN", "en-US"] as const;
 export const DEFAULT_LOCALE: Locale = "vi-VN";
@@ -26,6 +28,7 @@ export const resources = {
     errors: viErrors,
     validation: viValidation,
     settings: viSettings,
+    members: viMembers,
   },
   "en-US": {
     common: enCommon,
@@ -33,6 +36,7 @@ export const resources = {
     errors: enErrors,
     validation: enValidation,
     settings: enSettings,
+    members: enMembers,
   },
 } as const;
 
@@ -42,6 +46,7 @@ export const NAMESPACES = [
   "errors",
   "validation",
   "settings",
+  "members",
 ] as const;
 
 function isLocale(value: string | null): value is Locale {

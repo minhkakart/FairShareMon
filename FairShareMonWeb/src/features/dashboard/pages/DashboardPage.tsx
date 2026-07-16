@@ -62,11 +62,11 @@ export function DashboardPage() {
                   ) : null}
                 </div>
                 <div>
-                  <Link to={entry.to} aria-label={t(entry.labelKey)}>
-                    <Button variant="ghost" size="sm">
+                  <Button asChild variant="ghost" size="sm">
+                    <Link to={entry.to} aria-label={t(entry.labelKey)}>
                       {t("common:home.open")}
-                    </Button>
-                  </Link>
+                    </Link>
+                  </Button>
                 </div>
               </Stack>
             </CardBody>

@@ -24,9 +24,9 @@ export function NotFound() {
       <p style={{ color: "var(--fs-color-text-muted)" }}>
         {t("common:notFound.body")}
       </p>
-      <Link to="/dashboard">
-        <Button variant="secondary">{t("common:notFound.backHome")}</Button>
-      </Link>
+      <Button asChild variant="secondary">
+        <Link to="/dashboard">{t("common:notFound.backHome")}</Link>
+      </Button>
     </div>
   );
 }

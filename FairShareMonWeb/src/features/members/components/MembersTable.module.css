@@ -1,0 +1,4 @@
+.notDeletable {
+  color: var(--fs-color-text-muted);
+  font-size: var(--fs-text-sm);
+}
