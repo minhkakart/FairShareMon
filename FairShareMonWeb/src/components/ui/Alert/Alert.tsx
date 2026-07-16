@@ -32,13 +32,24 @@ export type AlertProps = {
  * Inline callout. Always icon + text so meaning is not color-only.
  * `danger` announces via role="alert"; the rest use role="status".
  */
-export function Alert({ tone = "info", title, children, action, className }: AlertProps) {
+export function Alert({
+  tone = "info",
+  title,
+  children,
+  action,
+  className,
+}: AlertProps) {
   return (
     <div
       className={cx(styles.alert, styles[tone], className)}
       role={tone === "danger" ? "alert" : "status"}
     >
-      <svg className={styles.icon} viewBox="0 0 20 20" aria-hidden="true" fill="currentColor">
+      <svg
+        className={styles.icon}
+        viewBox="0 0 20 20"
+        aria-hidden="true"
+        fill="currentColor"
+      >
         {ICONS[tone]}
       </svg>
       <div className={styles.content}>

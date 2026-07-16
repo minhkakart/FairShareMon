@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import type { ParseKeys } from "i18next";
 
 /** All app namespaces, so `t("auth:...")`, `t("errors:...")`, etc. are typed. */
 export const APP_NAMESPACES = [
@@ -6,6 +7,7 @@ export const APP_NAMESPACES = [
   "auth",
   "errors",
   "validation",
+  "settings",
 ] as const;
 
 /**
@@ -22,3 +24,11 @@ export type AppTFunction = ReturnType<typeof useT>["t"];
 
 /** The union of all valid translation keys (for props that forward a key). */
 export type AppTKey = Parameters<AppTFunction>[0];
+
+/**
+ * A single key in the default `common` namespace (bare, e.g. "nav.members"),
+ * narrow enough to pass straight into `t(...)`. Use this for props/config that
+ * forward one common-namespace key (`AppTKey` is broader — it also admits
+ * arrays/plain strings — and does not satisfy `t`'s overloads on its own).
+ */
+export type AppCommonKey = ParseKeys<"common">;

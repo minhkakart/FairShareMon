@@ -12,6 +12,8 @@ import {
   DialogContent,
   DialogFooter,
   DialogTrigger,
+  DescriptionList,
+  DescriptionRow,
   EmptyState,
   FieldStack,
   Form,
@@ -21,10 +23,13 @@ import {
   LimitNotice,
   Money,
   NavItem,
+  PageHeader,
   Skeleton,
   Spinner,
+  Stack,
   TextField,
   ThemeToggle,
+  TierBadge,
   UpgradePrompt,
 } from "../components/ui";
 import type { Locale, ThemePreference } from "../components/ui";
@@ -73,6 +78,8 @@ export function StyleGuide() {
     <AppShell
       brand={brand}
       actions={actions}
+      mobileMenuLabel="Menu"
+      mobileMenuCloseLabel="Đóng"
       nav={
         <>
           <NavItem active>Tổng quan</NavItem>
@@ -150,7 +157,9 @@ export function StyleGuide() {
               1rem — Nội dung chính. Khoản chi được chia cho các thành viên tham
               gia, mỗi người gánh một phần gánh khác nhau tùy theo thỏa thuận.
             </p>
-            <p className={styles.tsm}>0.875rem — Phụ, chú thích, giao diện dày đặc</p>
+            <p className={styles.tsm}>
+              0.875rem — Phụ, chú thích, giao diện dày đặc
+            </p>
             <p className={styles.txs}>0.75rem — Nhãn, badge</p>
           </div>
         </Section>
@@ -252,7 +261,11 @@ export function StyleGuide() {
             <Alert
               tone="danger"
               title="Đợt đã chốt"
-              action={<Button size="sm" variant="secondary">Xem đợt</Button>}
+              action={
+                <Button size="sm" variant="secondary">
+                  Xem đợt
+                </Button>
+              }
             >
               Không thể sửa phiếu trong đợt đã chốt.
             </Alert>
@@ -260,18 +273,72 @@ export function StyleGuide() {
         </Section>
 
         <Section title="Premium & hạn mức">
+          <div className={styles.row}>
+            <TierBadge tier="FREE" freeLabel="Free" premiumLabel="Premium" />
+            <TierBadge tier="PREMIUM" freeLabel="Free" premiumLabel="Premium" />
+          </div>
           <div className={styles.stack}>
             <UpgradePrompt
               title="Tính năng Premium"
               description="Ví & mã QR chuyển khoản chỉ dành cho tài khoản Premium."
-              action={<Button variant="premium" size="sm">Nâng cấp</Button>}
+              action={
+                <Button variant="premium" size="sm">
+                  Nâng cấp
+                </Button>
+              }
+            />
+            <UpgradePrompt
+              variant="info"
+              title="Nâng cấp Premium"
+              description="Premium được cấp thủ công bởi quản trị viên — chưa có mua tự phục vụ. Liên hệ người vận hành để được mở khóa ví, mã QR và các định dạng xuất mở rộng."
+            />
+            <UpgradePrompt
+              variant="active"
+              title="Bạn đang dùng Premium"
+              description="Tài khoản của bạn đã mở khóa toàn bộ tính năng Premium."
             />
             <LimitNotice
               title="Đã đạt hạn mức đợt đang mở (Free)"
               description="Bạn có thể chốt một đợt hiện có hoặc nâng cấp để tạo thêm. Dữ liệu cũ không bị ảnh hưởng."
-              action={<Button variant="premium" size="sm">Nâng cấp Premium</Button>}
+              action={
+                <Button variant="premium" size="sm">
+                  Nâng cấp Premium
+                </Button>
+              }
             />
           </div>
+        </Section>
+
+        <Section title="Bố cục trang & danh sách mô tả (settings)">
+          <PageHeader
+            title="Cài đặt"
+            description="Hồ sơ, tuỳ chọn giao diện & ngôn ngữ, bảo mật và hạng tài khoản."
+          />
+          <Stack gap="4">
+            <Card>
+              <CardHeader title="Hồ sơ" />
+              <CardBody>
+                <DescriptionList>
+                  <DescriptionRow term="Tên đăng nhập">
+                    an.nguyen
+                  </DescriptionRow>
+                  <DescriptionRow term="Hạng">
+                    <TierBadge
+                      tier="PREMIUM"
+                      freeLabel="Free"
+                      premiumLabel="Premium"
+                    />
+                  </DescriptionRow>
+                  <DescriptionRow term="Vai trò">
+                    <Badge tone="neutral">Người dùng</Badge>
+                  </DescriptionRow>
+                  <DescriptionRow term="Tham gia từ">
+                    <Skeleton width="8rem" />
+                  </DescriptionRow>
+                </DescriptionList>
+              </CardBody>
+            </Card>
+          </Stack>
         </Section>
 
         <Section title="Empty / Loading / Dialog">
@@ -281,7 +348,11 @@ export function StyleGuide() {
                 icon={<Receipt />}
                 title="Chưa có phiếu nào"
                 description="Tạo phiếu đầu tiên để bắt đầu chia tiền."
-                action={<Button variant="primary" size="sm">Tạo phiếu</Button>}
+                action={
+                  <Button variant="primary" size="sm">
+                    Tạo phiếu
+                  </Button>
+                }
               />
             </Card>
             <Card>
@@ -340,7 +411,13 @@ export function StyleGuide() {
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
     <section className={styles.section}>
       <h2 className={styles.sectionTitle}>{title}</h2>
@@ -362,7 +439,10 @@ function Swatch({
     <div className={styles.swatch}>
       <span
         className={styles.swatchColor}
-        style={{ background: `var(${token})`, color: onDark ? "#fff" : "var(--fs-color-text)" }}
+        style={{
+          background: `var(${token})`,
+          color: onDark ? "#fff" : "var(--fs-color-text)",
+        }}
       />
       <code className={styles.swatchLabel}>{label}</code>
     </div>
@@ -371,7 +451,13 @@ function Swatch({
 
 /* Tiny inline glyphs for the showcase (feature icons live in feature code). */
 const Dot = () => (
-  <svg viewBox="0 0 8 8" width="8" height="8" fill="currentColor" aria-hidden="true">
+  <svg
+    viewBox="0 0 8 8"
+    width="8"
+    height="8"
+    fill="currentColor"
+    aria-hidden="true"
+  >
     <circle cx="4" cy="4" r="4" />
   </svg>
 );
@@ -381,7 +467,13 @@ const Lock = () => (
   </svg>
 );
 const Check = () => (
-  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+  <svg
+    viewBox="0 0 20 20"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.5"
+    aria-hidden="true"
+  >
     <path d="M4 10l4 4 8-9" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );

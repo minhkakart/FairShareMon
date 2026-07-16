@@ -10,6 +10,7 @@ import { LoginPage } from "@/features/auth/pages/LoginPage";
 import { RegisterPage } from "@/features/auth/pages/RegisterPage";
 import { ChangePasswordPage } from "@/features/auth/pages/ChangePasswordPage";
 import { DashboardPage } from "@/features/dashboard/pages/DashboardPage";
+import { SettingsPage } from "@/features/settings/pages/SettingsPage";
 import { AdminPage } from "@/features/admin/pages/AdminPage";
 
 export const router = createBrowserRouter([
@@ -63,8 +64,14 @@ export const router = createBrowserRouter([
                 element: <StubPage titleKey="common:nav.wallet" />,
               },
               {
-                path: "settings/change-password",
-                element: <ChangePasswordPage />,
+                path: "settings",
+                children: [
+                  { index: true, element: <SettingsPage /> },
+                  {
+                    path: "change-password",
+                    element: <ChangePasswordPage />,
+                  },
+                ],
               },
               // Admin area — gated on role == ADMIN (from /auth/me; see AdminRoute).
               {

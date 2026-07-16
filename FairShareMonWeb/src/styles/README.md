@@ -50,11 +50,17 @@ wins in both directions**:
 The CSS resolves all three cases (see `tokens.css`):
 
 ```css
-:root { /* light tokens */ }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) { /* dark tokens (OS) */ }
+:root {
+  /* light tokens */
 }
-:root[data-theme="dark"] { /* dark tokens (explicit — wins) */ }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    /* dark tokens (OS) */
+  }
+}
+:root[data-theme="dark"] {
+  /* dark tokens (explicit — wins) */
+}
 ```
 
 **Implementer responsibility (React state — NOT owned by the design layer):**
@@ -84,7 +90,7 @@ implementer's `LocaleProvider` owns `"vi-VN" | "en-US"` and on change must:
   `formatMoneyVnd`** via the `format` prop so there is one formatter of record.
   Never combine money with float math in the client — pass API-computed values.
 - `variant="balance"` shows a **signed** figure: `+` = credit (owed to you /
-  *được nhận lại*, jade-green), `−` = debit (you owe / *phải trả*, red), `0` =
+  _được nhận lại_, jade-green), `−` = debit (you owe / _phải trả_, red), `0` =
   settled (neutral). The **sign glyph is the color-independent cue** — meaning
   never rests on color alone (red-green CVD safe).
 
@@ -97,7 +103,16 @@ implementer's `LocaleProvider` owns `"vi-VN" | "en-US"` and on change must:
   `readOnly`) except the settled toggle — the design provides the disabled
   visuals; the enforcement is the implementer's.
 - **Premium-gated (code 13003):** `<UpgradePrompt/>` (gold treatment, distinct
-  from a generic forbidden error).
+  from a generic forbidden error). `variant` selects the mode:
+  `"cta"` (default) — the gated feature, pass an `action`; `"info"` — an
+  informational panel with **no** navigating action (Premium is granted manually,
+  no self-serve purchase); `"active"` — a subtle check-marked confirmation that
+  the account already has Premium. Meaning never rests on color — the crown/check
+  glyphs + copy carry it.
+- **Tier indicator:** `<TierBadge tier freeLabel premiumLabel/>` — display-only.
+  Premium wears the gold `Badge` + crown; Free is neutral. Compares `tier`
+  case-insensitively; absent/unknown → Free (fail-safe). Labels are passed in
+  (localized by the implementer).
 - **Free limit reached (codes 13000/13001/13002):** `<LimitNotice/>` (calm,
   neutral — existing data is never touched).
 
@@ -109,8 +124,14 @@ The `Toast` layer is presentational. The implementer owns the queue:
 <ToastProvider swipeDirection="right">
   {/* app */}
   {queue.map((t) => (
-    <Toast key={t.id} tone={t.tone} title={t.title} description={t.description}
-           open={t.open} onOpenChange={(o) => !o && dismiss(t.id)} />
+    <Toast
+      key={t.id}
+      tone={t.tone}
+      title={t.title}
+      description={t.description}
+      open={t.open}
+      onOpenChange={(o) => !o && dismiss(t.id)}
+    />
   ))}
   <ToastViewport />
 </ToastProvider>
@@ -138,6 +159,26 @@ When charts are built, follow the `dataviz` skill: pick the form, apply the mark
 specs (thin marks, 2px surface gaps, ≥8px markers), add a hover layer, keep a
 legend for ≥2 series with selective direct labels, and re-run the validator if
 any hue changes.
+
+## App shell & page layout
+
+- **Responsive nav (`AppShell`):** mobile-first. Below **64rem** the inline nav
+  is hidden and a labeled hamburger opens a Radix-Dialog-backed slide-in drawer
+  holding the **same** `nav` nodes (supply them once via the `nav` prop);
+  at/above 64rem the inline nav shows and the button is hidden. Radix gives the
+  focus trap, Escape-to-close, focus restore, and the trigger's
+  `aria-expanded`/`aria-controls`; the drawer closes when any nav entry is
+  activated (pointer or keyboard). Optional props: `mobileMenuLabel`,
+  `mobileMenuCloseLabel`, `navLabel` (all localized by the implementer). The
+  slide honors `prefers-reduced-motion`.
+- **Page scaffolding:** `<PageHeader title description actions/>` gives every
+  routed page one `<h1>` hierarchy (title/description wrap; actions drop below on
+  narrow viewports). `<Stack gap>` is the vertical-rhythm column (token gaps, no
+  collapsing margins) — e.g. the settings page is a `PageHeader` + a `Stack` of
+  `Card`s. `<DescriptionList>` / `<DescriptionRow term>` is the semantic `dl`
+  for read-only detail rows (profile fields, event details): term beside value
+  on wide viewports, stacked when narrow; a value may be a `Skeleton`, `Badge`,
+  or text.
 
 ## Accessibility baseline
 

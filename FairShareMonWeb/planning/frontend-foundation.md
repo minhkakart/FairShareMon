@@ -13,7 +13,7 @@ Concretely, this cycle must lock and stand up:
 1. Routing (library + route structure + protected/role gating).
 2. Server-state / data-fetching layer + the centralized typed **API client** (envelope unwrapping,
    `Authorization` + `X-Time-Zone` + `Accept-Language` injection, `401 → refresh-once → retry → else
-   login`, error-code handling, blob handling for CSV/QR).
+login`, error-code handling, blob handling for CSV/QR).
 3. Auth token storage + session lifecycle.
 4. Minimal non-server client state (auth/session, locale, theme).
 5. Styling substrate + theming/token strategy handed to the ui-designer.
@@ -60,7 +60,7 @@ Concretely, this cycle must lock and stand up:
     Access lifetime **30 min**, refresh **30 days**. Raw tokens returned once — client must persist.
   - `POST /api/v1/auth/refresh` (anon) → `ApiResult<TokenPairResponse>` (returns a plain DTO
     auto-wrapped into the envelope). **Full pair rotation**: the old access+refresh are revoked
-    immediately. **Reuse detection**: presenting a *revoked* refresh token returns `2002` **and
+    immediately. **Reuse detection**: presenting a _revoked_ refresh token returns `2002` **and
     revokes ALL of that user's sessions** — so a failed refresh must hard-clear the session and
     route to login.
   - `POST /api/v1/auth/logout` (Bearer) → success message; revokes the presented token's pair.
@@ -71,7 +71,7 @@ Concretely, this cycle must lock and stand up:
   `Intl.DateTimeFormat().resolvedOptions().timeZone`); the server stores UTC and returns
   offset-aware ISO-8601 to be presented in the viewer's zone.
 - **Localization** (`planning/localization-subsystem.md`): default **vi-VN**, supported `{ vi-VN,
-  en-US }`. Culture resolved from `Accept-Language` header plus a `?culture=` query override. The UI
+en-US }`. Culture resolved from `Accept-Language` header plus a `?culture=` query override. The UI
   locale must drive the header so backend messages return in the active language.
 - **CORS** (`Extensions/CorsExtensions.cs`): `SetIsOriginAllowed` + `AllowCredentials`; configured
   origins via `App:AllowedOrigins` honored everywhere, and **localhost/loopback/private origins are
@@ -138,8 +138,6 @@ Concretely, this cycle must lock and stand up:
 ### OQ1 — Routing library
 
 > **Resolved 2026-07-16 — option (a): React Router v7.**
-
-
 
 - **(a) Recommended — React Router v7 (library / "declarative" mode, `createBrowserRouter`).** Most
   mature and ubiquitous; huge ecosystem; nested layouts + loaders/actions available if wanted.
@@ -337,21 +335,21 @@ Concretely, this cycle must lock and stand up:
 
 - **OQ-D1 — Brand hue = JADE / teal-green.** Chosen to evoke "money / tiền" and
   to avoid the generic AI purple-gradient look; neutrals are a cool gray with a
-  faint jade bias; gold is reserved for Premium. *Confirm the palette direction,
-  or name a preferred brand color and the tokens will be re-derived.*
+  faint jade bias; gold is reserved for Premium. _Confirm the palette direction,
+  or name a preferred brand color and the tokens will be re-derived._
   > **Resolved 2026-07-16 — keep jade/teal** (user checkpoint). Locked as delivered.
 - **OQ-D2 — Typography = system-font stack** (`system-ui` → Segoe UI on Windows,
   excellent Vietnamese coverage), zero web-font dependency. A brand webfont
   (candidate: **Be Vietnam Pro**) can be adopted later by prepending it to one
-  token (`--fs-font-sans`) + shipping the font asset. *Confirm whether to stay
-  system-only (default) or add the webfont (new asset/dependency → approval).*
+  token (`--fs-font-sans`) + shipping the font asset. _Confirm whether to stay
+  system-only (default) or add the webfont (new asset/dependency → approval)._
   > **Resolved 2026-07-16 — system font now** (user checkpoint). Webfont deferred
   > to a later cycle (a documented future improvement, not this cycle's scope).
 - **OQ-D3 — Data-viz palette** adopts the validated documented dataviz palette
   (blue-anchored categorical, blue sequential, blue↔red diverging), validated
   against the app's chart surfaces in both themes. It is intentionally its own
-  plane (not the jade brand hue). *Confirm this is acceptable for the future
-  Stats/Admin dashboards.*
+  plane (not the jade brand hue). _Confirm this is acceptable for the future
+  Stats/Admin dashboards._
   > **Resolved 2026-07-16 — accept the blue-anchored plane** (user checkpoint).
 
 ## Assumptions
@@ -390,7 +388,7 @@ Concretely, this cycle must lock and stand up:
    `@testing-library/jsdom` (`jsdom`), `@testing-library/dom`, `@vitest/coverage-v8`, `msw` (OQ11a),
    `oxlint-tsgolint` (OQ12a), `prettier` (OQ12a).
 3. `package.json` scripts: `"test": "vitest run"`, `"test:watch": "vitest"`, `"format": "prettier
-   --write ."`; keep `dev`/`build`/`lint`/`preview`.
+--write ."`; keep `dev`/`build`/`lint`/`preview`.
 4. `.oxlintrc.json`: add `"options": { "typeAware": true }` (per the README guidance) keeping the
    existing plugins/rules.
 5. `vite.config.ts`: add the dev proxy (OQ9a) — `server.proxy['/api'] → VITE_API_BASE_URL` (dev
@@ -427,7 +425,7 @@ Concretely, this cycle must lock and stand up:
    fallback copy (primary source is `error.message` from the API; this covers network/no-response).
 3. `src/i18n/format.ts` — shared formatters:
    - `formatMoneyVnd(value)` → `Intl.NumberFormat('vi-VN', { style:'currency', currency:'VND',
-     maximumFractionDigits:0 })` (or grouping-only variant) — formats the API value, no arithmetic.
+maximumFractionDigits:0 })` (or grouping-only variant) — formats the API value, no arithmetic.
    - `formatDateTime(iso)` / `formatDate(iso)` → `Intl.DateTimeFormat` in the viewer's zone (the API
      returns offset-aware ISO-8601).
    - `getTimeZone()` → `Intl.DateTimeFormat().resolvedOptions().timeZone` (for `X-Time-Zone`).
@@ -438,7 +436,7 @@ Concretely, this cycle must lock and stand up:
 ### Step 4 — Auth session store
 
 1. `src/lib/auth/session.ts` — a Zustand (vanilla) store (OQ4a): `{ accessToken, accessExpiresAt,
-   refreshToken, refreshExpiresAt, user }`, actions `setSession`, `clearSession`, plus a plain
+refreshToken, refreshExpiresAt, user }`, actions `setSession`, `clearSession`, plus a plain
    getter/subscribe usable **outside React** by the API client. Persistence per **OQ3** (access in
    memory, refresh in `localStorage`, rehydrate on boot).
 2. `src/lib/auth/storage.ts` — read/write the persisted refresh token (per OQ3a) with a single
@@ -532,13 +530,13 @@ Concretely, this cycle must lock and stand up:
 
 ### API endpoints consumed this cycle (verb + path + DTO)
 
-| Screen/hook | Verb + Path | Request DTO | Response (`data`) | Notable codes |
-|---|---|---|---|---|
-| Register | `POST /api/v1/auth/register` | `{ username, password }` | `UserResponse { uuid, username, tier, createdAt }` | `2000` username taken; `1001` field errors |
-| Login | `POST /api/v1/auth/login` | `{ username, password }` | `TokenPairResponse { accessToken, accessTokenExpiresAt, refreshToken, refreshTokenExpiresAt }` | `2001` invalid credentials; `14003` disabled |
-| Refresh (client-internal) | `POST /api/v1/auth/refresh` | `{ refreshToken }` | `TokenPairResponse` | `2002` invalid/revoked → clear session |
-| Logout | `POST /api/v1/auth/logout` | (none, Bearer) | success message | `1002` |
-| Change password | `POST /api/v1/auth/change-password` | `{ currentPassword, newPassword }` | success message | `2003` current wrong; `1001` |
+| Screen/hook               | Verb + Path                         | Request DTO                        | Response (`data`)                                                                              | Notable codes                                |
+| ------------------------- | ----------------------------------- | ---------------------------------- | ---------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| Register                  | `POST /api/v1/auth/register`        | `{ username, password }`           | `UserResponse { uuid, username, tier, createdAt }`                                             | `2000` username taken; `1001` field errors   |
+| Login                     | `POST /api/v1/auth/login`           | `{ username, password }`           | `TokenPairResponse { accessToken, accessTokenExpiresAt, refreshToken, refreshTokenExpiresAt }` | `2001` invalid credentials; `14003` disabled |
+| Refresh (client-internal) | `POST /api/v1/auth/refresh`         | `{ refreshToken }`                 | `TokenPairResponse`                                                                            | `2002` invalid/revoked → clear session       |
+| Logout                    | `POST /api/v1/auth/logout`          | (none, Bearer)                     | success message                                                                                | `1002`                                       |
+| Change password           | `POST /api/v1/auth/change-password` | `{ currentPassword, newPassword }` | success message                                                                                | `2003` current wrong; `1001`                 |
 
 Envelope handling: all go through the centralized client; `data` is unwrapped on success; failures
 throw `ApiError` carrying the numeric `code` — screens branch on `code`, render `error.message`, and
@@ -663,21 +661,21 @@ The user answered all 14 Open Questions at the 2026-07-16 checkpoint, accepting 
 option (a) for every one. These are now binding for the whole SPA; downstream agents build against
 them. Full options/trade-offs are preserved in the annotated Open Questions above.
 
-| OQ | Locked choice |
-|---|---|
-| OQ1 Routing | **React Router v7** (library mode) |
-| OQ2 Server state | **TanStack Query v5** over a thin fetch client |
-| OQ3 Token storage | **Access token in memory + refresh token in `localStorage`**, rehydrate on boot via `/auth/refresh` |
-| OQ4 Client state | **Zustand** (auth/session store) + **React Context** (theme/locale) |
-| OQ5 Styling | **CSS Modules + CSS-custom-property design tokens + Radix primitives** |
-| OQ6 i18n | **react-i18next** (vi-VN default + en-US) |
-| OQ7 Forms | **React Hook Form + Zod** |
-| OQ8 Structure | **Feature-first** (`src/features/<area>/` over shared `src/lib/`, `src/components/ui/`, `src/i18n/`, `src/routes/`) |
-| OQ9 Dev networking | **Vite `/api` dev proxy** (target `http://localhost:5200`) |
-| OQ10 Theme | **Light + dark now**, system default + persisted toggle |
-| OQ11 Test mocking | **MSW** at the network boundary |
-| OQ12 Tooling | **oxlint type-aware rules + Prettier** (formatting only) |
-| OQ13 Cycle scope | **Plumbing + thin auth vertical slice** + app shell + admin guard; other feature screens stubbed |
+| OQ                   | Locked choice                                                                                                                                                                     |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| OQ1 Routing          | **React Router v7** (library mode)                                                                                                                                                |
+| OQ2 Server state     | **TanStack Query v5** over a thin fetch client                                                                                                                                    |
+| OQ3 Token storage    | **Access token in memory + refresh token in `localStorage`**, rehydrate on boot via `/auth/refresh`                                                                               |
+| OQ4 Client state     | **Zustand** (auth/session store) + **React Context** (theme/locale)                                                                                                               |
+| OQ5 Styling          | **CSS Modules + CSS-custom-property design tokens + Radix primitives**                                                                                                            |
+| OQ6 i18n             | **react-i18next** (vi-VN default + en-US)                                                                                                                                         |
+| OQ7 Forms            | **React Hook Form + Zod**                                                                                                                                                         |
+| OQ8 Structure        | **Feature-first** (`src/features/<area>/` over shared `src/lib/`, `src/components/ui/`, `src/i18n/`, `src/routes/`)                                                               |
+| OQ9 Dev networking   | **Vite `/api` dev proxy** (target `http://localhost:5200`)                                                                                                                        |
+| OQ10 Theme           | **Light + dark now**, system default + persisted toggle                                                                                                                           |
+| OQ11 Test mocking    | **MSW** at the network boundary                                                                                                                                                   |
+| OQ12 Tooling         | **oxlint type-aware rules + Prettier** (formatting only)                                                                                                                          |
+| OQ13 Cycle scope     | **Plumbing + thin auth vertical slice** + app shell + admin guard; other feature screens stubbed                                                                                  |
 | OQ14 Dev backend URL | **`http://localhost:5200`** (committed `http` profile; HTTPS on `7114`); no prod deployment yet → **empty `VITE_API_BASE_URL` placeholder** in `.env.example`, set at deploy time |
 
 **Reason:** each recommended option is the well-maintained, idiomatic choice for React 19 + Vite +
@@ -766,10 +764,10 @@ substrate (CSS Modules + CSS-custom-property tokens + Radix), and the web-implem
   `pnpm install` — the pre-existing `node_modules` was a stale symlink tree from
   the pre-monorepo path and blocked all installs.
 - **Living style guide** (`src/styles/StyleGuide.tsx`) showcases every token group
-  + primitive in both themes with real vi-VN copy; temporarily mounted in
-  `App.tsx` (flagged — the implementer replaces it with the router in Step 7/10).
-  Entry switched to `src/styles/global.css`; the scaffold demo `App.css`/
-  `index.css` removed.
+  - primitive in both themes with real vi-VN copy; temporarily mounted in
+    `App.tsx` (flagged — the implementer replaces it with the router in Step 7/10).
+    Entry switched to `src/styles/global.css`; the scaffold demo `App.css`/
+    `index.css` removed.
 - **Gates green:** `tsc -b` clean, `pnpm lint` (oxlint) clean, `pnpm build`
   succeeds. Three non-blocking design decisions raised for user confirmation
   (OQ-D1 brand hue, OQ-D2 typography, OQ-D3 data-viz palette).
@@ -803,7 +801,7 @@ substrate (CSS Modules + CSS-custom-property tokens + Radix), and the web-implem
   centralized typed client (`Authorization` + `X-Time-Zone` + `Accept-Language`
   injection, `ApiResult<T>` unwrap, typed `ApiError` with numeric `code` + camelCase
   `fields`, blob path for CSV/QR); `401 → refresh-once → retry → else clear +
-  redirect`, **de-duped behind one in-flight promise**; `ErrorCodes` TS mirror;
+redirect`, **de-duped behind one in-flight promise**; `ErrorCodes` TS mirror;
   `classifyError`/`resolveErrorMessage`/`applyFieldErrors` helpers.
 - **Step 6–7 (data + routing):** configured `QueryClient` (no 4xx retry; client
   owns refresh). React Router v7 tree: public `/login`·`/register` (redirect if
@@ -839,13 +837,13 @@ substrate (CSS Modules + CSS-custom-property tokens + Radix), and the web-implem
   language (vi ↔ en).
 - **No new Open Questions.** The `UserResponse` role-field gap is already tracked
   in Assumptions; the admin guard is built as a fail-safe seam and flagged in code
-  + CLAUDE.md. **No deviations from the plan.**
+  - CLAUDE.md. **No deviations from the plan.**
 
 ### 2026-07-16 (test — web-test-engineer: automated coverage for the foundation cycle)
 
 - **web-test-engineer** wrote the automated Vitest + RTL + MSW suite over the
   shipped foundation, reusing the implementer's harness unchanged (`src/test/
-  setup.ts` TZ pin `Asia/Ho_Chi_Minh`, `renderWithProviders`, MSW node server).
+setup.ts` TZ pin `Asia/Ho_Chi_Minh`, `renderWithProviders`, MSW node server).
   Network is mocked only at the boundary (MSW) — every test exercises the REAL
   API client/refresh/session code. **11 test files, 81 tests, all green; run
   twice for determinism. `pnpm lint` exit 0 (only the 4 pre-existing
@@ -893,7 +891,7 @@ substrate (CSS Modules + CSS-custom-property tokens + Radix), and the web-implem
   passthrough.
 - **Locale** (`src/i18n/locale.test.tsx`, 3): vi-VN default copy; toggle to
   en-US switches UI copy + `getActiveLocale()` (Accept-Language) + `<html lang>`
-  + persists; toggle back restores.
+  - persists; toggle back restores.
 - **Theme** (`src/theme/theme.test.tsx`, 4): light/dark stamp `[data-theme]` +
   persist; system removes the attribute; radiogroup checked-state a11y.
 - **Extras beyond the plan checklist:** the error-mapping unit suite, the

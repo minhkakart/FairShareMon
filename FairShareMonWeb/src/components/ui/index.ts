@@ -36,6 +36,23 @@ export { ErrorState } from "./Feedback/ErrorState";
 export type { ErrorStateProps } from "./Feedback/ErrorState";
 
 export { UpgradePrompt, LimitNotice } from "./Premium/Premium";
+export type { UpgradePromptVariant } from "./Premium/Premium";
+
+export { TierBadge } from "./TierBadge/TierBadge";
+export type { TierBadgeProps } from "./TierBadge/TierBadge";
+
+export {
+  Stack,
+  PageHeader,
+  DescriptionList,
+  DescriptionRow,
+} from "./Layout/Layout";
+export type {
+  StackProps,
+  StackGap,
+  PageHeaderProps,
+  DescriptionRowProps,
+} from "./Layout/Layout";
 
 export {
   Dialog,

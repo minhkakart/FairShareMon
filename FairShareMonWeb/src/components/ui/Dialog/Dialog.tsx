@@ -21,7 +21,13 @@ export const DialogTrigger = RadixDialog.Trigger;
 export const DialogClose = RadixDialog.Close;
 
 const CloseIcon = (
-  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+  <svg
+    viewBox="0 0 20 20"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    aria-hidden="true"
+  >
     <path d="M5 5l10 10M15 5L5 15" strokeLinecap="round" />
   </svg>
 );
@@ -53,9 +59,13 @@ export function DialogContent({
   return (
     <RadixDialog.Portal>
       <RadixDialog.Overlay className={styles.overlay} />
-      <RadixDialog.Content className={cx(styles.content, styles[size], className)}>
+      <RadixDialog.Content
+        className={cx(styles.content, styles[size], className)}
+      >
         <div className={styles.header}>
-          <RadixDialog.Title className={styles.title}>{title}</RadixDialog.Title>
+          <RadixDialog.Title className={styles.title}>
+            {title}
+          </RadixDialog.Title>
           {showClose ? (
             <RadixDialog.Close className={styles.close} aria-label={closeLabel}>
               {CloseIcon}
@@ -74,6 +84,12 @@ export function DialogContent({
 }
 
 /** Right-aligned action row for a dialog footer. */
-export function DialogFooter({ children, className }: { children: ReactNode; className?: string }) {
+export function DialogFooter({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
   return <div className={cx(styles.footer, className)}>{children}</div>;
 }

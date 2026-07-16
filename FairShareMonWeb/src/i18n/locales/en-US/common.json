@@ -31,7 +31,27 @@
     "stats": "Stats",
     "wallet": "Wallet",
     "admin": "Admin",
-    "changePassword": "Change password"
+    "settings": "Settings",
+    "changePassword": "Change password",
+    "primary": "Primary navigation",
+    "menu": "Menu",
+    "closeMenu": "Close menu"
+  },
+  "home": {
+    "welcome": "Welcome, {{name}}",
+    "welcomeGeneric": "Welcome",
+    "subtitle": "Pick an area to start managing your group's spending.",
+    "open": "Open",
+    "quickLinks": {
+      "members": "Manage the people who share expenses.",
+      "categories": "Organize expenses by category.",
+      "tags": "Tag items for quick filtering and lookup.",
+      "expenses": "Record and track spending entries.",
+      "events": "Group expenses into events.",
+      "stats": "View statistics and settle balances.",
+      "wallet": "Manage wallets and payout details.",
+      "admin": "System administration area."
+    }
   },
   "notFound": {
     "title": "Not found",

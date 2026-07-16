@@ -41,9 +41,19 @@ export type ThemeToggleProps = {
  * owns the preference and is responsible for stamping <html data-theme> and
  * persisting it. `system` means "follow the OS" — remove the attribute.
  */
-export function ThemeToggle({ value, onChange, labels, groupLabel, className }: ThemeToggleProps) {
+export function ThemeToggle({
+  value,
+  onChange,
+  labels,
+  groupLabel,
+  className,
+}: ThemeToggleProps) {
   return (
-    <div className={cx(styles.segmented, className)} role="radiogroup" aria-label={groupLabel}>
+    <div
+      className={cx(styles.segmented, className)}
+      role="radiogroup"
+      aria-label={groupLabel}
+    >
       {ORDER.map((option) => (
         <button
           key={option}
@@ -52,7 +62,10 @@ export function ThemeToggle({ value, onChange, labels, groupLabel, className }: 
           aria-checked={value === option}
           aria-label={labels[option]}
           title={labels[option]}
-          className={cx(styles.segment, value === option && styles.segmentActive)}
+          className={cx(
+            styles.segment,
+            value === option && styles.segmentActive,
+          )}
           onClick={() => onChange(option)}
         >
           <span className={styles.segmentIcon} aria-hidden="true">

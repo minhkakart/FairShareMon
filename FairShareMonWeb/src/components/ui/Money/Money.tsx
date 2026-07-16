@@ -47,13 +47,19 @@ export function Money({
           : "settled"
       : "default");
 
-  const sign = variant === "balance" && amount !== 0 ? (amount > 0 ? "+" : "−") : "";
+  const sign =
+    variant === "balance" && amount !== 0 ? (amount > 0 ? "+" : "−") : "";
   // Presentation only: format the magnitude, prepend the sign glyph.
   const body = format(variant === "balance" ? Math.abs(amount) : amount);
 
   return (
     <span
-      className={cx(styles.money, styles[size], styles[resolvedTone], className)}
+      className={cx(
+        styles.money,
+        styles[size],
+        styles[resolvedTone],
+        className,
+      )}
     >
       {sign ? (
         <span className={styles.sign} aria-hidden="true">

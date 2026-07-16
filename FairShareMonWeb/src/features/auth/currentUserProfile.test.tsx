@@ -1,10 +1,4 @@
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-} from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { act, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Route, Routes } from "react-router-dom";
@@ -177,18 +171,14 @@ describe("useCurrentUserQuery", () => {
     // Flip to authenticated → the one query fires and syncs the store.
     act(() => authedSession("demo"));
     await waitFor(() => expect(count).toBe(1));
-    await waitFor(() =>
-      expect(getSession().profileStatus).toBe("resolved"),
-    );
+    await waitFor(() => expect(getSession().profileStatus).toBe("resolved"));
   });
 
   it("UseCurrentUserQuery_Success_SyncsUuidTierRoleIntoStoreAndResolves", async () => {
     authedSession("demo");
     renderWithProviders(<HookProbe />);
 
-    await waitFor(() =>
-      expect(getSession().profileStatus).toBe("resolved"),
-    );
+    await waitFor(() => expect(getSession().profileStatus).toBe("resolved"));
     expect(getSession().user).toEqual(DEMO_PROFILE);
   });
 
@@ -209,9 +199,7 @@ describe("useCurrentUserQuery", () => {
       </>,
     );
 
-    await waitFor(() =>
-      expect(getSession().profileStatus).toBe("resolved"),
-    );
+    await waitFor(() => expect(getSession().profileStatus).toBe("resolved"));
     // De-duped behind one query key — two consumers, one round-trip.
     expect(count).toBe(1);
   });
@@ -375,10 +363,9 @@ describe("degraded profile (non-401)", () => {
     authedSession("demo");
     renderWithProviders(<HookProbe />);
 
-    await waitFor(
-      () => expect(getSession().profileStatus).toBe("error"),
-      { timeout: 4000 },
-    );
+    await waitFor(() => expect(getSession().profileStatus).toBe("error"), {
+      timeout: 4000,
+    });
     // Genuine network errors auto-retry exactly once (1 + 1 retry = 2 attempts).
     expect(count).toBe(2);
     expect(getSession().status).toBe("authenticated");
@@ -415,9 +402,7 @@ describe("401 profile fetch", () => {
 
     renderWithProviders(<HookProbe />);
 
-    await waitFor(() =>
-      expect(getSession().profileStatus).toBe("resolved"),
-    );
+    await waitFor(() => expect(getSession().profileStatus).toBe("resolved"));
     // The 401 rode the client's refresh→retry: token rotated, profile resolved —
     // NOT the degraded (error) path.
     expect(getSession().accessToken).toBe("fresh");
@@ -473,9 +458,7 @@ describe("freshness + invalidation", () => {
 
     // Remount against the SAME client: staleTime Infinity → served from cache.
     renderWithProviders(<HookProbe />, { queryClient });
-    await waitFor(() =>
-      expect(getSession().profileStatus).toBe("resolved"),
-    );
+    await waitFor(() => expect(getSession().profileStatus).toBe("resolved"));
     expect(count).toBe(1);
   });
 

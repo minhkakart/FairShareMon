@@ -24,7 +24,12 @@ export type BadgeProps = {
   className?: string;
 };
 
-export function Badge({ tone = "neutral", children, icon, className }: BadgeProps) {
+export function Badge({
+  tone = "neutral",
+  children,
+  icon,
+  className,
+}: BadgeProps) {
   return (
     <span className={cx(styles.badge, styles[tone], className)}>
       {icon ? (

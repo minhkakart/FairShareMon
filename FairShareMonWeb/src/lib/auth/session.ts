@@ -120,7 +120,8 @@ export const sessionStore = createStore<SessionState>((set) => ({
     });
   },
 
-  markUnauthenticated: () => set({ status: "unauthenticated", profileStatus: "idle" }),
+  markUnauthenticated: () =>
+    set({ status: "unauthenticated", profileStatus: "idle" }),
 }));
 
 /** Non-React accessors for the API client. */

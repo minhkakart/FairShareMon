@@ -31,7 +31,7 @@ Grounded in the live SPA code (read 2026-07-16):
 
 - **Session store** (`src/lib/auth/session.ts`): the vanilla Zustand store is the
   source of truth the guards + shell read. `SessionUser = { username, uuid?, tier?,
-  role?, createdAt? }`. It already exposes `setSession(tokens, user?)`,
+role?, createdAt? }`. It already exposes `setSession(tokens, user?)`,
   **`setUser(user)`** (attach/replace the user payload without touching tokens),
   `clearSession()`, and `markUnauthenticated()`. `status` is `idle` (boot, pre-rehydrate)
   → `authenticated` | `unauthenticated`.
@@ -48,12 +48,12 @@ Grounded in the live SPA code (read 2026-07-16):
   `user?.username ?? t("common:account")`.
 - **API client** (`src/lib/api/client.ts`): `api.get<T>(path)` unwraps `ApiResult<T>`;
   a `401` on an authenticated request triggers the de-duped `401 → refresh-once →
-  retry → else clear + redirect` flow already. `/auth/me` is a guarded GET, so it
+retry → else clear + redirect` flow already. `/auth/me` is a guarded GET, so it
   rides that flow for free.
 - **Auth API surface** (`src/features/auth/api/authApi.ts`): `register`/`login`
   (anonymous), `logout`, `changePassword` — **no `me` yet**.
 - **Auth hooks** (`src/features/auth/hooks/useAuth.ts`): `useLogin/useRegister/
-  useLogout/useChangePassword` mutations + `useCurrentUser()`/`useSessionStatus()`/
+useLogout/useChangePassword` mutations + `useCurrentUser()`/`useSessionStatus()`/
   `useIsAuthenticated()` selectors over the store.
 - **DTO type** (`src/lib/api/types/auth.ts`): `UserResponse` already declares an
   optional `role?: string` (added as the seam placeholder). The backend now populates
@@ -64,7 +64,7 @@ Grounded in the live SPA code (read 2026-07-16):
   `getSession().clearSession()`. **Change-password** clears the session and forces
   re-login. Both naturally drop any cached current-user.
 - **Backend contract** (`expose-current-user-profile-and-role.md`): `GET
-  api/v1/auth/me` guarded → `ApiResult<UserResponse>`; anonymous/revoked → **401
+api/v1/auth/me` guarded → `ApiResult<UserResponse>`; anonymous/revoked → **401
   `1002`**; live tier/role. Login/refresh `TokenPairResponse` contracts untouched.
 
 ## Requirements
@@ -222,10 +222,10 @@ busts the token cache so the next `/auth/refresh` reads live values.
 
 1. `src/features/auth/hooks/useCurrentUserQuery.ts` (new):
    - `useQuery({ queryKey: ["auth","me"], queryFn: authApi.me, enabled: status ===
-     "authenticated", staleTime: Infinity, retry: (n, e) => isApiError(e) && e.isNetwork
-     && n < 1 })` — reads `status` via `useSessionStatus()`.
+"authenticated", staleTime: Infinity, retry: (n, e) => isApiError(e) && e.isNetwork
+&& n < 1 })` — reads `status` via `useSessionStatus()`.
    - Sync into the store on success: an effect writes `getSession().setUser({ uuid,
-     username, tier, role, createdAt })` when `data` changes. (Do not depend on the
+username, tier, role, createdAt })` when `data` changes. (Do not depend on the
      manual-memo the React Compiler covers.)
    - On non-401 error (OQ3a): leave the session authenticated; the store `user` stays
      `null` (degraded). The query's `isError`/`isSuccess` provide the "settled" signal
@@ -254,14 +254,14 @@ busts the token cache so the next `/auth/refresh` reads live values.
      `<BootSplash />` (reuse the existing splash);
    - `role === "ADMIN"` → `<Outlet />`;
    - otherwise → `<Forbidden />`.
-   Source the "settled/pending" signal from `useCurrentUserQuery()`'s status (or a
-   `profileStatus` selector) so a failed `/auth/me` (OQ3a) settles into deny, never an
-   infinite splash. Remove the fail-safe-seam comment (R8).
+     Source the "settled/pending" signal from `useCurrentUserQuery()`'s status (or a
+     `profileStatus` selector) so a failed `/auth/me` (OQ3a) settles into deny, never an
+     infinite splash. Remove the fail-safe-seam comment (R8).
 
 ### Step 5 — Account label + degraded copy (R3, R5)
 
 1. `src/routes/AppShellLayout.tsx` — the label already reads `user?.username ??
-   t("common:account")`; once `/auth/me` populates the store this shows the real
+t("common:account")`; once `/auth/me` populates the store this shows the real
    username on reload with no code change. (Optional: show a subtle skeleton/`…` while
    the profile is pending — minor, ui-designer's `Skeleton` primitive is available.)
 2. i18n: no new key strictly required (the existing `common:account` fallback covers the
@@ -286,8 +286,8 @@ busts the token cache so the next `/auth/refresh` reads live values.
 
 ### API endpoints consumed this cycle (verb + path + DTO)
 
-| Screen/hook | Verb + Path | Request | Response (`data`) | Notable codes |
-|---|---|---|---|---|
+| Screen/hook                                         | Verb + Path           | Request        | Response (`data`)                                        | Notable codes                                             |
+| --------------------------------------------------- | --------------------- | -------------- | -------------------------------------------------------- | --------------------------------------------------------- |
 | `useCurrentUserQuery` (mounted in `ProtectedRoute`) | `GET /api/v1/auth/me` | (none, Bearer) | `UserResponse { uuid, username, tier, role, createdAt }` | `1002` (→ client refresh flow); non-401 → degraded (OQ3a) |
 
 Envelope handling: unwrapped via `api.get`; `401` rides the client's `refresh-once →
@@ -364,15 +364,18 @@ None — this cycle adds no forms (read-only profile fetch).
 ## Decision Log
 
 ### Decision
+
 This cycle is the frontend follow-up the backend doc
 (`expose-current-user-profile-and-role.md`, Future Improvements) explicitly hands to the
 SPA team: wire `/auth/me`, activate `AdminRoute`, fix the reload account label.
 
 ### Reason
+
 The backend closed the role/current-user gap (committed on origin/master); the remaining
 work — consuming it, guard activation, label fix, edge-path handling — is SPA-owned.
 
 ### Decision (confirmed 2026-07-16)
+
 All 5 Open Questions were confirmed by the user at the **recommended** option: OQ1a
 (TanStack Query hook synced to the store), OQ2a (no boot gating), OQ3a
 (degraded-authenticated on non-401), OQ4a (once per session/boot + manual-invalidation
@@ -416,14 +419,14 @@ the confirmed options and was implemented as written.
   gating the `<Outlet/>`). Login/boot both flip the store to `authenticated`, enabling the
   one query — no imperative fetch added to `LoginPage`/`useSessionBootstrap`.
 - **Store** (`src/lib/auth/session.ts`) — added `profileStatus: "idle"|"pending"|
-  "resolved"|"error"`; `setSession` → `pending`, `setUser` → `resolved`, new
+"resolved"|"error"`; `setSession` → `pending`, `setUser` → `resolved`, new
   `markProfileUnavailable` → `error`, `clearSession`/`markUnauthenticated` → `idle`. Guards
   read the store (canonical), so there is no query→store render gap.
 - **R4/R6/OQ5a** — `src/routes/AdminRoute.tsx`: splash while `authenticated` &&
   `profileStatus` in {`idle`,`pending`}; admit `role === "ADMIN"`; deny otherwise. A failed
   `/auth/me` settles to `error` → deny (no infinite splash). Fail-safe preserved.
 - **R3/R5** — `AppShellLayout` account label unchanged (reads `user?.username ??
-  common:account`): now shows the real username on reload; falls back neutrally when
+common:account`): now shows the real username on reload; falls back neutrally when
   degraded. No new i18n key added (degraded state reuses `common:account`, per the plan's
   minimal option).
 - **R8** — seam comments removed from `types/auth.ts`, `session.ts` (`SessionUser` doc),
@@ -435,7 +438,7 @@ the confirmed options and was implemented as written.
   Redis up) confirmed the real contract via curl: anonymous `/auth/me` → 401 `1002`; admin
   login → `/auth/me` `{...role:"ADMIN"}`; registered user → `role:"USER"` (camelCase
   envelope). A throwaway jsdom+RTL harness drove the real `ProtectedRoute →
-  useCurrentUserQuery → AdminRoute → AppShellLayout` wiring through MSW (all 5 scenarios
+useCurrentUserQuery → AdminRoute → AppShellLayout` wiring through MSW (all 5 scenarios
   green: ADMIN admitted after resolve with real label; USER denied; boot-rehydrate restores
   the label — nit #3 fixed; non-401 failure stays authenticated-degraded and denies admin;
   degraded session still renders non-admin surfaces), then removed. No real-browser drive
@@ -531,6 +534,6 @@ the degraded non-401 path was exercised via MSW (the live backend does not 500 o
   reflects immediately without waiting for the next boot/refresh (OQ4 seam).
 - If a self-service "your account" surface grows (display name, preferences), promote the
   current-user query into a small `features/account` area and consider a `PATCH
-  /users/me` (noted as a backend future improvement).
+/users/me` (noted as a backend future improvement).
 - Surface `tier` (Free/Premium) in the shell via the ui-designer's `Badge`/`Premium`
   primitives once the tier/upgrade UX cycle begins.

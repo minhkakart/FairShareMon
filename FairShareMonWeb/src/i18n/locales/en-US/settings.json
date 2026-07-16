@@ -1,0 +1,35 @@
+{
+  "title": "Settings",
+  "subtitle": "Manage your account, preferences, and security.",
+  "profile": {
+    "title": "Profile",
+    "username": "Username",
+    "tier": "Tier",
+    "role": "Role",
+    "roleUser": "User",
+    "roleAdmin": "Administrator",
+    "memberSince": "Member since",
+    "unavailable": "Could not load your profile. Some details may be out of date."
+  },
+  "preferences": {
+    "title": "Preferences",
+    "theme": "Theme",
+    "language": "Language"
+  },
+  "security": {
+    "title": "Security",
+    "changePassword": "Change password",
+    "changePasswordHint": "After changing your password, all devices must sign in again."
+  },
+  "tier": {
+    "title": "Account tier",
+    "free": "Free",
+    "premium": "Premium",
+    "currentIsPremium": "You are on Premium",
+    "currentIsPremiumInfo": "Thanks for using Premium. You have every feature unlocked.",
+    "upgradeTitle": "Upgrade to Premium",
+    "upgradeInfo": "Premium unlocks wallets, payout QR codes, and extended exports. There is no self-serve purchase — upgrades are granted manually by an administrator, so please contact the operator.",
+    "premiumPerks": "Premium adds: wallets and payout QR codes, higher free-tier limits, and extended data exports."
+  },
+  "logout": "Log out"
+}

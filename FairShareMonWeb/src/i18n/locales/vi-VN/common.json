@@ -31,7 +31,27 @@
     "stats": "Thống kê",
     "wallet": "Ví",
     "admin": "Quản trị",
-    "changePassword": "Đổi mật khẩu"
+    "settings": "Cài đặt",
+    "changePassword": "Đổi mật khẩu",
+    "primary": "Điều hướng chính",
+    "menu": "Menu",
+    "closeMenu": "Đóng menu"
+  },
+  "home": {
+    "welcome": "Chào {{name}}",
+    "welcomeGeneric": "Chào mừng bạn",
+    "subtitle": "Chọn một khu vực để bắt đầu quản lý chi tiêu nhóm.",
+    "open": "Mở",
+    "quickLinks": {
+      "members": "Quản lý thành viên tham gia chia sẻ chi tiêu.",
+      "categories": "Sắp xếp chi tiêu theo danh mục.",
+      "tags": "Gắn nhãn để lọc và tra cứu nhanh.",
+      "expenses": "Ghi và theo dõi các phiếu chi tiêu.",
+      "events": "Nhóm chi tiêu theo từng đợt.",
+      "stats": "Xem thống kê và cân đối công nợ.",
+      "wallet": "Quản lý ví và thông tin nhận tiền.",
+      "admin": "Khu vực quản trị hệ thống."
+    }
   },
   "notFound": {
     "title": "Không tìm thấy",

@@ -1,0 +1,35 @@
+{
+  "title": "Cài đặt",
+  "subtitle": "Quản lý tài khoản, tuỳ chọn và bảo mật.",
+  "profile": {
+    "title": "Hồ sơ",
+    "username": "Tên đăng nhập",
+    "tier": "Hạng",
+    "role": "Vai trò",
+    "roleUser": "Người dùng",
+    "roleAdmin": "Quản trị viên",
+    "memberSince": "Thành viên từ",
+    "unavailable": "Không tải được hồ sơ. Một số thông tin có thể chưa cập nhật."
+  },
+  "preferences": {
+    "title": "Tuỳ chọn",
+    "theme": "Giao diện",
+    "language": "Ngôn ngữ"
+  },
+  "security": {
+    "title": "Bảo mật",
+    "changePassword": "Đổi mật khẩu",
+    "changePasswordHint": "Sau khi đổi mật khẩu, mọi thiết bị sẽ phải đăng nhập lại."
+  },
+  "tier": {
+    "title": "Hạng tài khoản",
+    "free": "Miễn phí",
+    "premium": "Premium",
+    "currentIsPremium": "Bạn đang dùng Premium",
+    "currentIsPremiumInfo": "Cảm ơn bạn đã sử dụng Premium. Bạn đang mở khoá toàn bộ tính năng.",
+    "upgradeTitle": "Nâng lên Premium",
+    "upgradeInfo": "Premium mở khoá ví, mã QR nhận tiền và các tính năng xuất dữ liệu mở rộng. Hiện chưa có mua tự động — việc nâng hạng do quản trị viên cấp thủ công, vui lòng liên hệ đơn vị vận hành.",
+    "premiumPerks": "Premium bổ sung: ví và mã QR nhận tiền, nâng hạn mức miễn phí và xuất dữ liệu mở rộng."
+  },
+  "logout": "Đăng xuất"
+}

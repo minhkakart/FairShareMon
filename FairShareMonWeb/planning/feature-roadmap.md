@@ -288,14 +288,14 @@ are DONE. The roadmap below covers only the remaining **feature screens**.
 1. **A light shell first (M1)** so there is real navigation to hang every subsequent screen on, and a
    place for the tier badge/settings — but deliberately minimal, deferring the data-rich home to the
    Stats milestone.
-2. **Reference data before the core:** members (M2) and categories/tags (M3) are *referenced by*
+2. **Reference data before the core:** members (M2) and categories/tags (M3) are _referenced by_
    expenses (payer, shares, category, tags) and by the expense-list filters, so they must be
    creatable/selectable before the expense forms exist. This mirrors the backend's own M3→M4→M5
    ordering.
 3. **Expenses & Shares (M4) as the core** — the largest surface; everything above feeds it and
    everything below consumes it. It also introduces the closed-event-immutability write-guard pattern
    (initially inert until events exist).
-4. **Events (M5) after expenses** because events group and lock *existing* expenses, the assign/remove
+4. **Events (M5) after expenses** because events group and lock _existing_ expenses, the assign/remove
    routes live on the expense, and the balance is computed from expense shares.
 5. **Stats (M6) after the core + events** so the numbers/charts have populated data; it is the first
    `dataviz` consumer and completes the home dashboard.
@@ -321,11 +321,10 @@ are DONE. The roadmap below covers only the remaining **feature screens**.
 
 > **Resolved 2026-07-17 — option (a): complete each area fully, in dependency order (M2 → M8).**
 
-
 - **(a) Recommended — complete each feature area fully within its milestone, in the dependency order
   above (M2 → M8).** Matches the backend team's proven cadence; each checkpoint delivers a finished,
   reviewable area; the foundation already proved the end-to-end path, so a skeleton adds little.
-  Trade-off: the first fully usable *ledger loop* (add member → add expense → close event → see
+  Trade-off: the first fully usable _ledger loop_ (add member → add expense → close event → see
   balance) only lands after M5.
 - (b) Build a thin **walking skeleton** of the core ledger first (minimal members → categories →
   expense-create → event → balance, happy-path only), then iterate depth area-by-area. Trade-off: a
@@ -423,10 +422,12 @@ are DONE. The roadmap below covers only the remaining **feature screens**.
 ## Decision Log
 
 ### Decision
+
 Adopt a dependency-ordered milestone roadmap, mirroring the backend team's roadmap shape and cadence
 (one cycle + checkpoint per item).
 
 ### Reason
+
 The API is feature-complete and the foundation is shipped, so the remaining work is purely feature
 screens. Reference data (members, categories, tags) must precede the expense forms/filters that
 consume them; events lock existing expenses; stats/QR consume expense/event data — so the order is
@@ -434,24 +435,26 @@ dependency-driven, not preference-driven, except for the scoping/sequencing call
 Questions.
 
 ### Alternatives Considered
+
 - A walking-skeleton-first strategy (OQ1b) — rejected; risks double-handling every screen.
 - Front-loading Admin (OQ3b) — rejected; delays the member-facing product.
 - A standalone Tiers milestone (OQ2b) — rejected; folded into the gated features.
 
 ### Decision — roadmap locked at the 2026-07-17 checkpoint (all 6 OQs at the recommended option)
+
 The user answered all 6 Open Questions at the 2026-07-17 checkpoint, accepting the recommended option
 (a) for every one. The locked 8-milestone roadmap is:
 
-| M | Milestone | dataviz | ui-designer |
-|---|---|---|---|
-| M1 | App shell, navigation & account settings (incl. tier-status/upgrade surface) | no | yes |
-| M2 | Members (incl. `13000` member-limit notice) | no | yes |
-| M3 | Categories & Tags (combined — OQ6) | no | yes |
-| M4 | Expenses & Shares (core; incl. `13002` expense-limit notice) | no | yes |
-| M5 | Events (incl. `13001` open-event-limit notice) | no | yes |
-| M6 | Stats & Home dashboard (rich home — OQ4) | **yes** | yes |
-| M7 | Wallet & QR (incl. `13003` Premium read-vs-mutation gate) | no | yes |
-| M8 | Admin suite (last — OQ3) | **yes** | yes |
+| M   | Milestone                                                                    | dataviz | ui-designer |
+| --- | ---------------------------------------------------------------------------- | ------- | ----------- |
+| M1  | App shell, navigation & account settings (incl. tier-status/upgrade surface) | no      | yes         |
+| M2  | Members (incl. `13000` member-limit notice)                                  | no      | yes         |
+| M3  | Categories & Tags (combined — OQ6)                                           | no      | yes         |
+| M4  | Expenses & Shares (core; incl. `13002` expense-limit notice)                 | no      | yes         |
+| M5  | Events (incl. `13001` open-event-limit notice)                               | no      | yes         |
+| M6  | Stats & Home dashboard (rich home — OQ4)                                     | **yes** | yes         |
+| M7  | Wallet & QR (incl. `13003` Premium read-vs-mutation gate)                    | no      | yes         |
+| M8  | Admin suite (last — OQ3)                                                     | **yes** | yes         |
 
 **Consequence:** the standalone Tiers/Premium milestone is **dissolved** (OQ2 = a); its affordances
 are folded into M1/M2/M4/M5/M7, with an end-of-work consistency sweep (a review, not a milestone).

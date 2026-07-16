@@ -52,8 +52,12 @@
   white-space: nowrap;
 }
 
+/* Inline nav — hidden on mobile-first; the hamburger drives navigation there.
+   The collapse breakpoint is 64rem (1024px): above it the ~9 primary entries
+   plus the trailing actions have room to sit inline; below it they move into
+   the slide-in drawer. Keep this value in sync with `.menuButton`. */
 .nav {
-  display: flex;
+  display: none;
   align-items: center;
   gap: var(--fs-space-1);
   flex: 1;
@@ -63,6 +67,44 @@
 }
 .nav::-webkit-scrollbar {
   display: none;
+}
+
+/* Hamburger — mobile-first (shown), hidden once the inline nav takes over. */
+.menuButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 1px solid var(--fs-color-border);
+  border-radius: var(--fs-radius-md);
+  background-color: var(--fs-color-surface);
+  color: var(--fs-color-text-secondary);
+  cursor: pointer;
+  transition:
+    background-color var(--fs-duration-fast) var(--fs-ease-standard),
+    color var(--fs-duration-fast) var(--fs-ease-standard);
+}
+.menuButton:hover {
+  background-color: var(--fs-color-surface-hover);
+  color: var(--fs-color-text);
+}
+.menuButtonIcon {
+  display: inline-flex;
+}
+.menuButtonIcon :global(svg) {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+@media (min-width: 64rem) {
+  .nav {
+    display: flex;
+  }
+  .menuButton {
+    display: none;
+  }
 }
 
 .navItem {
@@ -105,6 +147,111 @@
   max-width: var(--fs-layout-max);
   margin-inline: auto;
   padding: var(--fs-space-6) var(--fs-space-4) var(--fs-space-12);
+}
+
+/* Mobile nav drawer (Radix Dialog-backed) ================================= */
+.menuOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--fs-z-overlay);
+  background-color: var(--fs-color-overlay);
+  animation: fs-menu-overlay-in var(--fs-duration-fast) var(--fs-ease-standard);
+}
+
+.menuPanel {
+  position: fixed;
+  z-index: var(--fs-z-modal);
+  top: 0;
+  left: 0;
+  height: 100dvh;
+  width: min(20rem, 86vw);
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-2);
+  padding: var(--fs-space-4);
+  background-color: var(--fs-color-surface-raised);
+  border-right: 1px solid var(--fs-color-border-subtle);
+  box-shadow: var(--fs-shadow-lg);
+  animation: fs-menu-panel-in var(--fs-duration-normal)
+    var(--fs-ease-decelerate);
+}
+
+.menuHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--fs-space-3);
+  padding-bottom: var(--fs-space-2);
+  margin-bottom: var(--fs-space-1);
+  border-bottom: 1px solid var(--fs-color-border-subtle);
+}
+
+.menuTitle {
+  font-size: var(--fs-text-sm);
+  font-weight: var(--fs-weight-semibold);
+  letter-spacing: var(--fs-tracking-wide);
+  text-transform: uppercase;
+  color: var(--fs-color-text-secondary);
+  margin: 0;
+}
+
+.menuClose {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  border-radius: var(--fs-radius-md);
+  background: transparent;
+  color: var(--fs-color-text-secondary);
+  cursor: pointer;
+  transition: background-color var(--fs-duration-fast) var(--fs-ease-standard);
+}
+.menuClose:hover {
+  background-color: var(--fs-color-surface-hover);
+  color: var(--fs-color-text);
+}
+
+.menuNav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-1);
+  overflow-y: auto;
+}
+/* The implementer's NavLink anchors and the NavItem inside them become
+   full-width, roomy rows in the drawer (larger touch targets, easier to hit).
+   The active/aria-current styling from .navItemActive carries over unchanged. */
+.menuNav :global(a) {
+  display: block;
+  width: 100%;
+  text-decoration: none;
+}
+.menuNav .navItem {
+  width: 100%;
+  padding: var(--fs-space-3) var(--fs-space-4);
+  font-size: var(--fs-text-md);
+  border-radius: var(--fs-radius-md);
+}
+
+@keyframes fs-menu-overlay-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes fs-menu-panel-in {
+  from {
+    transform: translateX(-100%);
+  }
+}
+/* Reduced motion — neutralize the slide/fade (the global net also covers this;
+   this is the explicit, component-level guarantee). */
+@media (prefers-reduced-motion: reduce) {
+  .menuOverlay,
+  .menuPanel {
+    animation: none;
+  }
 }
 
 /* Auth layout ============================================================= */

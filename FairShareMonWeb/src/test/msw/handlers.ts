@@ -58,8 +58,24 @@ const users = new Map<string, string>([
 // username → profile served by /auth/me. A user without a profile (e.g. `degraded`)
 // makes /auth/me fail with a non-401 server error.
 const profiles = new Map<string, Profile>([
-  ["demo", { uuid: "uuid-demo", tier: "FREE", role: "USER", createdAt: "2026-01-01T00:00:00+00:00" }],
-  ["admin", { uuid: "uuid-admin", tier: "PREMIUM", role: "ADMIN", createdAt: "2026-01-01T00:00:00+00:00" }],
+  [
+    "demo",
+    {
+      uuid: "uuid-demo",
+      tier: "FREE",
+      role: "USER",
+      createdAt: "2026-01-01T00:00:00+00:00",
+    },
+  ],
+  [
+    "admin",
+    {
+      uuid: "uuid-admin",
+      tier: "PREMIUM",
+      role: "ADMIN",
+      createdAt: "2026-01-01T00:00:00+00:00",
+    },
+  ],
 ]);
 const validRefreshTokens = new Set<string>();
 let lastLoggedInUser: string | null = null;
@@ -104,7 +120,9 @@ export const handlers = [
   }),
 
   http.get("*/api/v1/auth/me", ({ request }) => {
-    const username = usernameFromAuthHeader(request.headers.get("Authorization"));
+    const username = usernameFromAuthHeader(
+      request.headers.get("Authorization"),
+    );
     if (!username) {
       return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
     }

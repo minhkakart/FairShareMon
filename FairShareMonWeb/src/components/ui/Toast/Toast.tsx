@@ -59,7 +59,13 @@ export function Toast({
         </RadixToast.Action>
       ) : null}
       <RadixToast.Close className={styles.close} aria-label={closeLabel}>
-        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+        <svg
+          viewBox="0 0 20 20"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          aria-hidden="true"
+        >
           <path d="M5 5l10 10M15 5L5 15" strokeLinecap="round" />
         </svg>
       </RadixToast.Close>

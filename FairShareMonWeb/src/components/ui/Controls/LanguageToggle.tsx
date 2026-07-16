@@ -21,9 +21,19 @@ export type LanguageToggleProps = {
  * and must sync it to i18next AND the API client's Accept-Language header, and
  * update <html lang>. The design layer only renders the control.
  */
-export function LanguageToggle({ value, onChange, labels, groupLabel, className }: LanguageToggleProps) {
+export function LanguageToggle({
+  value,
+  onChange,
+  labels,
+  groupLabel,
+  className,
+}: LanguageToggleProps) {
   return (
-    <div className={cx(styles.segmented, className)} role="radiogroup" aria-label={groupLabel}>
+    <div
+      className={cx(styles.segmented, className)}
+      role="radiogroup"
+      aria-label={groupLabel}
+    >
       {ORDER.map((option) => (
         <button
           key={option}
@@ -32,7 +42,11 @@ export function LanguageToggle({ value, onChange, labels, groupLabel, className 
           aria-checked={value === option}
           aria-label={labels[option]}
           title={labels[option]}
-          className={cx(styles.segment, styles.segmentText, value === option && styles.segmentActive)}
+          className={cx(
+            styles.segment,
+            styles.segmentText,
+            value === option && styles.segmentActive,
+          )}
           onClick={() => onChange(option)}
         >
           {SHORT[option]}

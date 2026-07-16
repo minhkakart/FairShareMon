@@ -110,7 +110,9 @@
   --fs-color-bg: var(--fs-gray-50); /* app plane / page background */
   --fs-color-surface: var(--fs-gray-0); /* cards, panels */
   --fs-color-surface-raised: var(--fs-gray-0); /* dialogs, popovers, menus */
-  --fs-color-surface-sunken: var(--fs-gray-25); /* inputs, wells, table stripes */
+  --fs-color-surface-sunken: var(
+    --fs-gray-25
+  ); /* inputs, wells, table stripes */
   --fs-color-surface-hover: var(--fs-gray-50);
   --fs-color-overlay: rgba(19, 24, 22, 0.45); /* dialog backdrop */
 
@@ -246,9 +248,11 @@
    * To adopt a brand webfont later, prepend it here (e.g. "Be Vietnam Pro") —
    * every surface follows because it reads this one token.
    */
-  --fs-font-sans: "Be Vietnam Pro", "Inter", system-ui, -apple-system,
-    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --fs-font-mono: ui-monospace, "SFMono-Regular", "Cascadia Mono", Consolas,
+  --fs-font-sans:
+    "Be Vietnam Pro", "Inter", system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --fs-font-mono:
+    ui-monospace, "SFMono-Regular", "Cascadia Mono", Consolas,
     "Liberation Mono", monospace;
 
   --fs-text-xs: 0.75rem; /*  12 — badges, legal, table meta */
@@ -274,12 +278,12 @@
 
   /* == SHADOWS (cool-tinted, restrained) ==================================== */
   --fs-shadow-xs: 0 1px 2px rgba(19, 24, 22, 0.06);
-  --fs-shadow-sm: 0 1px 3px rgba(19, 24, 22, 0.08),
-    0 1px 2px rgba(19, 24, 22, 0.06);
-  --fs-shadow-md: 0 4px 12px rgba(19, 24, 22, 0.1),
-    0 2px 4px rgba(19, 24, 22, 0.06);
-  --fs-shadow-lg: 0 12px 28px rgba(19, 24, 22, 0.14),
-    0 4px 8px rgba(19, 24, 22, 0.08);
+  --fs-shadow-sm:
+    0 1px 3px rgba(19, 24, 22, 0.08), 0 1px 2px rgba(19, 24, 22, 0.06);
+  --fs-shadow-md:
+    0 4px 12px rgba(19, 24, 22, 0.1), 0 2px 4px rgba(19, 24, 22, 0.06);
+  --fs-shadow-lg:
+    0 12px 28px rgba(19, 24, 22, 0.14), 0 4px 8px rgba(19, 24, 22, 0.08);
   --fs-shadow-focus: 0 0 0 3px rgba(20, 160, 116, 0.35); /* jade-500 @ 35% */
 
   /* == MOTION =============================================================== */
@@ -411,8 +415,10 @@
 
     --fs-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
     --fs-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
-    --fs-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.55), 0 2px 4px rgba(0, 0, 0, 0.4);
-    --fs-shadow-lg: 0 12px 28px rgba(0, 0, 0, 0.6), 0 4px 8px rgba(0, 0, 0, 0.45);
+    --fs-shadow-md:
+      0 4px 12px rgba(0, 0, 0, 0.55), 0 2px 4px rgba(0, 0, 0, 0.4);
+    --fs-shadow-lg:
+      0 12px 28px rgba(0, 0, 0, 0.6), 0 4px 8px rgba(0, 0, 0, 0.45);
     --fs-shadow-focus: 0 0 0 3px rgba(56, 189, 140, 0.45);
   }
 }

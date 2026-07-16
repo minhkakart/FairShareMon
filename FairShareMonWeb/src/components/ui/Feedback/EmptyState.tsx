@@ -13,7 +13,13 @@ export type EmptyStateProps = {
 };
 
 /** Shown when a list/section has no data yet — invites the first action. */
-export function EmptyState({ icon, title, description, action, className }: EmptyStateProps) {
+export function EmptyState({
+  icon,
+  title,
+  description,
+  action,
+  className,
+}: EmptyStateProps) {
   return (
     <div className={cx(styles.state, className)}>
       {icon ? (

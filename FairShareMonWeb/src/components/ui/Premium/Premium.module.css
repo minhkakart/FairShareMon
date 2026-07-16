@@ -5,12 +5,20 @@
   padding: var(--fs-space-5);
   border: 1px solid var(--fs-color-premium-border);
   border-radius: var(--fs-radius-lg);
-  background:
-    linear-gradient(
-      180deg,
-      var(--fs-color-premium-surface),
-      var(--fs-color-surface)
-    );
+  background-color: var(--fs-color-premium-surface);
+}
+/* cta — the gated-feature call to action keeps the richer gradient. */
+.cta {
+  background: linear-gradient(
+    180deg,
+    var(--fs-color-premium-surface),
+    var(--fs-color-surface)
+  );
+}
+/* info / active — flat, calmer gold; they inform rather than invite a click. */
+.info,
+.active {
+  background-color: var(--fs-color-premium-surface);
 }
 .compact {
   padding: var(--fs-space-3) var(--fs-space-4);
@@ -18,6 +26,7 @@
 }
 
 .crown {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -31,6 +40,26 @@
 .crown :global(svg) {
   width: 1.35rem;
   height: 1.35rem;
+}
+/* Active — a small success check on the crown confirms Premium is on. The
+   check glyph (not color) carries the "active" meaning. */
+.crownCheck {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: var(--fs-radius-full);
+  background-color: var(--fs-color-success);
+  color: #ffffff;
+  box-shadow: 0 0 0 2px var(--fs-color-premium-surface);
+}
+.crownCheck :global(svg) {
+  width: 0.7rem;
+  height: 0.7rem;
 }
 
 .body {

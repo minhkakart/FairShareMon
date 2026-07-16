@@ -13,11 +13,20 @@ export type SkeletonProps = {
 };
 
 /** Content placeholder shown while data loads. Shimmer respects reduced motion. */
-export function Skeleton({ width = "100%", height = "1em", circle, className }: SkeletonProps) {
+export function Skeleton({
+  width = "100%",
+  height = "1em",
+  circle,
+  className,
+}: SkeletonProps) {
   const style = { width, height } as CSSProperties;
   return (
     <span
-      className={cx(styles.skeleton, circle && styles.skeletonCircle, className)}
+      className={cx(
+        styles.skeleton,
+        circle && styles.skeletonCircle,
+        className,
+      )}
       style={style}
       aria-hidden="true"
     />

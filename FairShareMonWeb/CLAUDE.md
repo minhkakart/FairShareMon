@@ -33,7 +33,8 @@ pnpm. Libraries: **React Router v7** (routing), **TanStack Query v5** (server
 cache), **Zustand** (session store) + **React Context** (theme/locale),
 **CSS Modules + CSS-custom-property tokens + Radix primitives** (styling —
 the design system), **react-i18next** (vi-VN default + en-US), **React Hook Form
-+ Zod** (forms), **MSW** (mocking), **oxlint + Prettier** (lint/format).
+
+- Zod** (forms), **MSW** (mocking), **oxlint + Prettier** (lint/format).
 
 ## Project structure (feature-first)
 
@@ -72,7 +73,7 @@ src/
   by the backend — render it verbatim (via `resolveErrorMessage`), only falling
   back to i18n copy for client-synthetic network/unexpected states.
 - **Refresh** lives ONLY in the client: `401 → refresh-once → retry → else clear
-  session + redirect to /login`, de-duped behind a single in-flight promise
+session + redirect to /login`, de-duped behind a single in-flight promise
   (`src/lib/api/refresh.ts`). A failed refresh (incl. reuse-detection `2002`,
   which revokes all sessions) is terminal.
 - **Field errors:** `1001` returns `error.fields` (camelCase). Map onto RHF fields
@@ -83,7 +84,7 @@ src/
   every write control except the settled toggle. **Admin area is `role == ADMIN`
   only** (see the guard seam note below) and never shows other users' ledger data.
 - **Binary responses** (CSV export, QR PNG) use `api.blob(...)` (returns a `Blob`
-  + filename), never the JSON path.
+  - filename), never the JSON path.
 - **Auth session (OQ3):** access token in **memory only**; refresh token in
   `localStorage`; rehydrate on boot via `/auth/refresh`. The Zustand vanilla store
   (`src/lib/auth/session.ts`) is readable outside React by the client.
@@ -153,4 +154,7 @@ under `FairShareMonWeb/planning/` with Open Questions resolved before
 implementation, and its Progress Log kept in sync. When something the doc doesn't
 cover comes up and a reasonable engineer would ask — stop, record it under Open
 Questions, and report back. Don't invent requirements or pick silent defaults.
+
+```
+
 ```
