@@ -31,6 +31,12 @@ public interface IAuthService
 
     /// <summary>Verifies the current password, stores the new hash, then revokes ALL of the user's tokens.</summary>
     Task ChangePasswordAsync(string userUuid, ChangePasswordRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns the authenticated caller's profile (uuid, username, tier, role, createdAt) from a live
+    /// DB read. A valid token whose user row no longer exists is treated as unauthenticated (401).
+    /// </summary>
+    Task<UserResponse> GetCurrentUserAsync(string userUuid, CancellationToken cancellationToken = default);
 }
 
 [ScopedService(typeof(IAuthService))]
@@ -128,5 +134,15 @@ public sealed class AuthService(
         // Post-commit side-effect (rules.md): the hash update is committed - now force every
         // logged-in device to re-login (spec §3.1).
         await tokenService.RevokeAllAsync(userUuid, cancellationToken);
+    }
+
+    public async Task<UserResponse> GetCurrentUserAsync(string userUuid, CancellationToken cancellationToken = default)
+    {
+        // Live DB read: carries createdAt (absent from the principal) and always-fresh tier/role.
+        // A valid token whose user row vanished is treated as unauthenticated (mirrors ChangePasswordAsync).
+        var user = await userRepository.GetByUuidAsync(userUuid, cancellationToken)
+            ?? throw new ErrorException(ErrorCodes.Unauthorized, MessageKeys.Error.Unauthorized);
+
+        return mapper.Map<UserResponse>(user);
     }
 }

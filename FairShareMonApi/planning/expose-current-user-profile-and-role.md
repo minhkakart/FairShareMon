@@ -92,7 +92,7 @@ Grounded in the live code (read 2026-07-16):
 > All options list trade-offs; the **Recommended** option is marked. These are the design decisions
 > for the checkpoint — the orchestrator brings them to the user. Nothing below is silently defaulted.
 
-### OQ1 — Add `role` to `UserResponse` (and confirm `tier`)?
+### OQ1 — Add `role` to `UserResponse` (and confirm `tier`)? — Resolved 2026-07-16: (a)
 
 The minimal, load-bearing change. `role` is what the `AdminRoute` guard needs; `tier` is already
 present.
@@ -108,7 +108,7 @@ present.
   Trade-off: a second near-identical DTO + a second mapping to maintain, for the sake of hiding a
   field that is trivially `USER` at register time. More surface, little gain.
 
-### OQ2 — How does the client obtain the current user?
+### OQ2 — How does the client obtain the current user? — Resolved 2026-07-16: (a)
 
 - **(a) Recommended — add `GET /auth/me` returning the current-user profile
   (`ApiResult<UserResponse>`).** Pairs cleanly with the SPA's boot rehydrate: after `/auth/refresh`
@@ -130,7 +130,7 @@ present.
 > login/refresh contracts the SPA already built against untouched, and because `/auth/refresh` reads
 > live tier/role, a `/auth/me` call right after a boot refresh is always fresh.
 
-### OQ3 — Data source for the current-user profile (only if OQ2 = a or c)
+### OQ3 — Data source for the current-user profile (only if OQ2 = a or c) — Resolved 2026-07-16: (a)
 
 `GET /auth/me` could be built two ways:
 
@@ -149,7 +149,7 @@ present.
 > embedded `user` is built — recommend the same live DB read at login (the user row is already loaded
 > in `LoginAsync`) and at refresh (a `GetByUuidAsync` on the rotated user).
 
-### OQ4 — Route name / placement for the current-user endpoint (only if OQ2 = a or c)
+### OQ4 — Route name / placement for the current-user endpoint (only if OQ2 = a or c) — Resolved 2026-07-16: (a)
 
 - **(a) Recommended — `GET api/v1/auth/me` on the existing `AuthController`.** Co-located with the
   other auth/session endpoints; conventional "me" naming the SPA expects; `[controller]=Auth` yields
@@ -159,7 +159,7 @@ present.
   planned later. Trade-off: a whole new controller for one endpoint now; the identity/session concern
   lives with auth today. Overkill unless a users area is imminent.
 
-### OQ5 — Also expose account `status` (`ACTIVE`/`DISABLED`) on the DTO?
+### OQ5 — Also expose account `status` (`ACTIVE`/`DISABLED`) on the DTO? — Resolved 2026-07-16: (a)
 
 The frontend only asked for `role` (+ username, tier). `status` was added by M11.
 
@@ -324,6 +324,18 @@ admin boundary to admins not seeing **other** users' ledger data. Self-role is t
 metadata — inside "their own data", outside both boundaries. (Flagged as an Assumption for user
 confirmation at the checkpoint; if the user objects, OQ1 reopens.)
 
+### Decision (checkpoint 2026-07-16)
+All 5 Open Questions resolved at the **Recommended** option: OQ1(a) add `Role` to `UserResponse`
+(auto-maps via the existing `CreateMap<User, UserResponse>()`, `Tier` unchanged); OQ2(a) add a guarded
+`GET api/v1/auth/me` returning `ApiResult<UserResponse>`, login/refresh `TokenPairResponse` contracts
+untouched; OQ3(a) build the profile from a live `UserRepository.GetByUuidAsync(AuthenticatedUser.Id)`
+read; OQ4(a) route on the existing `AuthController`; OQ5(a) do NOT expose `status`.
+
+### Reason
+Lowest-risk, additive surface that closes the frontend `AdminRoute` seam without breaking the token
+contracts the SPA already built against; a live DB read is required regardless because `CreatedAt` is
+not carried on the principal/token.
+
 ## Progress Log
 
 ### 2026-07-16
@@ -347,10 +359,59 @@ confirmation at the checkpoint; if the user objects, OQ1 reopens.)
   `/auth/me` vs login/refresh payload vs both; profile data source — live DB read vs principal;
   route name/placement; whether to also expose `status`), each with options, trade-offs, and a
   recommendation. Awaiting user answers at the checkpoint before implementation starts.
+- **Checkpoint answered — all 5 OQs at Recommended (a).** Implemented:
+  - `Models/Auth/UserResponse.cs` — added `public string Role { get; set; } = string.Empty;` (after
+    `Tier`) with a Vietnamese XML doc. `Tier` unchanged.
+  - `Mappings/AuthProfile.cs` — **no change**; confirmed `User.Role` → `UserResponse.Role` auto-maps by
+    member name (build + full test suite, incl. AutoMapper config-assertion tests, pass).
+  - `Services/Api/Auth/AuthService.cs` — added `GetCurrentUserAsync(string userUuid, CancellationToken)`
+    to `IAuthService` + impl: live `GetByUuidAsync` read → `mapper.Map<UserResponse>`; a vanished user
+    row throws `ErrorException(ErrorCodes.Unauthorized, MessageKeys.Error.Unauthorized)` (mirrors
+    `ChangePasswordAsync`).
+  - `Controllers/AuthController.cs` — added guarded `GET api/v1/auth/me` (no `[AllowAnonymous]`) →
+    `ApiResult<UserResponse>.Success(...)`, Vietnamese Swagger annotations, reads `AuthenticatedUser.Id`.
+  - No EF migration (role/tier columns already exist from M10/M11); no message-key/resx additions;
+    `AppController` untouched.
+  - `dotnet build` clean; `dotnet test` green — 1116 passed, 0 failed, 0 skipped (MariaDB reachable).
+  - Feature tests deferred to the test-engineer per the plan.
+- **Test-engineer: feature test coverage added (Step 5 complete).** Two new files, all tests green
+  against the real MariaDB (reachable):
+  - `FairShareMonApi.Tests/UserResponseMappingTests.cs` (pure unit, no DB): AutoMapper
+    `AssertConfigurationIsValid` still passes with the new `Role` member; `User -> UserResponse` maps
+    `Role` (theory: USER + ADMIN) alongside `Uuid`/`Username`/`Tier`/`CreatedAt`; `UserResponse`
+    serializes `role`/`tier`/`username`/`uuid`/`createdAt` as camelCase keys with no `password`/
+    `passwordHash` key.
+  - `FairShareMonApi.Tests/AuthMeEndpointTests.cs` (integration, `WebApplicationFactory<Program>`,
+    real MariaDB/Redis, skippable, extends the M11 `AdminEndpointTestBase` for register/login/role-flip
+    helpers): `GET /auth/me` valid token -> 200 own profile with `role: USER` (uuid/username/tier/role/
+    createdAt correct, no secret field); valid ADMIN token -> `role: ADMIN`; anonymous -> 401 `1002`;
+    revoked (post-logout) token -> 401 `1002`; **live-read freshness** - a direct DB tier+role change
+    is reflected on the SAME unrefreshed/un-busted token (proves OQ3a's live `GetByUuidAsync` source
+    without depending on Redis cache-bust); and the additive-field guard that the `register` response
+    now carries `role: USER`.
+  - Extra coverage beyond the doc's list: an explicit "before change" assertion inside the freshness
+    test (token starts FREE/USER) so the live-read delta is unambiguous; USER+ADMIN parametrization of
+    the mapping test.
+  - Deviation note: the freshness test uses a direct DB change rather than the M11 grant + cache-bust
+    path. Because `/auth/me` reads the DB live on every call, this is a stronger and Redis-independent
+    proof of the live-read source; the M11 grant + cache-bust behaviour itself is already covered by
+    `AdminEndpointTests`.
+  - Full suite: **1126 passed, 0 failed, 0 skipped** (`dotnet test .\FairShareMonApi.sln`, MariaDB
+    reachable). No production bug surfaced.
 
 ## Final Outcome
 
-(pending)
+**Complete.** `Role` added to `UserResponse` (additive, auto-mapped from `User.Role` — no `AuthProfile`
+change) and a new guarded `GET api/v1/auth/me` → `ApiResult<UserResponse>` (`{ uuid, username, tier,
+role, createdAt }`) built from a live `GetByUuidAsync` read via `AuthService.GetCurrentUserAsync`.
+Login/refresh token contracts untouched; anonymous → the wired 401/`1002`; a missing user row → the
+same 401/`1002` (mirrors `ChangePasswordAsync`). **No EF migration** (role/tier columns pre-exist from
+M10/M11), no new error code, no new message key, AutoMapper still pinned `13.0.1`. Tests: +10 (4 unit
+mapping/serialization + 6 real-MariaDB endpoint), full suite **1126/1126** (0 failed, 0 skipped). Code
+review **APPROVE, 0 blocking, 0 nits**. This unblocks the frontend `AdminRoute` role source and the
+boot-rehydrate current-user display flagged in `FairShareMonWeb/planning/frontend-foundation.md` +
+`FairShareMonWeb/CLAUDE.md` — the frontend can now call `/auth/me` after login and after a boot refresh
+to populate `role`/identity.
 
 ## Future Improvements
 

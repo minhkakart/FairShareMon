@@ -69,6 +69,15 @@ public class AuthController(IAuthService authService, IStringLocalizer<StringRes
         return ApiResult.SuccessMessage(localizer[MessageKeys.Success.LoggedOut].Value);
     }
 
+    [HttpGet("me")]
+    [SwaggerOperation(
+        Summary = "Thông tin tài khoản hiện tại",
+        Description = "Trả về hồ sơ của người dùng đang đăng nhập (uuid, tên đăng nhập, hạng, vai trò).")]
+    [SwaggerResponse(StatusCodes.Status200OK, "Lấy thông tin tài khoản thành công.", typeof(ApiResult<UserResponse>))]
+    [SwaggerResponse(StatusCodes.Status401Unauthorized, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", typeof(ApiResult))]
+    public async Task<IActionResult> GetCurrentUserAsync(CancellationToken cancellationToken) =>
+        ApiResult<UserResponse>.Success(await authService.GetCurrentUserAsync(AuthenticatedUser.Id, cancellationToken));
+
     [HttpPost("change-password")]
     [SwaggerOperation(
         Summary = "Đổi mật khẩu",
