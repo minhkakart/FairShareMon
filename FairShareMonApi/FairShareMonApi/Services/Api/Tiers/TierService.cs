@@ -23,7 +23,7 @@ public interface ITierService
     /// <summary>Chặn khi tài khoản Free đã đạt số đợt đang mở tối đa. Premium bỏ qua.</summary>
     Task EnsureCanCreateOpenEventAsync(string userUuid, CancellationToken cancellationToken = default);
 
-    /// <summary>Chặn khi tài khoản Free đã đạt số phiếu chi tiêu tối đa trong tháng (theo giờ +7). Premium bỏ qua.</summary>
+    /// <summary>Chặn khi tài khoản Free đã đạt số phiếu chi tiêu tối đa trong tháng (theo múi giờ mặc định <c>App:DefaultTimeZone</c>). Premium bỏ qua.</summary>
     Task EnsureCanCreateExpenseAsync(string userUuid, CancellationToken cancellationToken = default);
 
     /// <summary>Cổng tính năng Premium: ném 403 <c>PremiumFeatureRequired</c> khi tài khoản không phải Premium.</summary>
@@ -38,9 +38,6 @@ public sealed class TierService(
     IExpenseRepository expenseRepository,
     IConfiguration configuration) : ITierService
 {
-    /// <summary>Lệch múi giờ Việt Nam cố định (+7, không DST) - KHÔNG dùng <see cref="TimeZoneInfo"/> máy chủ (khớp M8).</summary>
-    private static readonly TimeSpan VietnamOffset = TimeSpan.FromHours(7);
-
     private readonly int _maxMembers = configuration.GetValue("Tiers:Free:MaxMembers", 25);
     private readonly int _maxOpenEvents = configuration.GetValue("Tiers:Free:MaxOpenEvents", 10);
     private readonly int _maxExpensesPerMonth = configuration.GetValue("Tiers:Free:MaxExpensesPerMonth", 200);
@@ -75,7 +72,7 @@ public sealed class TierService(
         if (IsPremium)
             return;
 
-        var (fromUtc, toUtc) = CurrentMonthUtcWindow();
+        var (fromUtc, toUtc) = CurrentMonthUtcWindow(configuration);
         var count = await expenseRepository.CountByUserInRangeAsync(userUuid, fromUtc, toUtc, cancellationToken);
         if (count >= _maxExpensesPerMonth)
             throw new ErrorException(ErrorCodes.MonthlyExpenseLimitReached,
@@ -92,16 +89,19 @@ public sealed class TierService(
     }
 
     /// <summary>
-    /// Cửa sổ UTC nửa mở <c>[from, to)</c> của tháng dương lịch hiện tại tính theo giờ địa phương +7
-    /// (OQ4a): lấy "bây giờ" theo +7, về đầu tháng +7, rồi trừ +7 để quy về UTC cho cột
-    /// <c>expense_time</c> (lưu UTC). Ví dụ 2026-07-31 23:30 +7 nằm trong tháng 7; 2026-08-01 00:30 +7
-    /// nằm trong tháng 8.
+    /// Cửa sổ UTC nửa mở <c>[from, to)</c> của tháng dương lịch hiện tại tính theo <b>múi giờ mặc định
+    /// của ứng dụng</b> (<c>App:DefaultTimeZone</c>) - KHÔNG theo header <c>X-Time-Zone</c> của client
+    /// (OQ4a/D4): hạn mức là chính sách phía máy chủ, nếu theo header thì người dùng có thể đổi múi giờ
+    /// quanh ranh giới tháng để reset hạn mức. Lấy "bây giờ" (UTC) đổi sang múi giờ mặc định, về đầu
+    /// tháng theo múi giờ đó, rồi quy về UTC cho cột <c>expense_time</c> (lưu UTC).
     /// </summary>
-    private static (DateTime FromUtc, DateTime ToUtc) CurrentMonthUtcWindow()
+    private static (DateTime FromUtc, DateTime ToUtc) CurrentMonthUtcWindow(IConfiguration configuration)
     {
-        var nowLocal = AppDateTime.Now.Add(VietnamOffset);
+        var zone = TimeZoneResolver.GetDefaultZone(configuration);
+        var nowLocal = TimeZoneInfo.ConvertTimeFromUtc(AppDateTime.Now, zone);
         var monthStartLocal = new DateTime(nowLocal.Year, nowLocal.Month, 1, 0, 0, 0, DateTimeKind.Unspecified);
         var nextMonthStartLocal = monthStartLocal.AddMonths(1);
-        return (monthStartLocal.Subtract(VietnamOffset), nextMonthStartLocal.Subtract(VietnamOffset));
+        return (TimeZoneInfo.ConvertTimeToUtc(monthStartLocal, zone),
+                TimeZoneInfo.ConvertTimeToUtc(nextMonthStartLocal, zone));
     }
 }

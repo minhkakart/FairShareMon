@@ -1,5 +1,6 @@
 using AutoMapper;
 using DiDecoration.Attributes;
+using FairShareMonApi.Auth;
 using FairShareMonApi.Constants;
 using FairShareMonApi.Exceptions;
 using FairShareMonApi.Models.Events;
@@ -35,6 +36,7 @@ public interface IEventsService
 public sealed class EventsService(
     IEventRepository eventRepository,
     ITierService tierService,
+    IRequestTimeZone requestTimeZone,
     IMapper mapper,
     IValidator<CreateEventRequest> createValidator,
     IValidator<UpdateEventRequest> updateValidator) : IEventsService
@@ -60,7 +62,7 @@ public sealed class EventsService(
         // M10 Free tier limit (create-only): only OPEN events count, so closing one frees a slot.
         await tierService.EnsureCanCreateOpenEventAsync(userUuid, cancellationToken);
 
-        var data = new CreateEventData(request.Name.Trim(), request.Description?.Trim(), request.StartDate, request.EndDate);
+        var data = new CreateEventData(request.Name.Trim(), request.Description?.Trim(), request.StartDate, request.EndDate, requestTimeZone.Zone);
         var result = await eventRepository.CreateAsync(userUuid, data, cancellationToken);
         ThrowIfFailed(result.Status);
 
@@ -71,7 +73,7 @@ public sealed class EventsService(
     {
         await updateValidator.ValidateAndThrowAsync(request, cancellationToken);
 
-        var data = new UpdateEventData(request.Name.Trim(), request.Description?.Trim(), request.StartDate, request.EndDate);
+        var data = new UpdateEventData(request.Name.Trim(), request.Description?.Trim(), request.StartDate, request.EndDate, requestTimeZone.Zone);
         var result = await eventRepository.UpdateAsync(userUuid, eventUuid, data, cancellationToken);
         ThrowIfFailed(result.Status, "Không thể sửa đợt đã chốt.");
 

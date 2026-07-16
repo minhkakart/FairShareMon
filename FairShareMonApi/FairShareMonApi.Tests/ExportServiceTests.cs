@@ -14,6 +14,7 @@ using FairShareMonApi.Services.Api.Events;
 using FairShareMonApi.Services.Api.Expenses;
 using FairShareMonApi.Services.Api.Export;
 using FairShareMonApi.Services.Api.Stats;
+using FairShareMonApi.Tests.Infrastructure;
 using Xunit;
 
 namespace FairShareMonApi.Tests;
@@ -36,8 +37,12 @@ public class ExportServiceTests
     private const string ExpenseUuid = "0198a5c2-1111-7000-8000-000000000001";
     private const string EventUuid = "0198a5c2-2222-7000-8000-000000000002";
 
-    private static readonly DateTime StartBoundary = new(2026, 3, 1, 0, 0, 0, DateTimeKind.Utc);
-    private static readonly DateTime EndBoundary = new DateTime(2026, 3, 3, 23, 59, 59, DateTimeKind.Utc).AddTicks(9_999_990);
+    // Timezone-aware DateTimes (D3): the event range is stored as tz-normalized UTC bounds. The fake
+    // request zone is +7 (below), so these boundaries are the UTC bounds of the whole days 01/03..03/03
+    // IN +7: start of 01/03 (+7) = 2026-02-28T17:00:00Z; end of 03/03 (+7) = 2026-03-03T16:59:59.999999Z.
+    // Rendered back in +7 they read 01/03/2026 and 03/03/2026 (the end boundary does NOT roll a day).
+    private static readonly DateTime StartBoundary = new(2026, 2, 28, 17, 0, 0, DateTimeKind.Utc);
+    private static readonly DateTime EndBoundary = new DateTime(2026, 3, 3, 17, 0, 0, DateTimeKind.Utc).AddTicks(-10);
     private static readonly DateTime ExpenseTime = new(2026, 3, 1, 18, 30, 0, DateTimeKind.Utc);
 
     private readonly FakeExpensesService _expenses = new();
@@ -45,7 +50,11 @@ public class ExportServiceTests
     private readonly FakeEventsService _events = new();
     private readonly CapturingCsvFormatter _formatter = new();
 
-    private ExportService CreateService() => new(_expenses, _stats, _events, [_formatter]);
+    // ExportService now injects IRequestTimeZone and renders every instant/calendar date in that zone
+    // (D6); the CSV path bypasses the JSON converters, so the zone is applied directly in the formatter.
+    private readonly TestRequestTimeZone _requestTimeZone = new(TestTimeZones.Plus7);
+
+    private ExportService CreateService() => new(_expenses, _stats, _events, _requestTimeZone, [_formatter]);
 
     // ---- Format resolution -------------------------------------------------------------------------
 
@@ -171,7 +180,8 @@ public class ExportServiceTests
 
         var header = HeaderFields(_formatter.Last!, 0);
         Assert.Equal("Đà Lạt", header["Tên đợt"]);
-        // End boundary 23:59:59.999999Z keeps its own calendar day 03/03 - no +7 roll to 04/03 (OQ6b).
+        // The tz-normalized end boundary (2026-03-03T16:59:59.999999Z) renders back in +7 as 03/03 23:59:59
+        // - it keeps its own calendar day and does NOT roll to 04/03 (D3/D6 calendar-date rule).
         Assert.Equal("01/03/2026 - 03/03/2026", header["Khoảng thời gian"]);
         Assert.Equal("Đang mở", header["Trạng thái"]);
     }

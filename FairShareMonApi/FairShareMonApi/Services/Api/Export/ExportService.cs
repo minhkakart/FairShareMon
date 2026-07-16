@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using DiDecoration.Attributes;
+using FairShareMonApi.Auth;
 using FairShareMonApi.Constants;
 using FairShareMonApi.Exceptions;
 using FairShareMonApi.Models.Categories;
@@ -37,6 +38,7 @@ public sealed class ExportService(
     IExpensesService expensesService,
     IStatsService statsService,
     IEventsService eventsService,
+    IRequestTimeZone requestTimeZone,
     IEnumerable<IExportFormatter> formatters) : IExportService
 {
     private const string DeletedSuffix = " (đã xóa)";
@@ -88,13 +90,14 @@ public sealed class ExportService(
         return formatters.FirstOrDefault(f => f.Format == target) ?? throw UnsupportedFormat();
     }
 
-    private static ExportDocument BuildExpenseDocument(ExpenseResponse expense)
+    private ExportDocument BuildExpenseDocument(ExpenseResponse expense)
     {
+        var zone = requestTimeZone.Zone;
         var headerFields = new List<KeyValuePair<string, string>>
         {
             new("Tên phiếu", expense.Name),
             new("Mô tả", expense.Description ?? string.Empty),
-            new("Thời điểm chi", ExportValueFormatter.FormatInstant(expense.ExpenseTime)),
+            new("Thời điểm chi", ExportValueFormatter.FormatInstant(expense.ExpenseTime, zone)),
             new("Người trả", DisplayMember(expense.Payer)),
             new("Danh mục", DisplayCategory(expense.Category)),
             new("Nhãn", string.Join(", ", expense.Tags.Select(t => t.Name))),
@@ -133,16 +136,17 @@ public sealed class ExportService(
         };
     }
 
-    private static ExportDocument BuildEventDocument(
+    private ExportDocument BuildEventDocument(
         EventResponse evt,
         EventBalanceResponse balance,
         IReadOnlyDictionary<string, string> mergedNotes)
     {
+        var zone = requestTimeZone.Zone;
         var headerFields = new List<KeyValuePair<string, string>>
         {
             new("Tên đợt", evt.Name),
             new("Khoảng thời gian",
-                $"{ExportValueFormatter.FormatCalendarDate(evt.StartDate)} - {ExportValueFormatter.FormatCalendarDate(evt.EndDate)}"),
+                $"{ExportValueFormatter.FormatCalendarDate(evt.StartDate, zone)} - {ExportValueFormatter.FormatCalendarDate(evt.EndDate, zone)}"),
             new("Trạng thái", evt.IsClosed ? "Đã chốt" : "Đang mở")
         };
 

@@ -314,12 +314,14 @@ public class ExpenseRepositoryTests(DatabaseFixture fixture) : ExpenseDbTestBase
     }
 
     /// <summary>
-    /// FAILING - documents a confirmed production bug (see the test-engineer's report). A genuine no-op
-    /// expense update must write NO audit row (OQ9), but the <c>AuditLogFactory</c> compares raw
-    /// serialized snapshots and <c>ExpenseAuditSnapshot.ExpenseTime</c> is not canonicalized: the
-    /// DB-loaded before-value has <c>DateTimeKind.Unspecified</c> (serializes "…T12:00:00") while the
-    /// request after-value has <c>DateTimeKind.Utc</c> (serializes "…T12:00:00Z"), so the snapshots
-    /// differ and a spurious Update row is written on a true no-op.
+    /// A genuine no-op expense update must write NO audit row (OQ9). This previously FAILED (a confirmed
+    /// production bug): the DB-loaded before-value materialized as <c>DateTimeKind.Unspecified</c>
+    /// (serialized "…T12:00:00") while the request after-value was <c>DateTimeKind.Utc</c> (serialized
+    /// "…T12:00:00Z"), so the snapshots differed and a spurious Update row was written. Timezone-aware
+    /// DateTimes FIXED it at the source: the global read-side <c>UtcDateTimeConverter</c>
+    /// (<c>AppDbContext.ConfigureConventions</c>) now stamps every materialized <see cref="System.DateTime"/>
+    /// with <c>Kind.Utc</c>, so both before/after snapshots serialize identically and the
+    /// <c>AuditSnapshotCanonicalizer.Utc</c> workaround was removed. This test now PASSES via the converter.
     /// </summary>
     [SkippableFact]
     public async Task UpdateGeneralInfoAsync_NoChange_WritesNoAuditRow()

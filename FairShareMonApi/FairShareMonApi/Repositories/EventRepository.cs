@@ -14,7 +14,8 @@ namespace FairShareMonApi.Repositories;
 /// never the row). Writes are single <c>ExecuteTransactionAsync</c> blocks with <c>NoCommit()</c> on
 /// failure (§4.5). Events are hard-deleted (not <c>IEntityDeletable</c>) and only while OPEN; deleting
 /// an event loosens its expenses via the FK <c>ON DELETE SET NULL</c> (OQ2). Closing is one-way (OQ3).
-/// The date range is normalized to a whole-day-inclusive UTC window on write (OQ1).
+/// The date range is normalized to a whole-day-inclusive window in the request timezone, then stored as
+/// UTC bounds (planning/timezone-aware-datetimes.md D3, refines the M6 OQ1 UTC-day caveat).
 /// </summary>
 public interface IEventRepository : IBaseRepository, IQueryRepository<Event>
 {
@@ -87,8 +88,8 @@ public sealed class EventRepository(AppDbContext dbContext) : BaseRepository(dbC
                 UserId = userId.Value,
                 Name = data.Name,
                 Description = data.Description,
-                StartDate = NormalizeStart(data.StartDate),
-                EndDate = NormalizeEnd(data.EndDate),
+                StartDate = NormalizeStart(data.StartDate, data.Zone),
+                EndDate = NormalizeEnd(data.EndDate, data.Zone),
                 IsClosed = false
             };
             db.Events.Add(evt);
@@ -113,8 +114,8 @@ public sealed class EventRepository(AppDbContext dbContext) : BaseRepository(dbC
                 return EventWriteResult<Event>.Fail(EventWriteStatus.EventClosed);
             }
 
-            var newStart = NormalizeStart(data.StartDate);
-            var newEnd = NormalizeEnd(data.EndDate);
+            var newStart = NormalizeStart(data.StartDate, data.Zone);
+            var newEnd = NormalizeEnd(data.EndDate, data.Zone);
 
             // OQ7: block the edit if any already-assigned expense would fall outside the new range.
             var wouldExclude = await db.Expenses.AsNoTracking()
@@ -179,11 +180,33 @@ public sealed class EventRepository(AppDbContext dbContext) : BaseRepository(dbC
             return EventWriteStatus.Success;
         }, cancellationToken);
 
-    /// <summary>Normalizes the range start to 00:00:00.000000 of its UTC calendar day (OQ1).</summary>
-    private static DateTime NormalizeStart(DateTime date) => date.Date;
+    /// <summary>
+    /// Normalizes the range start to 00:00:00.000000 of its calendar day IN THE REQUEST ZONE, then
+    /// converts that local midnight to the UTC instant stored/compared against (D3). Within-range checks
+    /// stay raw UTC-instant compares - the bounds already encode the zone.
+    /// </summary>
+    private static DateTime NormalizeStart(DateTime value, TimeZoneInfo zone)
+    {
+        var local = TimeZoneInfo.ConvertTimeFromUtc(EnsureUtc(value), zone);
+        var startLocal = DateTime.SpecifyKind(local.Date, DateTimeKind.Unspecified);
+        return TimeZoneInfo.ConvertTimeToUtc(startLocal, zone);
+    }
 
-    /// <summary>Normalizes the range end to 23:59:59.999999 of its UTC calendar day (OQ1); subtract 1 microsecond from next midnight to stay within datetime(6) precision.</summary>
-    private static DateTime NormalizeEnd(DateTime date) => date.Date.AddDays(1).AddTicks(-10);
+    /// <summary>
+    /// Normalizes the range end to 23:59:59.999999 of its calendar day IN THE REQUEST ZONE (next local
+    /// midnight minus 1 microsecond, staying within datetime(6) precision), then converts to the stored
+    /// UTC instant (D3).
+    /// </summary>
+    private static DateTime NormalizeEnd(DateTime value, TimeZoneInfo zone)
+    {
+        var local = TimeZoneInfo.ConvertTimeFromUtc(EnsureUtc(value), zone);
+        var endLocal = DateTime.SpecifyKind(local.Date, DateTimeKind.Unspecified).AddDays(1).AddTicks(-10);
+        return TimeZoneInfo.ConvertTimeToUtc(endLocal, zone);
+    }
+
+    /// <summary>Guards <c>ConvertTimeFromUtc</c>, which rejects a <c>Kind.Local</c> source.</summary>
+    private static DateTime EnsureUtc(DateTime value) =>
+        value.Kind == DateTimeKind.Local ? value.ToUniversalTime() : DateTime.SpecifyKind(value, DateTimeKind.Utc);
 
     private static Task<ulong?> ResolveUserIdAsync(AppDbContext db, string userUuid, CancellationToken cancellationToken) =>
         db.Users.AsNoTracking()

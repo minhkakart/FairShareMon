@@ -28,10 +28,15 @@ public class EventsServiceTests
     private readonly FakeEventRepository _events = new();
     private readonly FakeTierService _tier = new();
 
+    // Timezone-aware DateTimes (D3): EventsService now injects IRequestTimeZone and threads its Zone into
+    // CreateEventData/UpdateEventData. The repo is faked here (no normalization runs), so the stubbed zone
+    // only needs to prove the service reads and forwards it - see CreateAsync_PassesRequestZoneToRepository.
+    private readonly TestRequestTimeZone _requestTimeZone = new(TestTimeZones.Plus7);
+
     private readonly IMapper _mapper = new MapperConfiguration(config => config.AddProfile<EventProfile>()).CreateMapper();
 
     private EventsService CreateService() =>
-        new(_events, _tier, _mapper, new CreateEventRequestValidator(), new UpdateEventRequestValidator());
+        new(_events, _tier, _requestTimeZone, _mapper, new CreateEventRequestValidator(), new UpdateEventRequestValidator());
 
     private static readonly DateTime Start = new(2026, 7, 14, 0, 0, 0, DateTimeKind.Utc);
     private static readonly DateTime End = new(2026, 7, 16, 23, 59, 59, DateTimeKind.Utc);
@@ -78,6 +83,21 @@ public class EventsServiceTests
         await CreateService().CreateAsync(UserUuid, request);
 
         Assert.Equal("Đà Lạt", _events.LastCreateData!.Name);
+    }
+
+    [Fact]
+    public async Task CreateAsync_PassesRequestZoneToRepository()
+    {
+        var evt = StoredEvent();
+        _events.StoredEvent = evt;
+        _events.CreateResult = EventWriteResult<Event>.Success(evt);
+        _requestTimeZone.Zone = TestTimeZones.Minus5;
+
+        await CreateService().CreateAsync(UserUuid, CreateRequest());
+
+        // The service forwards IRequestTimeZone.Zone verbatim so the repository normalizes the whole-day
+        // range in the viewer's zone (D3).
+        Assert.Equal(TestTimeZones.Minus5, _events.LastCreateData!.Zone);
     }
 
     [Fact]

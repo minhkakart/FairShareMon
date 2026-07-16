@@ -24,7 +24,7 @@ public sealed record ExpenseAuditSnapshot(
             expense.Uuid,
             expense.Name,
             expense.Description,
-            AuditSnapshotCanonicalizer.Utc(expense.ExpenseTime),
+            expense.ExpenseTime,
             payer.Uuid,
             payer.Name,
             category.Uuid,
@@ -54,19 +54,17 @@ public sealed record ShareAuditSnapshot(
 
 /// <summary>
 /// Canonicalizes snapshot values so semantically-equal before/after states serialize identically,
-/// making no-op detection (OQ9) robust against representation drift on the DB round-trip:
-/// a <see cref="DateTime"/> loses its <c>Kind</c> (stored UTC comes back <c>Unspecified</c>) and a
-/// <c>DECIMAL(18,2)</c> amount comes back at scale 2 while a client value may be scale 0.
+/// making no-op detection (OQ9) robust against representation drift on the DB round-trip.
+///
+/// <para>The <c>DateTime</c> <c>Kind</c> drift (stored UTC materializing as <c>Unspecified</c>) is now
+/// fixed globally at the source by <c>UtcDateTimeConverter</c> (see
+/// planning/timezone-aware-datetimes.md), which stamps every materialized <see cref="DateTime"/> with
+/// <c>Kind.Utc</c>; so both before/after snapshots serialize the same without a canonicalizer step. Only
+/// the money scale still needs normalizing: a <c>DECIMAL(18,2)</c> amount comes back at scale 2 while a
+/// client value may be scale 0.</para>
 /// </summary>
 public static class AuditSnapshotCanonicalizer
 {
-    /// <summary>
-    /// Labels a timestamp as UTC without shifting the clock value (the codebase stores UTC via
-    /// <c>AppDateTime.Now</c>), so a <c>Kind.Utc</c> request value and its <c>Kind.Unspecified</c>
-    /// DB round-trip serialize the same (both with a trailing <c>Z</c>).
-    /// </summary>
-    public static DateTime Utc(DateTime value) => DateTime.SpecifyKind(value, DateTimeKind.Utc);
-
     /// <summary>
     /// Normalizes a money value to the column's fixed scale of 2, so <c>40000</c> and <c>40000.00</c>
     /// serialize identically (adding <c>0.00m</c> forces scale 2 regardless of the input scale).

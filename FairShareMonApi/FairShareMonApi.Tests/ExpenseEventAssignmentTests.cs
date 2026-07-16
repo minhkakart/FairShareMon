@@ -31,7 +31,10 @@ public class ExpenseEventAssignmentTests(DatabaseFixture fixture) : ExpenseDbTes
 
     private async Task<Event> NewEventAsync(string userUuid, DateTime? start = null, DateTime? end = null, bool close = false, string name = "Đà Lạt")
     {
-        var result = await CreateEventRepository().CreateAsync(userUuid, new CreateEventData(name, null, start ?? Day14, end ?? Day16));
+        // Zone = UTC: these tests pin UTC-day boundaries and assert whole-UTC-day windows, so the
+        // tz-aware normalization (D3) in the UTC zone yields exactly those UTC bounds. Non-UTC-zone
+        // range behavior is covered by TimeZoneRangeIntegrationTests / TimeZoneEndpointTests.
+        var result = await CreateEventRepository().CreateAsync(userUuid, new CreateEventData(name, null, start ?? Day14, end ?? Day16, TimeZoneInfo.Utc));
         Assert.Equal(EventWriteStatus.Success, result.Status);
         if (close)
             Assert.Equal(EventWriteStatus.Success, await CreateEventRepository().CloseAsync(userUuid, result.Entity!.Uuid));

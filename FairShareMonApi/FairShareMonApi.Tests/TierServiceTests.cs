@@ -152,8 +152,10 @@ public class TierServiceTests
         AsFree();
         _expenses.Count = 0; // under any limit; we only care about the window it queried
 
-        // Expected window, computed the same way TierService does (fixed +7, no TimeZoneInfo). Captured
-        // right before the call; a month rollover between here and the service call is sub-millisecond.
+        // Expected window, computed the same way TierService does. Timezone-aware DateTimes (D4) made the
+        // window use the app-default zone (App:DefaultTimeZone) instead of a hardcoded +7; with no config
+        // key set here it falls back to Asia/Ho_Chi_Minh, itself a fixed +7 with no DST, so the arithmetic
+        // is identical. Captured right before the call; a month rollover here is sub-millisecond.
         var offset = TimeSpan.FromHours(7);
         var nowLocal = DateTime.UtcNow.Add(offset);
         var monthStartLocal = new DateTime(nowLocal.Year, nowLocal.Month, 1, 0, 0, 0, DateTimeKind.Unspecified);
@@ -173,6 +175,34 @@ public class TierServiceTests
         Assert.Equal(1, localEnd.Day);
         Assert.Equal(0, localEnd.Hour);
         Assert.Equal(localStart.AddMonths(1), localEnd);
+    }
+
+    [Fact]
+    public async Task EnsureCanCreateExpense_MonthWindow_UsesAppDefaultZoneFromConfig_NotFixedPlus7()
+    {
+        AsFree();
+        _expenses.Count = 0;
+
+        // Set App:DefaultTimeZone = UTC. The month window must then be the UTC calendar month, proving the
+        // window is computed in the CONFIGURED app-default zone (D4) - not a hardcoded +7, and (since
+        // TierService takes NO request-timezone dependency) not gameable via the X-Time-Zone header.
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Tiers:Free:MaxExpensesPerMonth"] = "5",
+            ["App:DefaultTimeZone"] = "+00:00"
+        }).Build();
+        var service = new TierService(_context, _members, _events, _expenses, config);
+
+        var utcNow = DateTime.UtcNow;
+        var expectedFrom = new DateTime(utcNow.Year, utcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var expectedTo = expectedFrom.AddMonths(1);
+
+        await service.EnsureCanCreateExpenseAsync(UserUuid);
+
+        // DateTime equality is tick-based (Kind-agnostic): a UTC-zone month window, not the +7 window
+        // (whose bounds would be the previous month's last day at 17:00Z).
+        Assert.Equal(expectedFrom, _expenses.LastFrom);
+        Assert.Equal(expectedTo, _expenses.LastTo);
     }
 
     // ---- Premium feature-gate (13003) -------------------------------------------------------------

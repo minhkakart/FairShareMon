@@ -4,6 +4,12 @@ using FairShareMonApi.Tests.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
+// NOTE: timezone-aware DateTimes (planning/timezone-aware-datetimes.md, D3) added a required
+// `TimeZoneInfo Zone` to CreateEventData/UpdateEventData. These tests pin dates as UTC instants and
+// assert whole-UTC-day bounds, so they pass TimeZoneInfo.Utc as the zone: normalizing a UTC-day in the
+// UTC zone yields exactly those UTC bounds (the tz-aware normalization for a non-UTC zone is covered by
+// TimeZoneRangeIntegrationTests and TimeZoneEndpointTests).
+
 namespace FairShareMonApi.Tests;
 
 /// <summary>
@@ -26,7 +32,7 @@ public class EventRepositoryTests(DatabaseFixture fixture) : ExpenseDbTestBase(f
         string? description = null,
         DateTime? startDate = null,
         DateTime? endDate = null) =>
-        new(name, description, startDate ?? Day14, endDate ?? Day16);
+        new(name, description, startDate ?? Day14, endDate ?? Day16, TimeZoneInfo.Utc);
 
     private async Task<int> CountEventsAsync(ulong userId)
     {
@@ -102,7 +108,7 @@ public class EventRepositoryTests(DatabaseFixture fixture) : ExpenseDbTestBase(f
         var created = await CreateEventRepository().CreateAsync(owner.Uuid, CreateData(name: "Mine"));
 
         var result = await CreateEventRepository().UpdateAsync(stranger.Uuid, created.Entity!.Uuid,
-            new UpdateEventData("Hacked", null, Day14, Day16));
+            new UpdateEventData("Hacked", null, Day14, Day16, TimeZoneInfo.Utc));
 
         Assert.Equal(EventWriteStatus.EventNotFound, result.Status);
         Assert.Equal("Mine", (await ReloadEventAsync(created.Entity.Uuid))!.Name); // untouched
@@ -273,7 +279,7 @@ public class EventRepositoryTests(DatabaseFixture fixture) : ExpenseDbTestBase(f
 
         // Shrink the range to [17,18] - would leave the 15th expense out of range.
         var result = await CreateEventRepository().UpdateAsync(ledger.User.Uuid, evt.Entity.Uuid,
-            new UpdateEventData("Đà Lạt", null, new DateTime(2026, 7, 17, 0, 0, 0, DateTimeKind.Utc), new DateTime(2026, 7, 18, 0, 0, 0, DateTimeKind.Utc)));
+            new UpdateEventData("Đà Lạt", null, new DateTime(2026, 7, 17, 0, 0, 0, DateTimeKind.Utc), new DateTime(2026, 7, 18, 0, 0, 0, DateTimeKind.Utc), TimeZoneInfo.Utc));
 
         Assert.Equal(EventWriteStatus.RangeExcludesAssignedExpenses, result.Status); // OQ7
         // The range is unchanged (invariant preserved).
@@ -292,7 +298,7 @@ public class EventRepositoryTests(DatabaseFixture fixture) : ExpenseDbTestBase(f
 
         // Widen the range to [14,20] - still contains the 15th expense.
         var result = await CreateEventRepository().UpdateAsync(ledger.User.Uuid, evt.Entity.Uuid,
-            new UpdateEventData("Đà Lạt dài", "6 ngày", Day14, new DateTime(2026, 7, 20, 0, 0, 0, DateTimeKind.Utc)));
+            new UpdateEventData("Đà Lạt dài", "6 ngày", Day14, new DateTime(2026, 7, 20, 0, 0, 0, DateTimeKind.Utc), TimeZoneInfo.Utc));
 
         Assert.Equal(EventWriteStatus.Success, result.Status);
         var persisted = await ReloadEventAsync(evt.Entity.Uuid);
@@ -308,7 +314,7 @@ public class EventRepositoryTests(DatabaseFixture fixture) : ExpenseDbTestBase(f
         await CreateEventRepository().CloseAsync(owner.Uuid, created.Entity!.Uuid);
 
         var result = await CreateEventRepository().UpdateAsync(owner.Uuid, created.Entity.Uuid,
-            new UpdateEventData("Sửa", null, Day14, Day16));
+            new UpdateEventData("Sửa", null, Day14, Day16, TimeZoneInfo.Utc));
 
         Assert.Equal(EventWriteStatus.EventClosed, result.Status);
     }

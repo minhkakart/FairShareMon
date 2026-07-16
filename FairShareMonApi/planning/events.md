@@ -375,11 +375,13 @@ expense row.
 - The **actor** and owner is always the current authenticated user (only the owner touches their own
   data).
 - Event membership is **at most one event per expense** (a single nullable `event_id`), not many-to-many.
-- **UTC-day-boundary limitation (accepted, OQ1):** the event range is a **UTC** whole-day window, so an
-  expense logged near local (e.g. UTC+7) midnight can fall on the adjacent UTC day and thus just
-  outside/inside a range the user thinks of in local time. This is a **known, documented limitation**,
-  not a bug; a timezone-aware refinement is listed in Future Improvements. It is consistent with M5,
-  where `expense_time` and the `from`/`to` list filter are already compared as raw UTC datetimes.
+- **UTC-day-boundary limitation (~~accepted, OQ1~~ — RESOLVED 2026-07-16):** the event range was
+  originally a **UTC** whole-day window, so an expense logged near local (e.g. UTC+7) midnight could
+  fall on the adjacent UTC day. This has been **superseded** by
+  `planning/timezone-aware-datetimes.md` (D3): `NormalizeStart`/`NormalizeEnd` now compute the whole-day
+  bounds in the request timezone (`X-Time-Zone`, fallback `App:DefaultTimeZone`) before converting to
+  UTC, and within-range checks compare raw UTC instants against those zone-encoded bounds. The
+  "Per-user timezone" Future Improvement below is delivered by that feature.
 - Tier limits on events (§3.11 "M đợt đang mở") are **out of scope** (M10); M6 imposes no count limit.
 - Debt balance (§3.7), stats (§3.9), export (§3.5), and QR (§3.10) are later milestones; M6 only leaves
   the `events` table + `is_closed`/`closed_at` timeline they will consume.
@@ -1036,8 +1038,9 @@ open questions remain; no unrecorded deviations.
 
 ## Future Improvements
 
-- **Per-user timezone** so the event "day" range and `expense_time` comparison respect the owner's
-  local day rather than UTC (resolves the OQ1 timezone caveat).
+- ~~**Per-user timezone** so the event "day" range and `expense_time` comparison respect the owner's
+  local day rather than UTC (resolves the OQ1 timezone caveat).~~ **DELIVERED 2026-07-16** via
+  `planning/timezone-aware-datetimes.md` (per-request `X-Time-Zone`, D3).
 - **Reopen a closed event** (would require relaxing the §5 one-way lock — spec change, not a planning
   decision).
 - **Event templates / recurring events** (e.g. a monthly event auto-created) — noting the spec

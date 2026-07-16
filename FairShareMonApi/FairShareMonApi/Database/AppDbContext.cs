@@ -1,3 +1,4 @@
+using FairShareMonApi.Database.Conversions;
 using FairShareMonApi.Database.Entities;
 using Microsoft.EntityFrameworkCore;
 
@@ -65,4 +66,19 @@ public partial class AppDbContext : DbContext
 
     /// <summary>Implemented in AppDbContext.partial.cs - global query filters only.</summary>
     partial void ConfigureQueryFilters(ModelBuilder modelBuilder);
+
+    /// <summary>
+    /// Model-wide conventions (not query filters, so this belongs here and not in
+    /// AppDbContext.partial.cs). Applies <see cref="UtcDateTimeConverter"/> to every mapped
+    /// <see cref="DateTime"/> / <see cref="DateTime"/>? property so materialized values carry
+    /// <see cref="DateTimeKind.Utc"/> (see planning/timezone-aware-datetimes.md). The converter's
+    /// write side is an identity no-op, so this does not change the column definitions / model snapshot.
+    /// </summary>
+    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+    {
+        base.ConfigureConventions(configurationBuilder);
+
+        configurationBuilder.Properties<DateTime>().HaveConversion<UtcDateTimeConverter>();
+        configurationBuilder.Properties<DateTime?>().HaveConversion<UtcDateTimeConverter>();
+    }
 }

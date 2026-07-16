@@ -4,6 +4,7 @@ using FairShareMonApi.Attributes.MvcFilters;
 using FairShareMonApi.Auth;
 using FairShareMonApi.Database;
 using FairShareMonApi.Middlewares;
+using FairShareMonApi.Serialization;
 using FairShareMonApi.Swagger;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication;
@@ -23,8 +24,18 @@ builder.Logging.ClearProviders();
 builder.Logging.AddNLog();
 
 // MVC: global error filter; the built-in invalid-model filter is suppressed so ErrorHandlerFilter
-// surfaces ModelState errors in the ApiResult envelope instead.
-builder.Services.AddControllers(options => options.Filters.Add<ErrorHandlerFilter>());
+// surfaces ModelState errors in the ApiResult envelope instead. The UTC-aware DateTime converters
+// present every DateTime in the request zone (X-Time-Zone header -> app-default) while storage stays
+// UTC (planning/timezone-aware-datetimes.md). HttpContextAccessor is a stateless AsyncLocal wrapper,
+// so a fresh instance here reads the same per-request HttpContext the middleware populates.
+builder.Services
+    .AddControllers(options => options.Filters.Add<ErrorHandlerFilter>())
+    .AddJsonOptions(options =>
+    {
+        var httpContextAccessor = new HttpContextAccessor();
+        options.JsonSerializerOptions.Converters.Add(new UtcAwareDateTimeConverter(httpContextAccessor, builder.Configuration));
+        options.JsonSerializerOptions.Converters.Add(new UtcAwareNullableDateTimeConverter(httpContextAccessor, builder.Configuration));
+    });
 builder.Services.Configure<ApiBehaviorOptions>(options => options.SuppressModelStateInvalidFilter = true);
 builder.Services.AddHttpContextAccessor();
 
@@ -74,13 +85,16 @@ builder.Services.AddSwaggerGen(options =>
     options.OperationFilter<AuthorizeOperationFilter>();
 });
 
-// Database: EF Core 8 + Pomelo, MariaDB 11.7.2, pooled context, split queries.
-builder.Services.AddDbContextPool<AppDbContext>(options => options
+// Database: EF Core 8 + Pomelo, MariaDB 11.7.2, pooled context, split queries. The session-pinning
+// interceptor forces every connection to UTC (SET time_zone = '+00:00') so DB-generated UpdatedAt is
+// true UTC regardless of the server session zone (planning/timezone-aware-datetimes.md).
+builder.Services.AddDbContextPool<AppDbContext>((serviceProvider, options) => options
     .UseMySql(
         builder.Configuration.GetConnectionString("Default")
             ?? throw new InvalidOperationException("Connection string 'Default' is missing."),
         new MariaDbServerVersion(new Version(11, 7, 2)),
-        mySqlOptions => mySqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery)));
+        mySqlOptions => mySqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery))
+    .AddInterceptors(serviceProvider.GetRequiredService<UtcSessionTimeZoneInterceptor>()));
 
 // Redis (StackExchange.Redis) - future token-whitelist cache. AbortOnConnectFail = false so the
 // app boots even when Redis is unreachable; the multiplexer reconnects in the background.
@@ -123,6 +137,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseRouting();
+// Resolve the request timezone (X-Time-Zone header -> app-default) into HttpContext.Items early, so the
+// singleton JSON converters and scoped IRequestTimeZone both read one resolution. No auth dependency.
+app.UseMiddleware<RequestTimeZoneMiddleware>();
 // After UseRouting on purpose: the middleware needs endpoint metadata to see [ResponseWrapped].
 app.UseMiddleware<ErrorHandlerMiddleware>();
 app.UseAuthentication();

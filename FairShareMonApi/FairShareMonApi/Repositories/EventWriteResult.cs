@@ -32,8 +32,15 @@ public sealed record EventWriteResult<T>(EventWriteStatus Status, T? Entity) whe
     public static EventWriteResult<T> Fail(EventWriteStatus status) => new(status, null);
 }
 
-/// <summary>Repository-layer input for creating an event (range normalized in the repository, OQ1).</summary>
-public sealed record CreateEventData(string Name, string? Description, DateTime StartDate, DateTime EndDate);
+/// <summary>
+/// Repository-layer input for creating an event. The whole-day range is normalized in the repository
+/// in the request timezone <paramref name="Zone"/> (planning/timezone-aware-datetimes.md D3, refines
+/// the M6 OQ1 UTC-day caveat), then converted to UTC bounds for storage.
+/// </summary>
+public sealed record CreateEventData(string Name, string? Description, DateTime StartDate, DateTime EndDate, TimeZoneInfo Zone);
 
-/// <summary>Repository-layer input for updating an event's info (range normalized in the repository, OQ1).</summary>
-public sealed record UpdateEventData(string Name, string? Description, DateTime StartDate, DateTime EndDate);
+/// <summary>
+/// Repository-layer input for updating an event's info. The whole-day range is re-normalized in the
+/// request timezone <paramref name="Zone"/> then converted to UTC bounds (D3).
+/// </summary>
+public sealed record UpdateEventData(string Name, string? Description, DateTime StartDate, DateTime EndDate, TimeZoneInfo Zone);
