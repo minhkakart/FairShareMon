@@ -1,0 +1,49 @@
+{
+  "appName": "FairShareMon",
+  "tagline": "Group expense ledger",
+  "loading": "Loading…",
+  "booting": "Restoring your session…",
+  "save": "Save",
+  "cancel": "Cancel",
+  "retry": "Retry",
+  "backToApp": "Back to app",
+  "logout": "Log out",
+  "account": "Account",
+  "skipToContent": "Skip to content",
+  "theme": {
+    "label": "Theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
+  "locale": {
+    "label": "Language",
+    "vi": "Tiếng Việt",
+    "en": "English"
+  },
+  "nav": {
+    "dashboard": "Overview",
+    "members": "Members",
+    "categories": "Categories",
+    "tags": "Tags",
+    "expenses": "Expenses",
+    "events": "Events",
+    "stats": "Stats",
+    "wallet": "Wallet",
+    "admin": "Admin",
+    "changePassword": "Change password"
+  },
+  "notFound": {
+    "title": "Not found",
+    "body": "The page or data you are looking for does not exist, or you do not have access to it.",
+    "backHome": "Back to app"
+  },
+  "forbidden": {
+    "title": "Access denied",
+    "body": "You do not have permission to access this area."
+  },
+  "placeholder": {
+    "comingSoon": "Coming soon",
+    "body": "This screen will be built in a later feature cycle."
+  }
+}

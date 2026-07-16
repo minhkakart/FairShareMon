@@ -1,0 +1,124 @@
+.viewport {
+  position: fixed;
+  z-index: var(--fs-z-toast);
+  bottom: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-2);
+  width: min(24rem, calc(100vw - 2 * var(--fs-space-4)));
+  max-width: 100vw;
+  margin: 0;
+  padding: var(--fs-space-4);
+  list-style: none;
+  outline: none;
+}
+
+.toast {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--fs-space-3);
+  overflow: hidden;
+  padding: var(--fs-space-3) var(--fs-space-4);
+  padding-left: var(--fs-space-4);
+  background-color: var(--fs-color-surface-raised);
+  border: 1px solid var(--fs-color-border);
+  border-radius: var(--fs-radius-md);
+  box-shadow: var(--fs-shadow-md);
+}
+
+/* A left severity stripe carries tone without relying on fill color alone. */
+.stripe {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: 4px;
+}
+.info .stripe {
+  background-color: var(--fs-color-info);
+}
+.success .stripe {
+  background-color: var(--fs-color-success);
+}
+.warning .stripe {
+  background-color: var(--fs-color-warning);
+}
+.danger .stripe {
+  background-color: var(--fs-color-danger);
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-1);
+  flex: 1;
+  min-width: 0;
+}
+
+.title {
+  font-size: var(--fs-text-sm);
+  font-weight: var(--fs-weight-semibold);
+  color: var(--fs-color-text);
+  margin: 0;
+}
+
+.description {
+  font-size: var(--fs-text-sm);
+  color: var(--fs-color-text-secondary);
+  line-height: var(--fs-leading-snug);
+  margin: 0;
+}
+
+.close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: none;
+  border-radius: var(--fs-radius-sm);
+  background: transparent;
+  color: var(--fs-color-text-secondary);
+  cursor: pointer;
+}
+.close:hover {
+  color: var(--fs-color-text);
+  background-color: var(--fs-color-surface-hover);
+}
+.close :global(svg) {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+
+/* Enter/exit animations (Radix data-state / swipe). */
+.toast[data-state="open"] {
+  animation: fs-toast-in var(--fs-duration-normal) var(--fs-ease-decelerate);
+}
+.toast[data-state="closed"] {
+  animation: fs-toast-out var(--fs-duration-fast) var(--fs-ease-accelerate);
+}
+.toast[data-swipe="move"] {
+  transform: translateX(var(--radix-toast-swipe-move-x));
+}
+.toast[data-swipe="cancel"] {
+  transform: translateX(0);
+  transition: transform var(--fs-duration-fast) var(--fs-ease-standard);
+}
+.toast[data-swipe="end"] {
+  animation: fs-toast-out var(--fs-duration-fast) var(--fs-ease-accelerate);
+}
+
+@keyframes fs-toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+}
+@keyframes fs-toast-out {
+  to {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+}

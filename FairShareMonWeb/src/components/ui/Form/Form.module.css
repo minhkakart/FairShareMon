@@ -1,0 +1,38 @@
+.form,
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-5);
+}
+
+.formError {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--fs-space-2);
+  padding: var(--fs-space-3) var(--fs-space-4);
+  background-color: var(--fs-color-danger-surface);
+  border: 1px solid var(--fs-color-danger-border);
+  border-radius: var(--fs-radius-md);
+  color: var(--fs-color-danger-text);
+  font-size: var(--fs-text-sm);
+  line-height: var(--fs-leading-snug);
+}
+
+.formErrorIcon {
+  flex: none;
+  width: 1.15rem;
+  height: 1.15rem;
+  margin-top: 1px;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--fs-space-3);
+}
+
+@media (max-width: 30rem) {
+  .actions {
+    flex-direction: column-reverse;
+  }
+}

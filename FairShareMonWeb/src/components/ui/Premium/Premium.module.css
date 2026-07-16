@@ -1,0 +1,69 @@
+.upgrade {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--fs-space-3);
+  padding: var(--fs-space-5);
+  border: 1px solid var(--fs-color-premium-border);
+  border-radius: var(--fs-radius-lg);
+  background:
+    linear-gradient(
+      180deg,
+      var(--fs-color-premium-surface),
+      var(--fs-color-surface)
+    );
+}
+.compact {
+  padding: var(--fs-space-3) var(--fs-space-4);
+  border-radius: var(--fs-radius-md);
+}
+
+.crown {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--fs-radius-full);
+  background-color: var(--fs-color-premium-surface);
+  color: var(--fs-color-premium);
+}
+.crown :global(svg) {
+  width: 1.35rem;
+  height: 1.35rem;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-2);
+  min-width: 0;
+}
+
+.title {
+  font-weight: var(--fs-weight-semibold);
+  color: var(--fs-color-premium-text);
+}
+
+.desc {
+  font-size: var(--fs-text-sm);
+  color: var(--fs-color-text-secondary);
+  line-height: var(--fs-leading-normal);
+}
+
+.action {
+  margin-top: var(--fs-space-1);
+}
+
+/* Limit notice — neutral, calm; not an error color. */
+.limit {
+  display: flex;
+  gap: var(--fs-space-3);
+  padding: var(--fs-space-4);
+  border: 1px dashed var(--fs-color-border-strong);
+  border-radius: var(--fs-radius-md);
+  background-color: var(--fs-color-surface-sunken);
+}
+.limit .title {
+  color: var(--fs-color-text);
+}

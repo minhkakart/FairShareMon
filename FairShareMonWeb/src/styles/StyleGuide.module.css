@@ -1,0 +1,128 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-10);
+}
+
+.intro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-3);
+  max-width: 44rem;
+}
+.intro p {
+  color: var(--fs-color-text-secondary);
+  font-size: var(--fs-text-lg);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-4);
+}
+
+.sectionTitle {
+  font-size: var(--fs-text-xl);
+  padding-bottom: var(--fs-space-2);
+  border-bottom: 1px solid var(--fs-color-border-subtle);
+}
+
+.note {
+  font-size: var(--fs-text-sm);
+  color: var(--fs-color-text-secondary);
+  max-width: 44rem;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--fs-space-3);
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-3);
+  max-width: 40rem;
+}
+
+.twoCol {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  gap: var(--fs-space-4);
+}
+
+/* Swatches */
+.swatchGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  gap: var(--fs-space-3);
+}
+.swatch {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-1);
+}
+.swatchColor {
+  display: block;
+  height: 3rem;
+  border-radius: var(--fs-radius-md);
+  border: 1px solid var(--fs-color-border);
+}
+.swatchLabel {
+  font-size: var(--fs-text-xs);
+  color: var(--fs-color-text-secondary);
+}
+
+.vizRow {
+  display: flex;
+  gap: 2px;
+}
+.vizChip {
+  width: 3rem;
+  height: 2rem;
+  border-radius: var(--fs-radius-sm);
+}
+
+/* Type samples */
+.typeStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-3);
+}
+.t3xl {
+  font-size: var(--fs-text-3xl);
+  font-weight: var(--fs-weight-bold);
+  letter-spacing: var(--fs-tracking-tight);
+  line-height: var(--fs-leading-tight);
+}
+.t2xl {
+  font-size: var(--fs-text-2xl);
+  font-weight: var(--fs-weight-semibold);
+}
+.txl {
+  font-size: var(--fs-text-xl);
+  font-weight: var(--fs-weight-semibold);
+}
+.tlg {
+  font-size: var(--fs-text-lg);
+}
+.tmd {
+  font-size: var(--fs-text-md);
+  max-width: 44rem;
+}
+.tsm {
+  font-size: var(--fs-text-sm);
+  color: var(--fs-color-text-secondary);
+}
+.txs {
+  font-size: var(--fs-text-xs);
+  color: var(--fs-color-text-secondary);
+}
+
+.authPreview {
+  border: 1px dashed var(--fs-color-border-strong);
+  border-radius: var(--fs-radius-lg);
+  overflow: hidden;
+}

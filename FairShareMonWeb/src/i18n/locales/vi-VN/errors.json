@@ -1,0 +1,10 @@
+{
+  "network": "Không kết nối được máy chủ. Vui lòng kiểm tra mạng và thử lại.",
+  "unexpected": "Đã xảy ra lỗi không mong muốn. Vui lòng thử lại.",
+  "premiumRequired": "Tính năng này chỉ dành cho tài khoản Premium.",
+  "limit": {
+    "member": "Bạn đã đạt giới hạn số thành viên của gói Free.",
+    "openEvent": "Bạn đã đạt giới hạn số đợt đang mở của gói Free.",
+    "monthlyExpense": "Bạn đã đạt giới hạn số phiếu chi tiêu trong tháng của gói Free."
+  }
+}

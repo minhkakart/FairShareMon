@@ -1,0 +1,44 @@
+.money {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  white-space: nowrap;
+  font-weight: var(--fs-weight-semibold);
+  letter-spacing: 0;
+}
+
+.sign {
+  margin-inline-end: 0.05em;
+}
+
+/* Sizes — the big figure (xl) is for the balance hero / stat tiles. */
+.sm {
+  font-size: var(--fs-text-sm);
+}
+.md {
+  font-size: var(--fs-text-md);
+}
+.lg {
+  font-size: var(--fs-text-xl);
+}
+.xl {
+  font-size: var(--fs-text-3xl);
+  font-weight: var(--fs-weight-bold);
+  letter-spacing: var(--fs-tracking-tight);
+}
+
+/* Tones */
+.default {
+  color: var(--fs-color-text);
+}
+.muted {
+  color: var(--fs-color-text-secondary);
+}
+.credit {
+  color: var(--fs-color-credit-text);
+}
+.debit {
+  color: var(--fs-color-debit-text);
+}
+.settled {
+  color: var(--fs-color-settled-text);
+}

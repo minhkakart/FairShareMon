@@ -1,0 +1,5 @@
+dist
+node_modules
+pnpm-lock.yaml
+public/mockServiceWorker.js
+src/i18n/locales

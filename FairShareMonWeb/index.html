@@ -1,10 +1,26 @@
 <!doctype html>
-<html lang="en">
+<html lang="vi">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>fairsharemonweb</title>
+    <title>FairShareMon</title>
+    <script>
+      // Pre-paint: apply the persisted theme + lang before React mounts so
+      // there is no flash. Mirrors ThemeProvider/LocaleProvider storage keys.
+      (function () {
+        try {
+          var theme = localStorage.getItem("fsm.theme");
+          if (theme === "light" || theme === "dark") {
+            document.documentElement.setAttribute("data-theme", theme);
+          }
+          var locale = localStorage.getItem("fsm.locale");
+          document.documentElement.lang = locale === "en-US" ? "en" : "vi";
+        } catch (e) {
+          /* storage unavailable — fall back to defaults */
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

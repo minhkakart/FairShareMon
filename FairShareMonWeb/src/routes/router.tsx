@@ -1,0 +1,83 @@
+import { createBrowserRouter, Navigate } from "react-router-dom";
+import { RootLayout } from "./RootLayout";
+import { PublicOnlyRoute } from "./PublicOnlyRoute";
+import { ProtectedRoute } from "./ProtectedRoute";
+import { AdminRoute } from "./AdminRoute";
+import { AppShellLayout } from "./AppShellLayout";
+import { NotFound } from "./NotFound";
+import { StubPage } from "./StubPage";
+import { LoginPage } from "@/features/auth/pages/LoginPage";
+import { RegisterPage } from "@/features/auth/pages/RegisterPage";
+import { ChangePasswordPage } from "@/features/auth/pages/ChangePasswordPage";
+import { DashboardPage } from "@/features/dashboard/pages/DashboardPage";
+import { AdminPage } from "@/features/admin/pages/AdminPage";
+
+export const router = createBrowserRouter([
+  {
+    path: "/",
+    element: <RootLayout />,
+    children: [
+      // Public auth routes (redirect to app if already signed in).
+      {
+        element: <PublicOnlyRoute />,
+        children: [
+          { path: "login", element: <LoginPage /> },
+          { path: "register", element: <RegisterPage /> },
+        ],
+      },
+      // Authenticated app shell.
+      {
+        element: <ProtectedRoute />,
+        children: [
+          {
+            element: <AppShellLayout />,
+            children: [
+              { index: true, element: <Navigate to="/dashboard" replace /> },
+              { path: "dashboard", element: <DashboardPage /> },
+              {
+                path: "members",
+                element: <StubPage titleKey="common:nav.members" />,
+              },
+              {
+                path: "categories",
+                element: <StubPage titleKey="common:nav.categories" />,
+              },
+              {
+                path: "tags",
+                element: <StubPage titleKey="common:nav.tags" />,
+              },
+              {
+                path: "expenses",
+                element: <StubPage titleKey="common:nav.expenses" />,
+              },
+              {
+                path: "events",
+                element: <StubPage titleKey="common:nav.events" />,
+              },
+              {
+                path: "stats",
+                element: <StubPage titleKey="common:nav.stats" />,
+              },
+              {
+                path: "wallet",
+                element: <StubPage titleKey="common:nav.wallet" />,
+              },
+              {
+                path: "settings/change-password",
+                element: <ChangePasswordPage />,
+              },
+              // Admin area — gated on role == ADMIN (see AdminRoute seam).
+              {
+                path: "admin",
+                element: <AdminRoute />,
+                children: [{ index: true, element: <AdminPage /> }],
+              },
+            ],
+          },
+        ],
+      },
+      // Ownership 404s + unknown paths.
+      { path: "*", element: <NotFound /> },
+    ],
+  },
+]);

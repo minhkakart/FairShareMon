@@ -1,0 +1,10 @@
+{
+  "network": "Could not reach the server. Check your connection and try again.",
+  "unexpected": "Something went wrong. Please try again.",
+  "premiumRequired": "This feature is available on Premium accounts only.",
+  "limit": {
+    "member": "You have reached the Free plan member limit.",
+    "openEvent": "You have reached the Free plan open-event limit.",
+    "monthlyExpense": "You have reached the Free plan monthly expense limit."
+  }
+}

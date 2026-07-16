@@ -1,0 +1,16 @@
+.spinner {
+  display: inline-block;
+  width: var(--fs-spinner-size, 20px);
+  height: var(--fs-spinner-size, 20px);
+  border-radius: var(--fs-radius-full);
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  opacity: 0.9;
+  animation: fs-spin 0.7s linear infinite;
+}
+
+@keyframes fs-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

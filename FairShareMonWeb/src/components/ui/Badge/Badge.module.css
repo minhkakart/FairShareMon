@@ -1,0 +1,59 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fs-space-1);
+  padding: 0.125rem var(--fs-space-2);
+  border-radius: var(--fs-radius-pill);
+  border: 1px solid transparent;
+  font-size: var(--fs-text-xs);
+  font-weight: var(--fs-weight-semibold);
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.icon {
+  display: inline-flex;
+}
+.icon :global(svg) {
+  width: 0.85em;
+  height: 0.85em;
+}
+
+.neutral {
+  background-color: var(--fs-color-surface-sunken);
+  border-color: var(--fs-color-border);
+  color: var(--fs-color-text-secondary);
+}
+.success {
+  background-color: var(--fs-color-success-surface);
+  border-color: var(--fs-color-success-border);
+  color: var(--fs-color-success-text);
+}
+.warning {
+  background-color: var(--fs-color-warning-surface);
+  border-color: var(--fs-color-warning-border);
+  color: var(--fs-color-warning-text);
+}
+.danger {
+  background-color: var(--fs-color-danger-surface);
+  border-color: var(--fs-color-danger-border);
+  color: var(--fs-color-danger-text);
+}
+.info {
+  background-color: var(--fs-color-info-surface);
+  border-color: var(--fs-color-info-border);
+  color: var(--fs-color-info-text);
+}
+.settled {
+  background-color: var(--fs-color-settled-surface);
+  color: var(--fs-color-settled-text);
+}
+.premium {
+  background-color: var(--fs-color-premium-surface);
+  border-color: var(--fs-color-premium-border);
+  color: var(--fs-color-premium-text);
+}
+.free {
+  background-color: var(--fs-color-free-surface);
+  color: var(--fs-color-free-text);
+}

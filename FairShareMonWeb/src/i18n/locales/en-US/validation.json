@@ -1,0 +1,19 @@
+{
+  "required": "This field is required.",
+  "username": {
+    "required": "Please enter a username.",
+    "length": "Username must be {{min}}–{{max}} characters.",
+    "format": "Username may only contain a-z, 0-9 and _ . -"
+  },
+  "password": {
+    "required": "Please enter a password.",
+    "min": "Password must be at least {{min}} characters.",
+    "maxBytes": "Password is too long (max {{max}} bytes)."
+  },
+  "currentPassword": {
+    "required": "Please enter your current password."
+  },
+  "newPassword": {
+    "required": "Please enter a new password."
+  }
+}

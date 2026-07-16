@@ -1,0 +1,525 @@
+/* =============================================================================
+ * FairShareMon — Design Tokens
+ * =============================================================================
+ * "Sổ ghi nợ chi tiêu" — a group expense ledger. The visual language is built
+ * to feel trustworthy and precise (immutable audit, closed events, exact money)
+ * while staying warm and social (friends splitting trips & meals — not a bank).
+ *
+ * Brand hue: JADE / teal-green — reads as "money / tiền" without literal grass
+ * green, and deliberately avoids the generic AI purple-gradient look.
+ *
+ * ── Naming convention ───────────────────────────────────────────────────────
+ *   Primitive (raw ramp)   --fs-<ramp>-<step>     e.g. --fs-jade-600
+ *   Semantic (role)        --fs-<group>-<role>    e.g. --fs-color-primary
+ *   Scales                 --fs-space-3, --fs-radius-md, --fs-text-lg, …
+ *
+ *   Components MUST consume SEMANTIC tokens (or scales), never raw ramp steps.
+ *   Raw ramp steps are the palette; semantic tokens are the contract that
+ *   swaps between light and dark. Change a role once here → every surface moves.
+ *
+ * ── Theme contract (see styles/README.md) ───────────────────────────────────
+ *   Light is the default. OS dark applies automatically UNLESS the viewer has
+ *   forced a theme. The viewer's toggle stamps  <html data-theme="light|dark">
+ *   and always wins in both directions.
+ *
+ *     :root                                  → light semantic tokens
+ *     @media (prefers-color-scheme: dark)
+ *        :root:not([data-theme="light"])     → dark (OS preference)
+ *     :root[data-theme="dark"]               → dark (explicit toggle, wins)
+ *
+ *   The implementer wires the React state that sets/removes data-theme;
+ *   this file owns every value it resolves to.
+ * ========================================================================== */
+
+:root {
+  color-scheme: light;
+
+  /* == PRIMITIVE RAMPS (theme-independent; do not consume directly) ========= */
+
+  /* Jade — brand / money. Verified: white on jade-600 = 4.99:1 (AA). */
+  --fs-jade-50: #eefbf5;
+  --fs-jade-100: #d0f4e4;
+  --fs-jade-200: #a3e8cb;
+  --fs-jade-300: #6dd6ac;
+  --fs-jade-400: #38bd8c;
+  --fs-jade-500: #14a074;
+  --fs-jade-600: #0c7f5d;
+  --fs-jade-700: #0a6349;
+  --fs-jade-800: #0a4f3b;
+  --fs-jade-900: #0a3f30;
+
+  /* Cool gray with a faint jade bias — the neutral was chosen, not defaulted. */
+  --fs-gray-0: #ffffff;
+  --fs-gray-25: #f7faf9;
+  --fs-gray-50: #f1f5f4;
+  --fs-gray-100: #e7ecea;
+  --fs-gray-200: #d9e0dd;
+  --fs-gray-300: #c3cdc9;
+  --fs-gray-400: #9aa8a3;
+  --fs-gray-500: #64726d;
+  --fs-gray-600: #4b5852;
+  --fs-gray-700: #374039;
+  --fs-gray-800: #232a27;
+  --fs-gray-900: #131816;
+
+  /* Dark-mode neutral plane — near-black with the same jade bias. */
+  --fs-ink-plane: #0d1211;
+  --fs-ink-surface: #151d1b;
+  --fs-ink-raised: #1c2523;
+  --fs-ink-sunken: #101715;
+  --fs-ink-100: #2b3532;
+  --fs-ink-200: #3a4642;
+  --fs-ink-300: #55635d;
+  --fs-ink-400: #7c8a84;
+  --fs-ink-500: #a9b5b0;
+  --fs-ink-700: #d3dbd8;
+  --fs-ink-900: #eef2f0;
+
+  /* Gold — Premium. */
+  --fs-gold-50: #fdf6e3;
+  --fs-gold-100: #f8e9c0;
+  --fs-gold-300: #e6bf5a;
+  --fs-gold-400: #d99e00;
+  --fs-gold-500: #b07d00;
+  --fs-gold-700: #8a5a00;
+
+  /* Status (FIXED — never themed). good / warning / serious / critical.
+     Solid = icon/mark; -text = AA readable text; always paired with icon+label. */
+  --fs-status-good: #0ca30c;
+  --fs-status-good-text-light: #006300;
+  --fs-status-warning: #fab219;
+  --fs-status-warning-text-light: #8a5a00;
+  --fs-status-serious: #ec835a;
+  --fs-status-serious-text-light: #b0451c;
+  --fs-status-critical: #d03b3b;
+  --fs-status-critical-text-light: #b1201f;
+  --fs-status-info: #2a78d6;
+  --fs-status-info-text-light: #1a5aa8;
+
+  /* Finance polarity — balance sign. ALWAYS shown with a +/− sign and an
+     arrow icon so meaning never rests on color alone (red-green CVD). */
+  --fs-credit-light: #0a7d3f; /* được nhận lại / +  (owed TO you) */
+  --fs-debit-light: #c0392b; /*  phải trả / −      (you owe)      */
+  --fs-settled-light: #5a6b8a; /* đã trả — calm blue-gray, neutral */
+
+  /* ===========================================================================
+   * SEMANTIC TOKENS — LIGHT (the default theme). Consume these.
+   * ======================================================================== */
+
+  /* Surfaces */
+  --fs-color-bg: var(--fs-gray-50); /* app plane / page background */
+  --fs-color-surface: var(--fs-gray-0); /* cards, panels */
+  --fs-color-surface-raised: var(--fs-gray-0); /* dialogs, popovers, menus */
+  --fs-color-surface-sunken: var(--fs-gray-25); /* inputs, wells, table stripes */
+  --fs-color-surface-hover: var(--fs-gray-50);
+  --fs-color-overlay: rgba(19, 24, 22, 0.45); /* dialog backdrop */
+
+  /* Text */
+  --fs-color-text: var(--fs-gray-900); /* 17.95:1 */
+  --fs-color-text-secondary: var(--fs-gray-500); /* 5.04:1 — hints, captions */
+  --fs-color-text-muted: #7c8a84; /* 3.60:1 — placeholders/axis ONLY, not body */
+  --fs-color-text-disabled: var(--fs-gray-400);
+  --fs-color-text-on-primary: #ffffff; /* on jade-600 = 4.99:1 */
+  --fs-color-text-on-accent: #ffffff;
+
+  /* Borders */
+  --fs-color-border-subtle: var(--fs-gray-100);
+  --fs-color-border: var(--fs-gray-200);
+  --fs-color-border-strong: var(--fs-gray-300);
+
+  /* Brand / interactive */
+  --fs-color-primary: var(--fs-jade-600);
+  --fs-color-primary-hover: var(--fs-jade-700);
+  --fs-color-primary-active: var(--fs-jade-800);
+  --fs-color-primary-subtle: var(--fs-jade-50); /* tinted fill for ghost/soft */
+  --fs-color-primary-subtle-hover: var(--fs-jade-100);
+  --fs-color-accent: var(--fs-jade-500);
+  --fs-color-link: var(--fs-jade-700); /* 7.26:1 */
+  --fs-color-focus: var(--fs-jade-500); /* focus ring */
+
+  /* Status — surface/border/solid/text quartet each */
+  --fs-color-success: var(--fs-status-good);
+  --fs-color-success-text: var(--fs-status-good-text-light); /* 7.0:1 */
+  --fs-color-success-surface: #e4f7e4;
+  --fs-color-success-border: #a6e2a6;
+
+  --fs-color-warning: var(--fs-status-warning);
+  --fs-color-warning-text: var(--fs-status-warning-text-light);
+  --fs-color-warning-surface: #fdf3d6;
+  --fs-color-warning-border: #f2d98a;
+
+  --fs-color-danger: var(--fs-status-critical);
+  --fs-color-danger-text: var(--fs-status-critical-text-light); /* 5.9:1 */
+  --fs-color-danger-surface: #fbe4e3;
+  --fs-color-danger-border: #f0b0af;
+
+  --fs-color-info: var(--fs-status-info);
+  --fs-color-info-text: var(--fs-status-info-text-light);
+  --fs-color-info-surface: #e3eefb;
+  --fs-color-info-border: #aecdf0;
+
+  /* Finance polarity */
+  --fs-color-credit-text: var(--fs-credit-light); /* 5.23:1 */
+  --fs-color-credit-surface: #e2f5ea;
+  --fs-color-debit-text: var(--fs-debit-light); /* 5.44:1 */
+  --fs-color-debit-surface: #fbe6e3;
+  --fs-color-settled-text: var(--fs-settled-light);
+  --fs-color-settled-surface: #edf0f5;
+
+  /* Premium (gold) / Free (neutral) */
+  --fs-color-premium: var(--fs-gold-500);
+  --fs-color-premium-text: var(--fs-gold-700); /* 5.93:1 */
+  --fs-color-premium-surface: var(--fs-gold-50);
+  --fs-color-premium-border: var(--fs-gold-100);
+  --fs-color-free-text: var(--fs-gray-600);
+  --fs-color-free-surface: var(--fs-gray-100);
+
+  /* ===========================================================================
+   * DATA-VIZ TOKENS  (reserved for Stats / Admin dashboards — no chart yet)
+   * Documented, validated palette (dataviz skill). Categorical order is the
+   * CVD-safety mechanism — assign slots 1..N in order, NEVER cycle a 9th.
+   * Light categorical validated on surface #ffffff:
+   *   worst adjacent CVD ΔE 9.1 · normal-vision 19.6.
+   *   Slots 3/4/5 (magenta/yellow/aqua) sit < 3:1 on white → the RELIEF RULE
+   *   applies: charts MUST ship direct labels or a table view.
+   * ======================================================================== */
+  --fs-viz-surface: var(--fs-gray-0); /* chart plane — pass to the validator */
+  --fs-viz-grid: #e1e7e5; /* hairline gridline */
+  --fs-viz-axis: var(--fs-gray-300); /* baseline / axis */
+  --fs-viz-ink: var(--fs-gray-900); /* labels / values wear TEXT tokens */
+  --fs-viz-ink-muted: #7c8a84;
+
+  --fs-viz-cat-1: #2a78d6; /* blue    */
+  --fs-viz-cat-2: #008300; /* green   */
+  --fs-viz-cat-3: #e87ba4; /* magenta */
+  --fs-viz-cat-4: #eda100; /* yellow  */
+  --fs-viz-cat-5: #1baf7a; /* aqua    */
+  --fs-viz-cat-6: #eb6834; /* orange  */
+  --fs-viz-cat-7: #4a3aa7; /* violet  */
+  --fs-viz-cat-8: #e34948; /* red     */
+
+  /* Sequential (magnitude — one hue, light→zero to dark→max). */
+  --fs-viz-seq-100: #cde2fb;
+  --fs-viz-seq-200: #9ec5f4;
+  --fs-viz-seq-300: #6da7ec;
+  --fs-viz-seq-400: #3987e5;
+  --fs-viz-seq-500: #256abf;
+  --fs-viz-seq-600: #184f95;
+  --fs-viz-seq-700: #0d366b;
+
+  /* Diverging (polarity around a baseline — e.g. member balance).
+     blue↔red, neutral GRAY midpoint (never a hue at the middle). */
+  --fs-viz-div-neg-3: #184f95;
+  --fs-viz-div-neg-2: #3987e5;
+  --fs-viz-div-neg-1: #9ec5f4;
+  --fs-viz-div-mid: #f0efec;
+  --fs-viz-div-pos-1: #f3b0af;
+  --fs-viz-div-pos-2: #e34948;
+  --fs-viz-div-pos-3: #b1201f;
+
+  /* == SPACING (4px base grid) ============================================== */
+  --fs-space-0: 0;
+  --fs-space-1: 0.25rem; /* 4  */
+  --fs-space-2: 0.5rem; /*  8  */
+  --fs-space-3: 0.75rem; /* 12 */
+  --fs-space-4: 1rem; /*    16 */
+  --fs-space-5: 1.25rem; /* 20 */
+  --fs-space-6: 1.5rem; /*  24 */
+  --fs-space-8: 2rem; /*    32 */
+  --fs-space-10: 2.5rem; /* 40 */
+  --fs-space-12: 3rem; /*   48 */
+  --fs-space-16: 4rem; /*   64 */
+  --fs-space-20: 5rem; /*   80 */
+
+  /* == RADII ================================================================ */
+  --fs-radius-sm: 0.25rem; /* 4  — chips, inputs on dense rows */
+  --fs-radius-md: 0.5rem; /*  8  — buttons, inputs */
+  --fs-radius-lg: 0.75rem; /* 12 — cards */
+  --fs-radius-xl: 1rem; /*    16 — dialogs, sheets */
+  --fs-radius-pill: 999px; /* badges, toggles */
+  --fs-radius-full: 50%;
+
+  /* == TYPOGRAPHY ===========================================================
+   * Vietnamese runs ~30% longer than English and stacks diacritics — the scale
+   * is modest, line-heights are generous, and no tight tracking on body text.
+   * System-first stack (Segoe UI on Windows has excellent Vietnamese coverage).
+   * To adopt a brand webfont later, prepend it here (e.g. "Be Vietnam Pro") —
+   * every surface follows because it reads this one token.
+   */
+  --fs-font-sans: "Be Vietnam Pro", "Inter", system-ui, -apple-system,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --fs-font-mono: ui-monospace, "SFMono-Regular", "Cascadia Mono", Consolas,
+    "Liberation Mono", monospace;
+
+  --fs-text-xs: 0.75rem; /*  12 — badges, legal, table meta */
+  --fs-text-sm: 0.875rem; /* 14 — secondary, captions, dense UI */
+  --fs-text-md: 1rem; /*     16 — body / base */
+  --fs-text-lg: 1.125rem; /* 18 — lead paragraph, card titles */
+  --fs-text-xl: 1.375rem; /* 22 — section headings */
+  --fs-text-2xl: 1.75rem; /* 28 — page titles */
+  --fs-text-3xl: 2.25rem; /* 36 — hero / big money figures */
+
+  --fs-leading-tight: 1.25; /* headings */
+  --fs-leading-snug: 1.4; /*  compact UI */
+  --fs-leading-normal: 1.55; /* body — roomy for Vietnamese diacritics */
+
+  --fs-weight-regular: 400;
+  --fs-weight-medium: 500;
+  --fs-weight-semibold: 600;
+  --fs-weight-bold: 700;
+
+  --fs-tracking-tight: -0.01em; /* large headings only */
+  --fs-tracking-normal: 0;
+  --fs-tracking-wide: 0.04em; /* uppercase eyebrows/labels */
+
+  /* == SHADOWS (cool-tinted, restrained) ==================================== */
+  --fs-shadow-xs: 0 1px 2px rgba(19, 24, 22, 0.06);
+  --fs-shadow-sm: 0 1px 3px rgba(19, 24, 22, 0.08),
+    0 1px 2px rgba(19, 24, 22, 0.06);
+  --fs-shadow-md: 0 4px 12px rgba(19, 24, 22, 0.1),
+    0 2px 4px rgba(19, 24, 22, 0.06);
+  --fs-shadow-lg: 0 12px 28px rgba(19, 24, 22, 0.14),
+    0 4px 8px rgba(19, 24, 22, 0.08);
+  --fs-shadow-focus: 0 0 0 3px rgba(20, 160, 116, 0.35); /* jade-500 @ 35% */
+
+  /* == MOTION =============================================================== */
+  --fs-duration-instant: 80ms;
+  --fs-duration-fast: 130ms;
+  --fs-duration-normal: 200ms;
+  --fs-duration-slow: 320ms;
+  --fs-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --fs-ease-decelerate: cubic-bezier(0, 0, 0, 1);
+  --fs-ease-accelerate: cubic-bezier(0.3, 0, 1, 1);
+
+  /* == Z-INDEX ============================================================== */
+  --fs-z-base: 0;
+  --fs-z-sticky: 100; /* sticky headers */
+  --fs-z-dropdown: 200; /* menus, comboboxes */
+  --fs-z-overlay: 300; /* dialog backdrop */
+  --fs-z-modal: 310; /* dialog content */
+  --fs-z-toast: 400; /* notifications above everything */
+
+  /* == LAYOUT =============================================================== */
+  --fs-layout-max: 72rem; /* content max-width (1152px) */
+  --fs-layout-narrow: 26rem; /* auth cards, single-column forms */
+  --fs-header-h: 3.5rem; /* app-shell header height */
+  --fs-sidebar-w: 15rem; /* desktop nav rail */
+}
+
+/* =============================================================================
+ * DARK — via OS preference (unless the viewer forced light).
+ * ========================================================================== */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --fs-color-bg: var(--fs-ink-plane);
+    --fs-color-surface: var(--fs-ink-surface);
+    --fs-color-surface-raised: var(--fs-ink-raised);
+    --fs-color-surface-sunken: var(--fs-ink-sunken);
+    --fs-color-surface-hover: var(--fs-ink-raised);
+    --fs-color-overlay: rgba(0, 0, 0, 0.6);
+
+    --fs-color-text: var(--fs-ink-900); /* 15.2:1 */
+    --fs-color-text-secondary: var(--fs-ink-500); /* 8.1:1 */
+    --fs-color-text-muted: var(--fs-ink-400); /* 4.76:1 */
+    --fs-color-text-disabled: var(--fs-ink-300);
+    --fs-color-text-on-primary: #06120d; /* dark ink on light-jade btn = 7.97:1 */
+    --fs-color-text-on-accent: #06120d;
+
+    --fs-color-border-subtle: var(--fs-ink-100);
+    --fs-color-border: var(--fs-ink-200);
+    --fs-color-border-strong: var(--fs-ink-300);
+
+    /* In dark, the primary ACTION surface uses a lighter jade with dark ink
+       (a dark-on-dark jade-600 button would fail contrast). */
+    --fs-color-primary: var(--fs-jade-400);
+    --fs-color-primary-hover: var(--fs-jade-300);
+    --fs-color-primary-active: var(--fs-jade-200);
+    --fs-color-primary-subtle: rgba(56, 189, 140, 0.14);
+    --fs-color-primary-subtle-hover: rgba(56, 189, 140, 0.22);
+    --fs-color-accent: var(--fs-jade-400);
+    --fs-color-link: var(--fs-jade-300); /* 9.7:1 */
+    --fs-color-focus: var(--fs-jade-400);
+
+    --fs-color-success: var(--fs-status-good);
+    --fs-color-success-text: #4fd14f;
+    --fs-color-success-surface: rgba(12, 163, 12, 0.16);
+    --fs-color-success-border: rgba(79, 209, 79, 0.4);
+
+    --fs-color-warning: var(--fs-status-warning);
+    --fs-color-warning-text: #f5c451;
+    --fs-color-warning-surface: rgba(250, 178, 25, 0.16);
+    --fs-color-warning-border: rgba(245, 196, 81, 0.4);
+
+    --fs-color-danger: var(--fs-status-critical);
+    --fs-color-danger-text: #f2685a;
+    --fs-color-danger-surface: rgba(208, 59, 59, 0.18);
+    --fs-color-danger-border: rgba(242, 104, 90, 0.4);
+
+    --fs-color-info: var(--fs-status-info);
+    --fs-color-info-text: #7ab3f0;
+    --fs-color-info-surface: rgba(42, 120, 214, 0.18);
+    --fs-color-info-border: rgba(122, 179, 240, 0.4);
+
+    --fs-color-credit-text: #3ec87a; /* 7.97:1 */
+    --fs-color-credit-surface: rgba(62, 200, 122, 0.14);
+    --fs-color-debit-text: #f2685a; /* 5.64:1 */
+    --fs-color-debit-surface: rgba(242, 104, 90, 0.14);
+    --fs-color-settled-text: #93a3c4;
+    --fs-color-settled-surface: rgba(147, 163, 196, 0.14);
+
+    --fs-color-premium: var(--fs-gold-400);
+    --fs-color-premium-text: var(--fs-gold-300);
+    --fs-color-premium-surface: rgba(217, 158, 0, 0.14);
+    --fs-color-premium-border: rgba(230, 191, 90, 0.4);
+    --fs-color-free-text: var(--fs-ink-500);
+    --fs-color-free-surface: var(--fs-ink-100);
+
+    /* Data-viz — dark steps of the SAME eight hues, validated on #151d1b:
+       worst adjacent CVD ΔE 8.4 · normal-vision 19.3 · all ≥ 3:1. */
+    --fs-viz-surface: var(--fs-ink-surface);
+    --fs-viz-grid: #2c322f;
+    --fs-viz-axis: var(--fs-ink-200);
+    --fs-viz-ink: var(--fs-ink-900);
+    --fs-viz-ink-muted: var(--fs-ink-400);
+
+    --fs-viz-cat-1: #3987e5;
+    --fs-viz-cat-2: #008300;
+    --fs-viz-cat-3: #d55181;
+    --fs-viz-cat-4: #c98500;
+    --fs-viz-cat-5: #199e70;
+    --fs-viz-cat-6: #d95926;
+    --fs-viz-cat-7: #9085e9;
+    --fs-viz-cat-8: #e66767;
+
+    --fs-viz-seq-100: #0d366b;
+    --fs-viz-seq-200: #184f95;
+    --fs-viz-seq-300: #256abf;
+    --fs-viz-seq-400: #3987e5;
+    --fs-viz-seq-500: #5598e7;
+    --fs-viz-seq-600: #86b6ef;
+    --fs-viz-seq-700: #cde2fb;
+
+    --fs-viz-div-neg-3: #86b6ef;
+    --fs-viz-div-neg-2: #3987e5;
+    --fs-viz-div-neg-1: #256abf;
+    --fs-viz-div-mid: #383835;
+    --fs-viz-div-pos-1: #b1201f;
+    --fs-viz-div-pos-2: #e34948;
+    --fs-viz-div-pos-3: #e66767;
+
+    --fs-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --fs-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
+    --fs-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.55), 0 2px 4px rgba(0, 0, 0, 0.4);
+    --fs-shadow-lg: 0 12px 28px rgba(0, 0, 0, 0.6), 0 4px 8px rgba(0, 0, 0, 0.45);
+    --fs-shadow-focus: 0 0 0 3px rgba(56, 189, 140, 0.45);
+  }
+}
+
+/* =============================================================================
+ * DARK — explicit viewer toggle. Duplicates the OS-dark block so the toggle
+ * wins in both directions (this is the documented robust pattern; keep the two
+ * blocks in sync). Any dark-value edit above must be mirrored here.
+ * ========================================================================== */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --fs-color-bg: var(--fs-ink-plane);
+  --fs-color-surface: var(--fs-ink-surface);
+  --fs-color-surface-raised: var(--fs-ink-raised);
+  --fs-color-surface-sunken: var(--fs-ink-sunken);
+  --fs-color-surface-hover: var(--fs-ink-raised);
+  --fs-color-overlay: rgba(0, 0, 0, 0.6);
+
+  --fs-color-text: var(--fs-ink-900);
+  --fs-color-text-secondary: var(--fs-ink-500);
+  --fs-color-text-muted: var(--fs-ink-400);
+  --fs-color-text-disabled: var(--fs-ink-300);
+  --fs-color-text-on-primary: #06120d;
+  --fs-color-text-on-accent: #06120d;
+
+  --fs-color-border-subtle: var(--fs-ink-100);
+  --fs-color-border: var(--fs-ink-200);
+  --fs-color-border-strong: var(--fs-ink-300);
+
+  --fs-color-primary: var(--fs-jade-400);
+  --fs-color-primary-hover: var(--fs-jade-300);
+  --fs-color-primary-active: var(--fs-jade-200);
+  --fs-color-primary-subtle: rgba(56, 189, 140, 0.14);
+  --fs-color-primary-subtle-hover: rgba(56, 189, 140, 0.22);
+  --fs-color-accent: var(--fs-jade-400);
+  --fs-color-link: var(--fs-jade-300);
+  --fs-color-focus: var(--fs-jade-400);
+
+  --fs-color-success: var(--fs-status-good);
+  --fs-color-success-text: #4fd14f;
+  --fs-color-success-surface: rgba(12, 163, 12, 0.16);
+  --fs-color-success-border: rgba(79, 209, 79, 0.4);
+
+  --fs-color-warning: var(--fs-status-warning);
+  --fs-color-warning-text: #f5c451;
+  --fs-color-warning-surface: rgba(250, 178, 25, 0.16);
+  --fs-color-warning-border: rgba(245, 196, 81, 0.4);
+
+  --fs-color-danger: var(--fs-status-critical);
+  --fs-color-danger-text: #f2685a;
+  --fs-color-danger-surface: rgba(208, 59, 59, 0.18);
+  --fs-color-danger-border: rgba(242, 104, 90, 0.4);
+
+  --fs-color-info: var(--fs-status-info);
+  --fs-color-info-text: #7ab3f0;
+  --fs-color-info-surface: rgba(42, 120, 214, 0.18);
+  --fs-color-info-border: rgba(122, 179, 240, 0.4);
+
+  --fs-color-credit-text: #3ec87a;
+  --fs-color-credit-surface: rgba(62, 200, 122, 0.14);
+  --fs-color-debit-text: #f2685a;
+  --fs-color-debit-surface: rgba(242, 104, 90, 0.14);
+  --fs-color-settled-text: #93a3c4;
+  --fs-color-settled-surface: rgba(147, 163, 196, 0.14);
+
+  --fs-color-premium: var(--fs-gold-400);
+  --fs-color-premium-text: var(--fs-gold-300);
+  --fs-color-premium-surface: rgba(217, 158, 0, 0.14);
+  --fs-color-premium-border: rgba(230, 191, 90, 0.4);
+  --fs-color-free-text: var(--fs-ink-500);
+  --fs-color-free-surface: var(--fs-ink-100);
+
+  --fs-viz-surface: var(--fs-ink-surface);
+  --fs-viz-grid: #2c322f;
+  --fs-viz-axis: var(--fs-ink-200);
+  --fs-viz-ink: var(--fs-ink-900);
+  --fs-viz-ink-muted: var(--fs-ink-400);
+
+  --fs-viz-cat-1: #3987e5;
+  --fs-viz-cat-2: #008300;
+  --fs-viz-cat-3: #d55181;
+  --fs-viz-cat-4: #c98500;
+  --fs-viz-cat-5: #199e70;
+  --fs-viz-cat-6: #d95926;
+  --fs-viz-cat-7: #9085e9;
+  --fs-viz-cat-8: #e66767;
+
+  --fs-viz-seq-100: #0d366b;
+  --fs-viz-seq-200: #184f95;
+  --fs-viz-seq-300: #256abf;
+  --fs-viz-seq-400: #3987e5;
+  --fs-viz-seq-500: #5598e7;
+  --fs-viz-seq-600: #86b6ef;
+  --fs-viz-seq-700: #cde2fb;
+
+  --fs-viz-div-neg-3: #86b6ef;
+  --fs-viz-div-neg-2: #3987e5;
+  --fs-viz-div-neg-1: #256abf;
+  --fs-viz-div-mid: #383835;
+  --fs-viz-div-pos-1: #b1201f;
+  --fs-viz-div-pos-2: #e34948;
+  --fs-viz-div-pos-3: #e66767;
+
+  --fs-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --fs-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
+  --fs-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.55), 0 2px 4px rgba(0, 0, 0, 0.4);
+  --fs-shadow-lg: 0 12px 28px rgba(0, 0, 0, 0.6), 0 4px 8px rgba(0, 0, 0, 0.45);
+  --fs-shadow-focus: 0 0 0 3px rgba(56, 189, 140, 0.45);
+}

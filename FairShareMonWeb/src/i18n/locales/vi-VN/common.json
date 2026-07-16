@@ -1,0 +1,49 @@
+{
+  "appName": "FairShareMon",
+  "tagline": "Sổ ghi nợ chi tiêu",
+  "loading": "Đang tải…",
+  "booting": "Đang khôi phục phiên đăng nhập…",
+  "save": "Lưu",
+  "cancel": "Huỷ",
+  "retry": "Thử lại",
+  "backToApp": "Về trang chính",
+  "logout": "Đăng xuất",
+  "account": "Tài khoản",
+  "skipToContent": "Bỏ qua tới nội dung",
+  "theme": {
+    "label": "Giao diện",
+    "light": "Sáng",
+    "dark": "Tối",
+    "system": "Theo hệ thống"
+  },
+  "locale": {
+    "label": "Ngôn ngữ",
+    "vi": "Tiếng Việt",
+    "en": "English"
+  },
+  "nav": {
+    "dashboard": "Tổng quan",
+    "members": "Thành viên",
+    "categories": "Danh mục",
+    "tags": "Nhãn",
+    "expenses": "Chi tiêu",
+    "events": "Đợt",
+    "stats": "Thống kê",
+    "wallet": "Ví",
+    "admin": "Quản trị",
+    "changePassword": "Đổi mật khẩu"
+  },
+  "notFound": {
+    "title": "Không tìm thấy",
+    "body": "Trang hoặc dữ liệu bạn tìm không tồn tại hoặc bạn không có quyền xem.",
+    "backHome": "Về trang chính"
+  },
+  "forbidden": {
+    "title": "Không có quyền truy cập",
+    "body": "Bạn không có quyền truy cập khu vực này."
+  },
+  "placeholder": {
+    "comingSoon": "Sắp ra mắt",
+    "body": "Màn hình này sẽ được xây dựng ở chu kỳ tính năng sau."
+  }
+}

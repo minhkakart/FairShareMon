@@ -1,0 +1,121 @@
+.button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--fs-space-2);
+  border: 1px solid transparent;
+  border-radius: var(--fs-radius-md);
+  font-family: inherit;
+  font-weight: var(--fs-weight-semibold);
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  transition:
+    background-color var(--fs-duration-fast) var(--fs-ease-standard),
+    border-color var(--fs-duration-fast) var(--fs-ease-standard),
+    color var(--fs-duration-fast) var(--fs-ease-standard),
+    box-shadow var(--fs-duration-fast) var(--fs-ease-standard);
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.content {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fs-space-2);
+  min-width: 0;
+}
+
+.icon {
+  display: inline-flex;
+  flex: none;
+}
+.icon :global(svg) {
+  width: 1.15em;
+  height: 1.15em;
+}
+
+/* Loading: hide the label visually (keep it for layout width + SR) and center
+   the spinner over the button. */
+.loading .content {
+  visibility: hidden;
+}
+.spinnerSlot {
+  position: absolute;
+  inset: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* == Sizes ================================================================= */
+.sm {
+  height: 2rem;
+  padding-inline: var(--fs-space-3);
+  font-size: var(--fs-text-sm);
+}
+.md {
+  height: 2.5rem;
+  padding-inline: var(--fs-space-4);
+  font-size: var(--fs-text-md);
+}
+.lg {
+  height: 3rem;
+  padding-inline: var(--fs-space-5);
+  font-size: var(--fs-text-lg);
+}
+.fullWidth {
+  width: 100%;
+}
+
+/* == Variants ============================================================== */
+.primary {
+  background-color: var(--fs-color-primary);
+  color: var(--fs-color-text-on-primary);
+}
+.primary:hover:not(:disabled) {
+  background-color: var(--fs-color-primary-hover);
+}
+.primary:active:not(:disabled) {
+  background-color: var(--fs-color-primary-active);
+}
+
+.secondary {
+  background-color: var(--fs-color-surface);
+  border-color: var(--fs-color-border-strong);
+  color: var(--fs-color-text);
+}
+.secondary:hover:not(:disabled) {
+  background-color: var(--fs-color-surface-hover);
+  border-color: var(--fs-color-border-strong);
+}
+
+.ghost {
+  background-color: transparent;
+  color: var(--fs-color-primary);
+}
+.ghost:hover:not(:disabled) {
+  background-color: var(--fs-color-primary-subtle);
+}
+
+.danger {
+  background-color: var(--fs-color-danger);
+  color: #fff;
+}
+.danger:hover:not(:disabled) {
+  filter: brightness(0.94);
+}
+
+.premium {
+  background-color: var(--fs-color-premium);
+  color: #fff;
+}
+.premium:hover:not(:disabled) {
+  filter: brightness(0.95);
+}

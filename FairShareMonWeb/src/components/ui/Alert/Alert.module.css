@@ -1,0 +1,63 @@
+.alert {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--fs-space-3);
+  padding: var(--fs-space-3) var(--fs-space-4);
+  border: 1px solid transparent;
+  border-radius: var(--fs-radius-md);
+  font-size: var(--fs-text-sm);
+  line-height: var(--fs-leading-snug);
+}
+
+.icon {
+  flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-top: 1px;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-2);
+  min-width: 0;
+}
+
+.title {
+  font-weight: var(--fs-weight-semibold);
+}
+
+.body {
+  color: var(--fs-color-text);
+}
+
+.action {
+  margin-top: var(--fs-space-1);
+}
+
+.info {
+  background-color: var(--fs-color-info-surface);
+  border-color: var(--fs-color-info-border);
+  color: var(--fs-color-info-text);
+}
+.success {
+  background-color: var(--fs-color-success-surface);
+  border-color: var(--fs-color-success-border);
+  color: var(--fs-color-success-text);
+}
+.warning {
+  background-color: var(--fs-color-warning-surface);
+  border-color: var(--fs-color-warning-border);
+  color: var(--fs-color-warning-text);
+}
+.danger {
+  background-color: var(--fs-color-danger-surface);
+  border-color: var(--fs-color-danger-border);
+  color: var(--fs-color-danger-text);
+}
+
+/* Body text inside a tinted alert stays readable ink, not the tone color. */
+.alert .body {
+  color: inherit;
+  opacity: 0.95;
+}

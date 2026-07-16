@@ -1,0 +1,50 @@
+.segmented {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  background-color: var(--fs-color-surface-sunken);
+  border: 1px solid var(--fs-color-border);
+  border-radius: var(--fs-radius-pill);
+}
+
+.segment {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  height: 1.85rem;
+  padding-inline: var(--fs-space-2);
+  border: none;
+  border-radius: var(--fs-radius-pill);
+  background: transparent;
+  color: var(--fs-color-text-secondary);
+  cursor: pointer;
+  transition:
+    background-color var(--fs-duration-fast) var(--fs-ease-standard),
+    color var(--fs-duration-fast) var(--fs-ease-standard);
+}
+
+.segmentText {
+  font-size: var(--fs-text-xs);
+  font-weight: var(--fs-weight-semibold);
+  letter-spacing: var(--fs-tracking-wide);
+}
+
+.segment:hover {
+  color: var(--fs-color-text);
+}
+
+.segmentActive {
+  background-color: var(--fs-color-surface);
+  color: var(--fs-color-text);
+  box-shadow: var(--fs-shadow-xs);
+}
+
+.segmentIcon {
+  display: inline-flex;
+}
+.segmentIcon :global(svg) {
+  width: 1.05rem;
+  height: 1.05rem;
+}
