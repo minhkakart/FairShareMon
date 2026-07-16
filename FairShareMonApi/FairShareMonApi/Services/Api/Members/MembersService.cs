@@ -87,7 +87,7 @@ public sealed class MembersService(
             ?? throw NotFound();
 
         if (member.IsOwnerRepresentative)
-            throw new ErrorException(ErrorCodes.OwnerRepresentativeNotDeletable, "Không thể xóa thành viên đại diện chủ sổ.");
+            throw new ErrorException(ErrorCodes.OwnerRepresentativeNotDeletable, MessageKeys.Error.OwnerRepresentativeNotDeletable);
 
         await memberRepository.SoftDeleteAsync(userUuid, memberUuid, cancellationToken);
     }
@@ -112,5 +112,5 @@ public sealed class MembersService(
     }
 
     private static ErrorException NotFound() =>
-        new(ErrorCodes.MemberNotFound, "Không tìm thấy thành viên.");
+        new(ErrorCodes.MemberNotFound, MessageKeys.Error.MemberNotFound);
 }

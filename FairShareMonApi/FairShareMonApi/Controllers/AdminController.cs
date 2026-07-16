@@ -3,6 +3,8 @@ using FairShareMonApi.Models;
 using FairShareMonApi.Models.Admin;
 using FairShareMonApi.Services.Api.Admin;
 using Microsoft.AspNetCore.Authorization;
+using FairShareMonApi.Localization.Resources;
+using Microsoft.Extensions.Localization;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
 
@@ -20,7 +22,7 @@ namespace FairShareMonApi.Controllers;
 [Authorize(Policy = AuthorizationPolicies.Admin)]
 public class AdminController(
     IAdminUserService adminUserService,
-    IAdminDashboardService adminDashboardService) : AppController
+    IAdminDashboardService adminDashboardService, IStringLocalizer<StringResources> localizer) : AppController
 {
     [HttpGet("dashboard")]
     [SwaggerOperation(
@@ -102,7 +104,7 @@ public class AdminController(
     public async Task<IActionResult> DisableUserAsync(string uuid, CancellationToken cancellationToken)
     {
         await adminUserService.DisableAsync(AuthenticatedUser, uuid, cancellationToken);
-        return ApiResult.SuccessMessage("Đã vô hiệu hóa tài khoản.");
+        return ApiResult.SuccessMessage(localizer[MessageKeys.Success.AdminAccountDisabled].Value);
     }
 
     [HttpPost("users/{uuid}/enable")]
@@ -116,7 +118,7 @@ public class AdminController(
     public async Task<IActionResult> EnableUserAsync(string uuid, CancellationToken cancellationToken)
     {
         await adminUserService.EnableAsync(AuthenticatedUser, uuid, cancellationToken);
-        return ApiResult.SuccessMessage("Đã bật lại tài khoản.");
+        return ApiResult.SuccessMessage(localizer[MessageKeys.Success.AdminAccountEnabled].Value);
     }
 
     [HttpPost("users/{uuid}/revoke-tokens")]
@@ -131,7 +133,7 @@ public class AdminController(
     public async Task<IActionResult> RevokeTokensAsync(string uuid, CancellationToken cancellationToken)
     {
         await adminUserService.RevokeTokensAsync(AuthenticatedUser, uuid, cancellationToken);
-        return ApiResult.SuccessMessage("Đã thu hồi toàn bộ phiên của người dùng.");
+        return ApiResult.SuccessMessage(localizer[MessageKeys.Success.AdminTokensRevoked].Value);
     }
 
     [HttpPost("users/{uuid}/reset-password")]
@@ -158,6 +160,6 @@ public class AdminController(
     public async Task<IActionResult> SetRoleAsync(string uuid, [FromBody] SetRoleRequest request, CancellationToken cancellationToken)
     {
         await adminUserService.SetRoleAsync(AuthenticatedUser, uuid, request, cancellationToken);
-        return ApiResult.SuccessMessage("Đã cập nhật vai trò người dùng.");
+        return ApiResult.SuccessMessage(localizer[MessageKeys.Success.AdminRoleUpdated].Value);
     }
 }

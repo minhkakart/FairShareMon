@@ -1,5 +1,9 @@
 using FairShareMonApi.Database.Entities;
 using FairShareMonApi.Models.Wallet;
+using FairShareMonApi.Constants;
+using FairShareMonApi.Localization;
+using FairShareMonApi.Localization.Resources;
+using Microsoft.Extensions.Localization;
 using FluentValidation;
 
 namespace FairShareMonApi.Validators.Wallet;
@@ -11,24 +15,25 @@ namespace FairShareMonApi.Validators.Wallet;
 /// </summary>
 public class UpdateBankAccountRequestValidator : AbstractValidator<UpdateBankAccountRequest>
 {
-    public UpdateBankAccountRequestValidator()
+    public UpdateBankAccountRequestValidator(IStringLocalizer<StringResources>? localizer = null)
     {
+        localizer ??= SharedStringLocalizer.Instance;
         RuleFor(request => request.BankBin)
-            .NotEmpty().WithMessage("Mã ngân hàng (BIN) không được để trống.")
-            .Matches(CreateBankAccountRequestValidator.BankBinPattern).WithMessage("Mã ngân hàng (BIN) phải gồm đúng 6 chữ số.");
+            .NotEmpty().WithMessage(_ => localizer[MessageKeys.Validation.BankAccount.BankBinRequired].Value)
+            .Matches(CreateBankAccountRequestValidator.BankBinPattern).WithMessage(_ => localizer[MessageKeys.Validation.BankAccount.BankBinPattern].Value);
 
         RuleFor(request => request.BankName)
-            .NotEmpty().WithMessage("Tên ngân hàng không được để trống.")
+            .NotEmpty().WithMessage(_ => localizer[MessageKeys.Validation.BankAccount.BankNameRequired].Value)
             .MaximumLength(BankAccount.BankNameMaxLength)
-            .WithMessage($"Tên ngân hàng không được vượt quá {BankAccount.BankNameMaxLength} ký tự.");
+            .WithMessage(_ => localizer[MessageKeys.Validation.BankAccount.BankNameTooLong, BankAccount.BankNameMaxLength].Value);
 
         RuleFor(request => request.AccountNumber)
-            .NotEmpty().WithMessage("Số tài khoản không được để trống.")
-            .Matches(CreateBankAccountRequestValidator.AccountNumberPattern).WithMessage("Số tài khoản không hợp lệ.");
+            .NotEmpty().WithMessage(_ => localizer[MessageKeys.Validation.BankAccount.AccountNumberRequired].Value)
+            .Matches(CreateBankAccountRequestValidator.AccountNumberPattern).WithMessage(_ => localizer[MessageKeys.Validation.BankAccount.AccountNumberInvalid].Value);
 
         RuleFor(request => request.AccountHolderName)
-            .NotEmpty().WithMessage("Tên chủ tài khoản không được để trống.")
+            .NotEmpty().WithMessage(_ => localizer[MessageKeys.Validation.BankAccount.AccountHolderNameRequired].Value)
             .MaximumLength(BankAccount.AccountHolderNameMaxLength)
-            .WithMessage($"Tên chủ tài khoản không được vượt quá {BankAccount.AccountHolderNameMaxLength} ký tự.");
+            .WithMessage(_ => localizer[MessageKeys.Validation.BankAccount.AccountHolderNameTooLong, BankAccount.AccountHolderNameMaxLength].Value);
     }
 }

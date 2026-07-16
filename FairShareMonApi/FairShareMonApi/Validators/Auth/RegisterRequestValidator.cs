@@ -1,5 +1,9 @@
 using System.Text;
 using FairShareMonApi.Models.Auth;
+using FairShareMonApi.Constants;
+using FairShareMonApi.Localization;
+using FairShareMonApi.Localization.Resources;
+using Microsoft.Extensions.Localization;
 using FluentValidation;
 
 namespace FairShareMonApi.Validators.Auth;
@@ -16,20 +20,21 @@ public class RegisterRequestValidator : AbstractValidator<RegisterRequest>
     public const int PasswordMaxBytes = 72;
     public const string UsernamePattern = "^[a-zA-Z0-9_.-]+$";
 
-    public RegisterRequestValidator()
+    public RegisterRequestValidator(IStringLocalizer<StringResources>? localizer = null)
     {
+        localizer ??= SharedStringLocalizer.Instance;
         RuleFor(request => request.Username)
-            .NotEmpty().WithMessage("Tên đăng nhập không được để trống.")
+            .NotEmpty().WithMessage(_ => localizer[MessageKeys.Validation.Auth.UsernameRequired].Value)
             .Length(UsernameMinLength, UsernameMaxLength)
-            .WithMessage($"Tên đăng nhập phải có từ {UsernameMinLength} đến {UsernameMaxLength} ký tự.")
+            .WithMessage(_ => localizer[MessageKeys.Validation.Auth.UsernameLength, UsernameMinLength, UsernameMaxLength].Value)
             .Matches(UsernamePattern)
-            .WithMessage("Tên đăng nhập chỉ được chứa chữ cái không dấu, chữ số và các ký tự _ . -");
+            .WithMessage(_ => localizer[MessageKeys.Validation.Auth.UsernamePattern].Value);
 
         RuleFor(request => request.Password)
-            .NotEmpty().WithMessage("Mật khẩu không được để trống.")
+            .NotEmpty().WithMessage(_ => localizer[MessageKeys.Validation.Auth.PasswordRequired].Value)
             .MinimumLength(PasswordMinLength)
-            .WithMessage($"Mật khẩu phải có ít nhất {PasswordMinLength} ký tự.")
+            .WithMessage(_ => localizer[MessageKeys.Validation.Auth.PasswordTooShort, PasswordMinLength].Value)
             .Must(password => Encoding.UTF8.GetByteCount(password ?? string.Empty) <= PasswordMaxBytes)
-            .WithMessage($"Mật khẩu không được vượt quá {PasswordMaxBytes} byte.");
+            .WithMessage(_ => localizer[MessageKeys.Validation.Auth.PasswordTooLong, PasswordMaxBytes].Value);
     }
 }

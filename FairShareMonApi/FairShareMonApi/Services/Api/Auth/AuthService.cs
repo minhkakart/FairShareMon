@@ -51,7 +51,7 @@ public sealed class AuthService(
 
         var username = request.Username.ToLowerInvariant();
         if (await userRepository.ExistsByUsernameAsync(username, cancellationToken))
-            throw new ErrorException(ErrorCodes.UsernameTaken, "Tên đăng nhập đã tồn tại.");
+            throw new ErrorException(ErrorCodes.UsernameTaken, MessageKeys.Error.UsernameTaken);
 
         var user = new User
         {
@@ -64,7 +64,7 @@ public sealed class AuthService(
         // steps (owner-representative member, and later suggested categories) run in the SAME
         // transaction, so a registration that rolls back leaves neither a user nor a member.
         var created = await userRepository.CreateWithBootstrapAsync(user, RunRegistrationBootstrapAsync, cancellationToken)
-            ?? throw new ErrorException(ErrorCodes.UsernameTaken, "Tên đăng nhập đã tồn tại.");
+            ?? throw new ErrorException(ErrorCodes.UsernameTaken, MessageKeys.Error.UsernameTaken);
 
         return mapper.Map<UserResponse>(created);
     }
@@ -84,15 +84,15 @@ public sealed class AuthService(
         var user = await userRepository.GetByUsernameAsync(request.Username.ToLowerInvariant(), cancellationToken);
         var passwordValid = passwordHasher.Verify(request.Password, user?.PasswordHash ?? passwordHasher.CreateDummyHash());
         if (user is null || !passwordValid)
-            throw new ErrorException(ErrorCodes.InvalidCredentials, "Tên đăng nhập hoặc mật khẩu không đúng.");
+            throw new ErrorException(ErrorCodes.InvalidCredentials, MessageKeys.Error.InvalidCredentials);
 
         // A disabled account cannot authenticate (M11, OQ2). Checked AFTER the credential check so a
         // wrong password still reports invalid-credentials (no account-existence leak on bad password).
         if (user.Status == UserStatuses.Disabled)
-            throw new ErrorException(ErrorCodes.AccountDisabled, "Tài khoản đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên.");
+            throw new ErrorException(ErrorCodes.AccountDisabled, MessageKeys.Error.AccountDisabled);
 
         var pair = await tokenService.IssueAsync(user.Uuid, user.Username, user.Tier, user.Role, cancellationToken)
-            ?? throw new ErrorException(ErrorCodes.InternalError, "Đã xảy ra lỗi hệ thống. Vui lòng thử lại sau.");
+            ?? throw new ErrorException(ErrorCodes.InternalError, MessageKeys.Error.InternalError);
 
         return mapper.Map<TokenPairResponse>(pair);
     }
@@ -102,7 +102,7 @@ public sealed class AuthService(
         await refreshValidator.ValidateAndThrowAsync(request, cancellationToken);
 
         var pair = await tokenService.RefreshAsync(request.RefreshToken, cancellationToken)
-            ?? throw new ErrorException(ErrorCodes.InvalidRefreshToken, "Mã gia hạn phiên không hợp lệ hoặc đã hết hạn.");
+            ?? throw new ErrorException(ErrorCodes.InvalidRefreshToken, MessageKeys.Error.InvalidRefreshToken);
 
         return mapper.Map<TokenPairResponse>(pair);
     }
@@ -116,14 +116,14 @@ public sealed class AuthService(
         await changePasswordValidator.ValidateAndThrowAsync(request, cancellationToken);
 
         var user = await userRepository.GetByUuidAsync(userUuid, cancellationToken)
-            ?? throw new ErrorException(ErrorCodes.Unauthorized, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.");
+            ?? throw new ErrorException(ErrorCodes.Unauthorized, MessageKeys.Error.Unauthorized);
 
         if (!passwordHasher.Verify(request.CurrentPassword, user.PasswordHash))
-            throw new ErrorException(ErrorCodes.CurrentPasswordIncorrect, "Mật khẩu hiện tại không đúng.");
+            throw new ErrorException(ErrorCodes.CurrentPasswordIncorrect, MessageKeys.Error.CurrentPasswordIncorrect);
 
         var updated = await userRepository.UpdatePasswordAsync(userUuid, passwordHasher.Hash(request.NewPassword), cancellationToken);
         if (!updated)
-            throw new ErrorException(ErrorCodes.Unauthorized, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.");
+            throw new ErrorException(ErrorCodes.Unauthorized, MessageKeys.Error.Unauthorized);
 
         // Post-commit side-effect (rules.md): the hash update is committed - now force every
         // logged-in device to re-login (spec §3.1).

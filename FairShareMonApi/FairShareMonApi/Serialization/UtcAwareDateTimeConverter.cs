@@ -1,7 +1,11 @@
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using FairShareMonApi.Constants;
+using FairShareMonApi.Localization;
+using FairShareMonApi.Localization.Resources;
 using FairShareMonApi.Utils;
+using Microsoft.Extensions.Localization;
 
 namespace FairShareMonApi.Serialization;
 
@@ -17,13 +21,23 @@ namespace FairShareMonApi.Serialization;
 /// </list>
 /// This is a singleton converter, so it reads the per-request zone via <see cref="IHttpContextAccessor"/>
 /// (resolved once by <c>RequestTimeZoneMiddleware</c>); it falls back to the app-default zone when there
-/// is no HttpContext, so serialization never throws.
+/// is no HttpContext, so serialization never throws. Parse errors are localized via an
+/// <see cref="IStringLocalizer"/> built from the injected factory, honouring the request
+/// <c>CurrentUICulture</c> set by <c>UseRequestLocalization</c> before model binding.
 /// </summary>
-public sealed class UtcAwareDateTimeConverter(IHttpContextAccessor httpContextAccessor, IConfiguration configuration)
+public sealed class UtcAwareDateTimeConverter(
+    IHttpContextAccessor httpContextAccessor,
+    IConfiguration configuration,
+    IStringLocalizerFactory? localizerFactory = null)
     : JsonConverter<DateTime>
 {
+    // DI supplies the factory; when constructed without one (e.g. unit tests) fall back to the shared
+    // localizer, which resolves the same resx family and honours CurrentUICulture.
+    private readonly IStringLocalizer _localizer =
+        localizerFactory?.Create(typeof(StringResources)) ?? SharedStringLocalizer.Instance;
+
     public override DateTime Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) =>
-        RequestDateTimeSerializer.Read(ref reader, ResolveZone());
+        RequestDateTimeSerializer.Read(ref reader, ResolveZone(), _localizer);
 
     public override void Write(Utf8JsonWriter writer, DateTime value, JsonSerializerOptions options) =>
         writer.WriteStringValue(RequestDateTimeSerializer.Write(value, ResolveZone()));
@@ -50,14 +64,14 @@ internal static class RequestDateTimeSerializer
     /// Reads an ISO-8601 string: offset/Z-bearing -&gt; converted to UTC as sent; naive -&gt; interpreted
     /// in <paramref name="zone"/> then converted to UTC. Always returns <see cref="DateTimeKind.Utc"/>.
     /// </summary>
-    public static DateTime Read(ref Utf8JsonReader reader, TimeZoneInfo zone)
+    public static DateTime Read(ref Utf8JsonReader reader, TimeZoneInfo zone, IStringLocalizer localizer)
     {
         if (reader.TokenType != JsonTokenType.String)
-            throw new JsonException("Giá trị ngày giờ phải là chuỗi ISO-8601.");
+            throw new JsonException(localizer[MessageKeys.Serialization.DateTimeMustBeString].Value);
 
         var raw = reader.GetString();
         if (string.IsNullOrWhiteSpace(raw))
-            throw new JsonException("Giá trị ngày giờ không hợp lệ.");
+            throw new JsonException(localizer[MessageKeys.Serialization.DateTimeInvalid].Value);
 
         if (HasExplicitOffset(raw)
             && DateTimeOffset.TryParse(raw, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var dto))
@@ -69,7 +83,7 @@ internal static class RequestDateTimeSerializer
             return TimeZoneInfo.ConvertTimeToUtc(unspecified, zone);
         }
 
-        throw new JsonException($"Giá trị ngày giờ không hợp lệ: {raw}");
+        throw new JsonException(localizer[MessageKeys.Serialization.DateTimeInvalidWithValue, raw].Value);
     }
 
     private static DateTime EnsureUtc(DateTime value) => value.Kind switch

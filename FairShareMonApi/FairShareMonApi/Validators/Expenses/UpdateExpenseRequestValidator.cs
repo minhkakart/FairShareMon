@@ -1,5 +1,9 @@
 using FairShareMonApi.Database.Entities;
 using FairShareMonApi.Models.Expenses;
+using FairShareMonApi.Constants;
+using FairShareMonApi.Localization;
+using FairShareMonApi.Localization.Resources;
+using Microsoft.Extensions.Localization;
 using FluentValidation;
 
 namespace FairShareMonApi.Validators.Expenses;
@@ -11,18 +15,19 @@ namespace FairShareMonApi.Validators.Expenses;
 /// </summary>
 public class UpdateExpenseRequestValidator : AbstractValidator<UpdateExpenseRequest>
 {
-    public UpdateExpenseRequestValidator()
+    public UpdateExpenseRequestValidator(IStringLocalizer<StringResources>? localizer = null)
     {
+        localizer ??= SharedStringLocalizer.Instance;
         RuleFor(request => request.Name)
-            .NotEmpty().WithMessage("Tên phiếu chi tiêu không được để trống.")
+            .NotEmpty().WithMessage(_ => localizer[MessageKeys.Validation.Expense.NameRequired].Value)
             .MaximumLength(Expense.NameMaxLength)
-            .WithMessage($"Tên phiếu chi tiêu không được vượt quá {Expense.NameMaxLength} ký tự.");
+            .WithMessage(_ => localizer[MessageKeys.Validation.Expense.NameTooLong, Expense.NameMaxLength].Value);
 
         RuleFor(request => request.Description)
             .MaximumLength(Expense.DescriptionMaxLength)
-            .WithMessage($"Mô tả không được vượt quá {Expense.DescriptionMaxLength} ký tự.");
+            .WithMessage(_ => localizer[MessageKeys.Validation.Expense.DescriptionTooLong, Expense.DescriptionMaxLength].Value);
 
         RuleFor(request => request.ExpenseTime)
-            .NotEmpty().WithMessage("Thời điểm chi không được để trống.");
+            .NotEmpty().WithMessage(_ => localizer[MessageKeys.Validation.Expense.ExpenseTimeRequired].Value);
     }
 }

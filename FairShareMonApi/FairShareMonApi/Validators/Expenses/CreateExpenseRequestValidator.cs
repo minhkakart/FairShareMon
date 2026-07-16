@@ -1,5 +1,9 @@
 using FairShareMonApi.Database.Entities;
 using FairShareMonApi.Models.Expenses;
+using FairShareMonApi.Constants;
+using FairShareMonApi.Localization;
+using FairShareMonApi.Localization.Resources;
+using Microsoft.Extensions.Localization;
 using FluentValidation;
 
 namespace FairShareMonApi.Validators.Expenses;
@@ -12,33 +16,34 @@ namespace FairShareMonApi.Validators.Expenses;
 /// </summary>
 public class CreateExpenseRequestValidator : AbstractValidator<CreateExpenseRequest>
 {
-    public CreateExpenseRequestValidator()
+    public CreateExpenseRequestValidator(IStringLocalizer<StringResources>? localizer = null)
     {
+        localizer ??= SharedStringLocalizer.Instance;
         RuleFor(request => request.Name)
-            .NotEmpty().WithMessage("Tên phiếu chi tiêu không được để trống.")
+            .NotEmpty().WithMessage(_ => localizer[MessageKeys.Validation.Expense.NameRequired].Value)
             .MaximumLength(Expense.NameMaxLength)
-            .WithMessage($"Tên phiếu chi tiêu không được vượt quá {Expense.NameMaxLength} ký tự.");
+            .WithMessage(_ => localizer[MessageKeys.Validation.Expense.NameTooLong, Expense.NameMaxLength].Value);
 
         RuleFor(request => request.Description)
             .MaximumLength(Expense.DescriptionMaxLength)
-            .WithMessage($"Mô tả không được vượt quá {Expense.DescriptionMaxLength} ký tự.");
+            .WithMessage(_ => localizer[MessageKeys.Validation.Expense.DescriptionTooLong, Expense.DescriptionMaxLength].Value);
 
         RuleFor(request => request.ExpenseTime)
-            .NotEmpty().WithMessage("Thời điểm chi không được để trống.");
+            .NotEmpty().WithMessage(_ => localizer[MessageKeys.Validation.Expense.ExpenseTimeRequired].Value);
 
         When(request => request.Shares is not null, () =>
         {
             RuleForEach(request => request.Shares).ChildRules(share =>
             {
                 share.RuleFor(input => input.MemberUuid)
-                    .NotEmpty().WithMessage("Thành viên của phần gánh không được để trống.");
+                    .NotEmpty().WithMessage(_ => localizer[MessageKeys.Validation.Share.MemberRequired].Value);
 
                 share.RuleFor(input => input.Amount)
-                    .GreaterThanOrEqualTo(0).WithMessage("Số tiền không được âm.");
+                    .GreaterThanOrEqualTo(0).WithMessage(_ => localizer[MessageKeys.Validation.Common.AmountNegative].Value);
 
                 share.RuleFor(input => input.Note)
                     .MaximumLength(Share.NoteMaxLength)
-                    .WithMessage($"Ghi chú không được vượt quá {Share.NoteMaxLength} ký tự.");
+                    .WithMessage(_ => localizer[MessageKeys.Validation.Common.NoteTooLong, Share.NoteMaxLength].Value);
             });
         });
     }

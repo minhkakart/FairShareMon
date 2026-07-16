@@ -1,5 +1,8 @@
 using FairShareMonApi.Constants;
 using FairShareMonApi.Models.Admin;
+using FairShareMonApi.Localization;
+using FairShareMonApi.Localization.Resources;
+using Microsoft.Extensions.Localization;
 using FluentValidation;
 
 namespace FairShareMonApi.Validators.Admin;
@@ -9,11 +12,12 @@ public class SetRoleRequestValidator : AbstractValidator<SetRoleRequest>
 {
     private static readonly string[] AllowedRoles = [UserRoles.User, UserRoles.Admin];
 
-    public SetRoleRequestValidator()
+    public SetRoleRequestValidator(IStringLocalizer<StringResources>? localizer = null)
     {
+        localizer ??= SharedStringLocalizer.Instance;
         RuleFor(request => request.Role)
-            .NotEmpty().WithMessage("Vai trò không được để trống.")
+            .NotEmpty().WithMessage(_ => localizer[MessageKeys.Validation.Admin.RoleRequired].Value)
             .Must(role => AllowedRoles.Contains(role))
-            .WithMessage("Vai trò không hợp lệ. Chỉ chấp nhận USER hoặc ADMIN.");
+            .WithMessage(_ => localizer[MessageKeys.Validation.Admin.RoleInvalid].Value);
     }
 }

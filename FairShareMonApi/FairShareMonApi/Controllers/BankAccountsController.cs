@@ -2,6 +2,9 @@ using Asp.Versioning;
 using FairShareMonApi.Models;
 using FairShareMonApi.Models.Wallet;
 using FairShareMonApi.Services.Api.Wallet;
+using FairShareMonApi.Constants;
+using FairShareMonApi.Localization.Resources;
+using Microsoft.Extensions.Localization;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
 
@@ -22,7 +25,7 @@ namespace FairShareMonApi.Controllers;
 /// </remarks>
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/bank-accounts")]
-public class BankAccountsController(IBankAccountsService bankAccountsService) : AppController
+public class BankAccountsController(IBankAccountsService bankAccountsService, IStringLocalizer<StringResources> localizer) : AppController
 {
     [HttpGet]
     [SwaggerOperation(
@@ -77,7 +80,7 @@ public class BankAccountsController(IBankAccountsService bankAccountsService) : 
     public async Task<IActionResult> SetDefaultAsync([FromRoute] string uuid, CancellationToken cancellationToken)
     {
         await bankAccountsService.SetDefaultAsync(AuthenticatedUser.Id, uuid, cancellationToken);
-        return ApiResult.SuccessMessage("Đã đặt tài khoản ngân hàng mặc định.");
+        return ApiResult.SuccessMessage(localizer[MessageKeys.Success.BankAccountSetDefault].Value);
     }
 
     [HttpDelete("{uuid}")]
@@ -90,6 +93,6 @@ public class BankAccountsController(IBankAccountsService bankAccountsService) : 
     public async Task<IActionResult> DeleteAsync([FromRoute] string uuid, CancellationToken cancellationToken)
     {
         await bankAccountsService.DeleteAsync(AuthenticatedUser.Id, uuid, cancellationToken);
-        return ApiResult.SuccessMessage("Đã xóa tài khoản ngân hàng.");
+        return ApiResult.SuccessMessage(localizer[MessageKeys.Success.BankAccountDeleted].Value);
     }
 }

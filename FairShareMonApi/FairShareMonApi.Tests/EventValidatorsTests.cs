@@ -14,6 +14,7 @@ namespace FairShareMonApi.Tests;
 /// message (distinct from the 9xxx business codes and the DB CHECK). The camelCase <c>error.fields</c>
 /// keys are covered end-to-end by the endpoint tests.
 /// </summary>
+[UseCulture("vi-VN")]
 public class CreateEventRequestValidatorTests
 {
     private readonly CreateEventRequestValidator _validator = new();
@@ -137,6 +138,7 @@ public class CreateEventRequestValidatorTests
 }
 
 /// <summary>Event update validator: same field policy as create (OQ9/OQ1).</summary>
+[UseCulture("vi-VN")]
 public class UpdateEventRequestValidatorTests
 {
     private readonly UpdateEventRequestValidator _validator = new();
@@ -204,6 +206,7 @@ public class UpdateEventRequestValidatorTests
 }
 
 /// <summary>Assign-to-event validator (OQ4): <c>EventUuid</c> required.</summary>
+[UseCulture("vi-VN")]
 public class AssignEventRequestValidatorTests
 {
     private readonly AssignEventRequestValidator _validator = new();

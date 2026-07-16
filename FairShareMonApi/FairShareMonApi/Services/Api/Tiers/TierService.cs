@@ -2,8 +2,11 @@ using DiDecoration.Attributes;
 using FairShareMonApi.Auth;
 using FairShareMonApi.Constants;
 using FairShareMonApi.Exceptions;
+using FairShareMonApi.Localization;
+using FairShareMonApi.Localization.Resources;
 using FairShareMonApi.Repositories;
 using FairShareMonApi.Utils;
+using Microsoft.Extensions.Localization;
 
 namespace FairShareMonApi.Services.Api.Tiers;
 
@@ -26,8 +29,12 @@ public interface ITierService
     /// <summary>Chặn khi tài khoản Free đã đạt số phiếu chi tiêu tối đa trong tháng (theo múi giờ mặc định <c>App:DefaultTimeZone</c>). Premium bỏ qua.</summary>
     Task EnsureCanCreateExpenseAsync(string userUuid, CancellationToken cancellationToken = default);
 
-    /// <summary>Cổng tính năng Premium: ném 403 <c>PremiumFeatureRequired</c> khi tài khoản không phải Premium.</summary>
-    void EnsurePremiumFeature(string featureNameVi);
+    /// <summary>
+    /// Cổng tính năng Premium: ném 403 <c>PremiumFeatureRequired</c> khi tài khoản không phải Premium.
+    /// <paramref name="featureNameKey"/> là khóa tài nguyên tên tính năng (vd <c>Feature.Wallet</c>),
+    /// được phân giải theo ngôn ngữ của yêu cầu để thông điệp không bị lẫn ngôn ngữ.
+    /// </summary>
+    void EnsurePremiumFeature(string featureNameKey);
 }
 
 [ScopedService(typeof(ITierService))]
@@ -36,8 +43,13 @@ public sealed class TierService(
     IMemberRepository memberRepository,
     IEventRepository eventRepository,
     IExpenseRepository expenseRepository,
-    IConfiguration configuration) : ITierService
+    IConfiguration configuration,
+    IStringLocalizer<StringResources>? localizer = null) : ITierService
 {
+    // DI supplies the localizer; unit-test construction (new TierService(...)) falls back to the shared
+    // localizer, which resolves the same resx family and honours the request CurrentUICulture.
+    private readonly IStringLocalizer<StringResources> _localizer = localizer ?? SharedStringLocalizer.Instance;
+
     private readonly int _maxMembers = configuration.GetValue("Tiers:Free:MaxMembers", 25);
     private readonly int _maxOpenEvents = configuration.GetValue("Tiers:Free:MaxOpenEvents", 10);
     private readonly int _maxExpensesPerMonth = configuration.GetValue("Tiers:Free:MaxExpensesPerMonth", 200);
@@ -53,7 +65,7 @@ public sealed class TierService(
         var count = await memberRepository.CountActiveByUserAsync(userUuid, cancellationToken);
         if (count >= _maxMembers)
             throw new ErrorException(ErrorCodes.MemberLimitReached,
-                $"Tài khoản Free chỉ được tạo tối đa {_maxMembers} thành viên. Nâng cấp Premium để bỏ giới hạn.");
+                MessageKeys.Error.MemberLimitReached, args: [_maxMembers]);
     }
 
     public async Task EnsureCanCreateOpenEventAsync(string userUuid, CancellationToken cancellationToken = default)
@@ -64,7 +76,7 @@ public sealed class TierService(
         var count = await eventRepository.CountOpenByUserAsync(userUuid, cancellationToken);
         if (count >= _maxOpenEvents)
             throw new ErrorException(ErrorCodes.OpenEventLimitReached,
-                $"Tài khoản Free chỉ được có tối đa {_maxOpenEvents} đợt đang mở. Chốt bớt đợt hoặc nâng cấp Premium để bỏ giới hạn.");
+                MessageKeys.Error.OpenEventLimitReached, args: [_maxOpenEvents]);
     }
 
     public async Task EnsureCanCreateExpenseAsync(string userUuid, CancellationToken cancellationToken = default)
@@ -76,16 +88,18 @@ public sealed class TierService(
         var count = await expenseRepository.CountByUserInRangeAsync(userUuid, fromUtc, toUtc, cancellationToken);
         if (count >= _maxExpensesPerMonth)
             throw new ErrorException(ErrorCodes.MonthlyExpenseLimitReached,
-                $"Tài khoản Free chỉ được tạo tối đa {_maxExpensesPerMonth} phiếu chi tiêu mỗi tháng. Nâng cấp Premium để bỏ giới hạn.");
+                MessageKeys.Error.MonthlyExpenseLimitReached, args: [_maxExpensesPerMonth]);
     }
 
-    public void EnsurePremiumFeature(string featureNameVi)
+    public void EnsurePremiumFeature(string featureNameKey)
     {
         if (IsPremium)
             return;
 
+        // Resolve the feature-name key on the request thread (CurrentUICulture is set), so the {0} arg is
+        // localized to the same culture the envelope will format the message in - no mixed-language output.
         throw new ErrorException(ErrorCodes.PremiumFeatureRequired,
-            $"Tính năng {featureNameVi} chỉ dành cho tài khoản Premium. Nâng cấp để sử dụng.");
+            MessageKeys.Error.PremiumFeatureRequired, args: [_localizer[featureNameKey].Value]);
     }
 
     /// <summary>

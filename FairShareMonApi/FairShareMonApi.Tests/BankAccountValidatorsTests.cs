@@ -11,6 +11,7 @@ namespace FairShareMonApi.Tests;
 /// <c>AccountHolderName</c> required + max 100. Pins the Vietnamese message texts; the camelCase
 /// <c>error.fields</c> keys are covered end-to-end by <c>BankAccountsEndpointTests</c>.
 /// </summary>
+[UseCulture("vi-VN")]
 public class CreateBankAccountRequestValidatorTests
 {
     private readonly CreateBankAccountRequestValidator _validator = new();
@@ -131,6 +132,7 @@ public class CreateBankAccountRequestValidatorTests
     }
 }
 
+[UseCulture("vi-VN")]
 public class UpdateBankAccountRequestValidatorTests
 {
     private readonly UpdateBankAccountRequestValidator _validator = new();

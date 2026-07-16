@@ -11,6 +11,7 @@ namespace FairShareMonApi.Tests;
 /// as declared (PascalCase) - the camelCase mapping into <c>error.fields</c> is covered end-to-end
 /// by <c>AuthEndpointTests</c>.
 /// </summary>
+[UseCulture("vi-VN")]
 public class RegisterRequestValidatorTests
 {
     private readonly RegisterRequestValidator _validator = new();
@@ -112,6 +113,7 @@ public class RegisterRequestValidatorTests
     }
 }
 
+[UseCulture("vi-VN")]
 public class LoginRequestValidatorTests
 {
     private readonly LoginRequestValidator _validator = new();
@@ -144,6 +146,7 @@ public class LoginRequestValidatorTests
     }
 }
 
+[UseCulture("vi-VN")]
 public class RefreshRequestValidatorTests
 {
     private readonly RefreshRequestValidator _validator = new();
@@ -166,6 +169,7 @@ public class RefreshRequestValidatorTests
     }
 }
 
+[UseCulture("vi-VN")]
 public class ChangePasswordRequestValidatorTests
 {
     private readonly ChangePasswordRequestValidator _validator = new();

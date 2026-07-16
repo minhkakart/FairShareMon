@@ -44,7 +44,7 @@ public sealed class WalletQrService(
 
     public async Task<ExpenseQrResult> GenerateExpenseQrAsync(string userUuid, string expenseUuid, string? bankAccountUuid, string? format, CancellationToken cancellationToken = default)
     {
-        tierService.EnsurePremiumFeature("tạo mã QR");
+        tierService.EnsurePremiumFeature(MessageKeys.Feature.Qr);
 
         var account = await ResolveDestinationAsync(userUuid, bankAccountUuid, cancellationToken);
 
@@ -62,7 +62,7 @@ public sealed class WalletQrService(
 
     public async Task<QrImageResult> GenerateEventQrAsync(string userUuid, string eventUuid, string? bankAccountUuid, CancellationToken cancellationToken = default)
     {
-        tierService.EnsurePremiumFeature("tạo mã QR");
+        tierService.EnsurePremiumFeature(MessageKeys.Feature.Qr);
 
         var account = await ResolveDestinationAsync(userUuid, bankAccountUuid, cancellationToken);
 
@@ -71,12 +71,12 @@ public sealed class WalletQrService(
 
         // Event QR is closed-only (§4.4/§5): the data must be frozen before it is shared.
         if (!balance.IsClosed)
-            throw new ErrorException(ErrorCodes.EventNotClosedForQr, "Chỉ có thể tạo mã QR cho đợt đã chốt.");
+            throw new ErrorException(ErrorCodes.EventNotClosedForQr, MessageKeys.Error.EventNotClosedForQr);
 
         // A negative per-event balance means the member still owes; its magnitude is the amount (§3.7).
         var owing = balance.Rows.Where(row => row.Balance < 0m).ToList();
         if (owing.Count == 0)
-            throw new ErrorException(ErrorCodes.NoOutstandingDebtForQr, "Không có thành viên nào còn nợ trong đợt này.");
+            throw new ErrorException(ErrorCodes.NoOutstandingDebtForQr, MessageKeys.Error.NoOutstandingDebtForQr);
 
         var items = owing
             .Select(row =>
@@ -102,11 +102,11 @@ public sealed class WalletQrService(
         if (!string.IsNullOrWhiteSpace(bankAccountUuid))
         {
             return await bankAccountRepository.GetByUuidAsync(userUuid, bankAccountUuid, cancellationToken)
-                ?? throw new ErrorException(ErrorCodes.BankAccountNotFound, "Không tìm thấy tài khoản ngân hàng.");
+                ?? throw new ErrorException(ErrorCodes.BankAccountNotFound, MessageKeys.Error.BankAccountNotFound);
         }
 
         return await bankAccountRepository.GetDefaultAsync(userUuid, cancellationToken)
-            ?? throw new ErrorException(ErrorCodes.NoBankAccountForQr, "Chưa có tài khoản ngân hàng để tạo mã QR.");
+            ?? throw new ErrorException(ErrorCodes.NoBankAccountForQr, MessageKeys.Error.NoBankAccountForQr);
     }
 
     private static bool IsPayloadFormat(string? format) =>

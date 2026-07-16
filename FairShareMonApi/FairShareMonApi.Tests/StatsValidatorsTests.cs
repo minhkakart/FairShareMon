@@ -13,6 +13,7 @@ namespace FairShareMonApi.Tests;
 /// sent together with a time range. Both are 1001 validation failures with the pinned Vietnamese
 /// messages; the camelCase <c>error.fields</c> keys are covered end-to-end by the endpoint tests.
 /// </summary>
+[UseCulture("vi-VN")]
 public class StatsRangeRequestValidatorTests
 {
     private const string RangeMessage =
@@ -64,6 +65,7 @@ public class StatsRangeRequestValidatorTests
 }
 
 /// <summary>By-category scope validator (OQ7 range rule + OQ8 mutual exclusion).</summary>
+[UseCulture("vi-VN")]
 public class ByCategoryStatsRequestValidatorTests
 {
     private const string RangeMessage =

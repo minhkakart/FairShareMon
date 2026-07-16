@@ -61,7 +61,7 @@ public sealed class BankAccountsService(
 
     public async Task<BankAccountResponse> CreateAsync(string userUuid, CreateBankAccountRequest request, CancellationToken cancellationToken = default)
     {
-        tierService.EnsurePremiumFeature("ví ngân hàng");
+        tierService.EnsurePremiumFeature(MessageKeys.Feature.Wallet);
         await createValidator.ValidateAndThrowAsync(request, cancellationToken);
 
         var account = await bankAccountRepository.CreateAsync(
@@ -77,7 +77,7 @@ public sealed class BankAccountsService(
 
     public async Task<BankAccountResponse> UpdateAsync(string userUuid, string bankAccountUuid, UpdateBankAccountRequest request, CancellationToken cancellationToken = default)
     {
-        tierService.EnsurePremiumFeature("ví ngân hàng");
+        tierService.EnsurePremiumFeature(MessageKeys.Feature.Wallet);
         await updateValidator.ValidateAndThrowAsync(request, cancellationToken);
 
         var updated = await bankAccountRepository.UpdateAsync(
@@ -99,7 +99,7 @@ public sealed class BankAccountsService(
 
     public async Task SetDefaultAsync(string userUuid, string bankAccountUuid, CancellationToken cancellationToken = default)
     {
-        tierService.EnsurePremiumFeature("ví ngân hàng");
+        tierService.EnsurePremiumFeature(MessageKeys.Feature.Wallet);
         var updated = await bankAccountRepository.SetDefaultAsync(userUuid, bankAccountUuid, cancellationToken);
         if (!updated)
             throw NotFound();
@@ -107,12 +107,12 @@ public sealed class BankAccountsService(
 
     public async Task DeleteAsync(string userUuid, string bankAccountUuid, CancellationToken cancellationToken = default)
     {
-        tierService.EnsurePremiumFeature("ví ngân hàng");
+        tierService.EnsurePremiumFeature(MessageKeys.Feature.Wallet);
         var deleted = await bankAccountRepository.DeleteAsync(userUuid, bankAccountUuid, cancellationToken);
         if (!deleted)
             throw NotFound();
     }
 
     private static ErrorException NotFound() =>
-        new(ErrorCodes.BankAccountNotFound, "Không tìm thấy tài khoản ngân hàng.");
+        new(ErrorCodes.BankAccountNotFound, MessageKeys.Error.BankAccountNotFound);
 }

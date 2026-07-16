@@ -1,5 +1,9 @@
 using FairShareMonApi.Database.Entities;
 using FairShareMonApi.Models.Events;
+using FairShareMonApi.Constants;
+using FairShareMonApi.Localization;
+using FairShareMonApi.Localization.Resources;
+using Microsoft.Extensions.Localization;
 using FluentValidation;
 
 namespace FairShareMonApi.Validators.Events;
@@ -13,23 +17,24 @@ namespace FairShareMonApi.Validators.Events;
 /// </summary>
 public class UpdateEventRequestValidator : AbstractValidator<UpdateEventRequest>
 {
-    public UpdateEventRequestValidator()
+    public UpdateEventRequestValidator(IStringLocalizer<StringResources>? localizer = null)
     {
+        localizer ??= SharedStringLocalizer.Instance;
         RuleFor(request => request.Name)
-            .NotEmpty().WithMessage("Tên đợt không được để trống.")
+            .NotEmpty().WithMessage(_ => localizer[MessageKeys.Validation.Event.NameRequired].Value)
             .MaximumLength(Event.NameMaxLength)
-            .WithMessage($"Tên đợt không được vượt quá {Event.NameMaxLength} ký tự.");
+            .WithMessage(_ => localizer[MessageKeys.Validation.Event.NameTooLong, Event.NameMaxLength].Value);
 
         RuleFor(request => request.Description)
             .MaximumLength(Event.DescriptionMaxLength)
-            .WithMessage($"Mô tả đợt không được vượt quá {Event.DescriptionMaxLength} ký tự.");
+            .WithMessage(_ => localizer[MessageKeys.Validation.Event.DescriptionTooLong, Event.DescriptionMaxLength].Value);
 
         RuleFor(request => request.StartDate)
-            .NotEmpty().WithMessage("Ngày bắt đầu không được để trống.");
+            .NotEmpty().WithMessage(_ => localizer[MessageKeys.Validation.Event.StartDateRequired].Value);
 
         RuleFor(request => request.EndDate)
-            .NotEmpty().WithMessage("Ngày kết thúc không được để trống.")
+            .NotEmpty().WithMessage(_ => localizer[MessageKeys.Validation.Event.EndDateRequired].Value)
             .Must((request, endDate) => endDate.Date >= request.StartDate.Date)
-            .WithMessage("Ngày kết thúc phải sau hoặc bằng ngày bắt đầu.");
+            .WithMessage(_ => localizer[MessageKeys.Validation.Event.EndDateBeforeStart].Value);
     }
 }

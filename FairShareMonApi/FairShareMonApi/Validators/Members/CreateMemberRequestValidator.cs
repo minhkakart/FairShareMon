@@ -1,4 +1,8 @@
 using FairShareMonApi.Models.Members;
+using FairShareMonApi.Constants;
+using FairShareMonApi.Localization;
+using FairShareMonApi.Localization.Resources;
+using Microsoft.Extensions.Localization;
 using FluentValidation;
 
 namespace FairShareMonApi.Validators.Members;
@@ -12,11 +16,12 @@ public class CreateMemberRequestValidator : AbstractValidator<CreateMemberReques
 {
     public const int NameMaxLength = 100;
 
-    public CreateMemberRequestValidator()
+    public CreateMemberRequestValidator(IStringLocalizer<StringResources>? localizer = null)
     {
+        localizer ??= SharedStringLocalizer.Instance;
         RuleFor(request => request.Name)
-            .NotEmpty().WithMessage("Tên thành viên không được để trống.")
+            .NotEmpty().WithMessage(_ => localizer[MessageKeys.Validation.Member.NameRequired].Value)
             .MaximumLength(NameMaxLength)
-            .WithMessage($"Tên thành viên không được vượt quá {NameMaxLength} ký tự.");
+            .WithMessage(_ => localizer[MessageKeys.Validation.Member.NameTooLong, NameMaxLength].Value);
     }
 }

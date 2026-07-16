@@ -1,10 +1,13 @@
 using System.Text.Json;
 using FairShareMonApi.Constants;
 using FairShareMonApi.Exceptions;
+using FairShareMonApi.Extensions;
+using FairShareMonApi.Localization.Resources;
 using FairShareMonApi.Models;
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.Extensions.Localization;
 
 namespace FairShareMonApi.Attributes.MvcFilters;
 
@@ -13,18 +16,20 @@ namespace FairShareMonApi.Attributes.MvcFilters;
 /// (the built-in invalid-model filter is suppressed in <c>Program.cs</c>) and maps
 /// <see cref="ErrorException"/> / FluentValidation's <see cref="ValidationException"/> (thrown by
 /// manual validation in services) to wrapped responses. Anything else bubbles up to
-/// <c>ErrorHandlerMiddleware</c>.
+/// <c>ErrorHandlerMiddleware</c>. User-facing text is localized here (the envelope boundary) via
+/// <see cref="IStringLocalizer{StringResources}"/> using the request's <c>CurrentUICulture</c>.
 /// </summary>
-public sealed class ErrorHandlerFilter : IActionFilter, IExceptionFilter
+public sealed class ErrorHandlerFilter(IStringLocalizer<StringResources> localizer) : IActionFilter, IExceptionFilter
 {
-    private const string ValidationMessage = "Dữ liệu gửi lên không hợp lệ.";
-
     public void OnActionExecuting(ActionExecutingContext context)
     {
         if (context.ModelState.IsValid)
             return;
 
-        context.Result = ApiResult.Failure(ErrorCodes.ValidationFailed, ValidationMessage, CollectFields(context.ModelState));
+        context.Result = ApiResult.Failure(
+            ErrorCodes.ValidationFailed,
+            localizer[MessageKeys.Envelope.ValidationFailed],
+            CollectFields(context.ModelState, localizer[MessageKeys.Envelope.FieldInvalid]));
     }
 
     public void OnActionExecuted(ActionExecutedContext context)
@@ -36,18 +41,24 @@ public sealed class ErrorHandlerFilter : IActionFilter, IExceptionFilter
         switch (context.Exception)
         {
             case ValidationException validationException:
-                context.Result = ApiResult.Failure(ErrorCodes.ValidationFailed, ValidationMessage, CollectFields(validationException));
+                context.Result = ApiResult.Failure(
+                    ErrorCodes.ValidationFailed,
+                    localizer[MessageKeys.Envelope.ValidationFailed],
+                    CollectFields(validationException));
                 context.ExceptionHandled = true;
                 return;
             case ErrorException errorException:
-                context.Result = ApiResult.Failure(errorException);
+                context.Result = ApiResult.Failure(
+                    errorException.Code,
+                    localizer.LocalizeError(errorException),
+                    statusCode: errorException.HttpStatus);
                 context.ExceptionHandled = true;
                 return;
         }
     }
 
     // Field keys are camelCased so error.fields matches the envelope's camelCase JSON contract.
-    private static IReadOnlyDictionary<string, string[]> CollectFields(ModelStateDictionary modelState) =>
+    private static IReadOnlyDictionary<string, string[]> CollectFields(ModelStateDictionary modelState, string fieldInvalidFallback) =>
         modelState
             .Where(entry => entry.Value is { Errors.Count: > 0 })
             .GroupBy(entry => JsonNamingPolicy.CamelCase.ConvertName(entry.Key))
@@ -55,7 +66,7 @@ public sealed class ErrorHandlerFilter : IActionFilter, IExceptionFilter
                 group => group.Key,
                 group => group
                     .SelectMany(entry => entry.Value!.Errors)
-                    .Select(error => string.IsNullOrEmpty(error.ErrorMessage) ? "Giá trị không hợp lệ." : error.ErrorMessage)
+                    .Select(error => string.IsNullOrEmpty(error.ErrorMessage) ? fieldInvalidFallback : error.ErrorMessage)
                     .ToArray());
 
     private static IReadOnlyDictionary<string, string[]> CollectFields(ValidationException exception) =>

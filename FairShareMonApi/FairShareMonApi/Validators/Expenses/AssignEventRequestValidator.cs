@@ -1,4 +1,8 @@
 using FairShareMonApi.Models.Expenses;
+using FairShareMonApi.Constants;
+using FairShareMonApi.Localization;
+using FairShareMonApi.Localization.Resources;
+using Microsoft.Extensions.Localization;
 using FluentValidation;
 
 namespace FairShareMonApi.Validators.Expenses;
@@ -9,9 +13,10 @@ namespace FairShareMonApi.Validators.Expenses;
 /// </summary>
 public class AssignEventRequestValidator : AbstractValidator<AssignEventRequest>
 {
-    public AssignEventRequestValidator()
+    public AssignEventRequestValidator(IStringLocalizer<StringResources>? localizer = null)
     {
+        localizer ??= SharedStringLocalizer.Instance;
         RuleFor(request => request.EventUuid)
-            .NotEmpty().WithMessage("UUID đợt chi tiêu không được để trống.");
+            .NotEmpty().WithMessage(_ => localizer[MessageKeys.Validation.Expense.EventUuidRequired].Value);
     }
 }

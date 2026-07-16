@@ -7,10 +7,24 @@ namespace FairShareMonApi.Exceptions;
 /// envelope should respond with. The folder is <c>Exception/</c> per conventions, but the
 /// namespace is <c>Exceptions</c> so the simple name <c>Exception</c> keeps resolving to
 /// <see cref="System.Exception"/> everywhere in the codebase.
+/// <para>
+/// The message is carried as a <b>resource key</b> (<see cref="MessageKey"/>) plus optional
+/// <see cref="Args"/> and is localized once at the envelope boundary
+/// (<c>ErrorHandlerFilter</c> / <c>ErrorHandlerMiddleware</c>) via <c>IStringLocalizer</c>, not at the
+/// throw site (planning/localization-subsystem.md D2). The base <see cref="System.Exception.Message"/>
+/// holds the key so logs record a stable, culture-independent identifier.
+/// </para>
 /// </summary>
-public class ErrorException(int code, string message, int? httpStatus = null) : System.Exception(message)
+public class ErrorException(int code, string messageKey, int? httpStatus = null, object[]? args = null)
+    : System.Exception(messageKey)
 {
     public int Code { get; } = code;
+
+    /// <summary>Resource key resolved against the <c>StringResources</c> resx family at the envelope.</summary>
+    public string MessageKey { get; } = messageKey;
+
+    /// <summary>Optional <c>string.Format</c> arguments for an interpolated (<c>{0}</c>...) message.</summary>
+    public object[]? Args { get; } = args;
 
     public int HttpStatus { get; } = httpStatus ?? GetDefaultHttpStatus(code);
 

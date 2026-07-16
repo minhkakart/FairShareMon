@@ -134,7 +134,7 @@ public sealed class ExpensesService(
             case ExpenseWriteStatus.Success:
                 return;
             case ExpenseWriteStatus.EventClosed:
-                throw new ErrorException(ErrorCodes.EventClosed, "Không thể gỡ phiếu khỏi đợt đã chốt.");
+                throw new ErrorException(ErrorCodes.EventClosed, MessageKeys.Error.EventClosedDetach);
             default:
                 throw ExpenseNotFound();
         }
@@ -161,26 +161,26 @@ public sealed class ExpensesService(
             case ExpenseWriteStatus.Success:
                 return;
             case ExpenseWriteStatus.PayerInvalid:
-                throw new ErrorException(ErrorCodes.ExpensePayerInvalid, "Người trả không hợp lệ hoặc đã bị xóa.");
+                throw new ErrorException(ErrorCodes.ExpensePayerInvalid, MessageKeys.Error.ExpensePayerInvalid);
             case ExpenseWriteStatus.CategoryInvalid:
-                throw new ErrorException(ErrorCodes.ExpenseCategoryInvalid, "Danh mục không hợp lệ hoặc đã bị xóa.");
+                throw new ErrorException(ErrorCodes.ExpenseCategoryInvalid, MessageKeys.Error.ExpenseCategoryInvalid);
             case ExpenseWriteStatus.TagInvalid:
-                throw new ErrorException(ErrorCodes.ExpenseTagInvalid, "Nhãn không hợp lệ hoặc đã bị xóa.");
+                throw new ErrorException(ErrorCodes.ExpenseTagInvalid, MessageKeys.Error.ExpenseTagInvalid);
             case ExpenseWriteStatus.ShareMemberInvalid:
-                throw new ErrorException(ErrorCodes.ShareMemberInvalid, "Thành viên của phần gánh không hợp lệ hoặc đã bị xóa.");
+                throw new ErrorException(ErrorCodes.ShareMemberInvalid, MessageKeys.Error.ShareMemberInvalid);
             case ExpenseWriteStatus.DuplicateShareMember:
-                throw new ErrorException(ErrorCodes.DuplicateShareMember, "Mỗi thành viên chỉ có một phần gánh trong một phiếu.");
+                throw new ErrorException(ErrorCodes.DuplicateShareMember, MessageKeys.Error.DuplicateShareMember);
             case ExpenseWriteStatus.EventNotFound:
-                throw new ErrorException(ErrorCodes.EventNotFound, "Không tìm thấy đợt chi tiêu.");
+                throw new ErrorException(ErrorCodes.EventNotFound, MessageKeys.Error.EventNotFound);
             case ExpenseWriteStatus.EventClosed:
-                throw new ErrorException(ErrorCodes.EventClosed, "Đợt chi tiêu đã chốt, không thể thay đổi.");
+                throw new ErrorException(ErrorCodes.EventClosed, MessageKeys.Error.EventClosed);
             case ExpenseWriteStatus.ExpenseTimeOutOfEventRange:
-                throw new ErrorException(ErrorCodes.ExpenseTimeOutOfEventRange, "Thời điểm chi của phiếu không nằm trong khoảng thời gian của đợt.");
+                throw new ErrorException(ErrorCodes.ExpenseTimeOutOfEventRange, MessageKeys.Error.ExpenseTimeOutOfEventRange);
             default:
                 throw ExpenseNotFound();
         }
     }
 
     private static ErrorException ExpenseNotFound() =>
-        new(ErrorCodes.ExpenseNotFound, "Không tìm thấy phiếu chi tiêu.");
+        new(ErrorCodes.ExpenseNotFound, MessageKeys.Error.ExpenseNotFound);
 }

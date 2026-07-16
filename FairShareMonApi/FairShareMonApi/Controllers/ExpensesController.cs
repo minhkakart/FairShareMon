@@ -5,6 +5,9 @@ using FairShareMonApi.Services.Api.Expenses;
 using FairShareMonApi.Services.Api.Export;
 using FairShareMonApi.Services.Api.Shares;
 using FairShareMonApi.Services.Api.Wallet;
+using FairShareMonApi.Constants;
+using FairShareMonApi.Localization.Resources;
+using Microsoft.Extensions.Localization;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
 
@@ -17,7 +20,7 @@ namespace FairShareMonApi.Controllers;
 /// resource-owned - an expense/share that isn't the caller's yields 404 (never 403). Thin - all
 /// business logic in <see cref="IExpensesService"/> / <see cref="ISharesService"/>.
 /// </summary>
-public class ExpensesController(IExpensesService expensesService, ISharesService sharesService, IExportService exportService, IWalletQrService walletQrService) : AppController
+public class ExpensesController(IExpensesService expensesService, ISharesService sharesService, IExportService exportService, IWalletQrService walletQrService, IStringLocalizer<StringResources> localizer) : AppController
 {
     [HttpGet]
     [SwaggerOperation(
@@ -69,7 +72,7 @@ public class ExpensesController(IExpensesService expensesService, ISharesService
     public async Task<IActionResult> DeleteAsync([FromRoute] string uuid, CancellationToken cancellationToken)
     {
         await expensesService.DeleteAsync(AuthenticatedUser.Id, uuid, cancellationToken);
-        return ApiResult.SuccessMessage("Đã xóa phiếu chi tiêu.");
+        return ApiResult.SuccessMessage(localizer[MessageKeys.Success.ExpenseDeleted].Value);
     }
 
     [HttpPut("{uuid}/settled")]
@@ -81,7 +84,7 @@ public class ExpensesController(IExpensesService expensesService, ISharesService
     public async Task<IActionResult> SetSettledAsync([FromRoute] string uuid, [FromBody] SetSettledRequest request, CancellationToken cancellationToken)
     {
         await expensesService.SetSettledAsync(AuthenticatedUser.Id, uuid, request, cancellationToken);
-        return ApiResult.SuccessMessage("Đã cập nhật trạng thái đã trả.");
+        return ApiResult.SuccessMessage(localizer[MessageKeys.Success.ExpenseSettledUpdated].Value);
     }
 
     [HttpPut("{uuid}/event")]
@@ -105,7 +108,7 @@ public class ExpensesController(IExpensesService expensesService, ISharesService
     public async Task<IActionResult> RemoveEventAsync([FromRoute] string uuid, CancellationToken cancellationToken)
     {
         await expensesService.RemoveEventAsync(AuthenticatedUser.Id, uuid, cancellationToken);
-        return ApiResult.SuccessMessage("Đã gỡ phiếu khỏi đợt chi tiêu.");
+        return ApiResult.SuccessMessage(localizer[MessageKeys.Success.ExpenseDetached].Value);
     }
 
     [HttpPost("{uuid}/shares")]
@@ -140,7 +143,7 @@ public class ExpensesController(IExpensesService expensesService, ISharesService
     public async Task<IActionResult> DeleteShareAsync([FromRoute] string uuid, [FromRoute] string shareUuid, CancellationToken cancellationToken)
     {
         await sharesService.DeleteAsync(AuthenticatedUser.Id, uuid, shareUuid, cancellationToken);
-        return ApiResult.SuccessMessage("Đã xóa phần gánh.");
+        return ApiResult.SuccessMessage(localizer[MessageKeys.Success.ShareDeleted].Value);
     }
 
     [HttpGet("{uuid}/export")]

@@ -96,7 +96,7 @@ public sealed class CategoriesService(
             ?? throw NotFound();
 
         if (category.IsDefault)
-            throw new ErrorException(ErrorCodes.DefaultCategoryNotDeletable, "Không thể xóa danh mục mặc định.");
+            throw new ErrorException(ErrorCodes.DefaultCategoryNotDeletable, MessageKeys.Error.DefaultCategoryNotDeletable);
 
         await categoryRepository.SoftDeleteAsync(userUuid, categoryUuid, cancellationToken);
     }
@@ -116,8 +116,8 @@ public sealed class CategoriesService(
     }
 
     private static ErrorException NotFound() =>
-        new(ErrorCodes.CategoryNotFound, "Không tìm thấy danh mục.");
+        new(ErrorCodes.CategoryNotFound, MessageKeys.Error.CategoryNotFound);
 
     private static ErrorException NameDuplicate() =>
-        new(ErrorCodes.CategoryNameDuplicate, "Tên danh mục đã tồn tại.");
+        new(ErrorCodes.CategoryNameDuplicate, MessageKeys.Error.CategoryNameDuplicate);
 }

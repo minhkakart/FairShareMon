@@ -85,5 +85,5 @@ public sealed class StatsService(
     }
 
     private static ErrorException EventNotFound() =>
-        new(ErrorCodes.EventNotFound, "Không tìm thấy đợt chi tiêu.");
+        new(ErrorCodes.EventNotFound, MessageKeys.Error.EventNotFound);
 }

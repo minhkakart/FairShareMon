@@ -14,6 +14,7 @@ namespace FairShareMonApi.Tests;
 /// 500. Messages are pinned per the Step-9 list; the camelCase <c>error.fields</c> keys are covered
 /// end-to-end by the endpoint tests.
 /// </summary>
+[UseCulture("vi-VN")]
 public class CreateExpenseRequestValidatorTests
 {
     private readonly CreateExpenseRequestValidator _validator = new();
@@ -147,6 +148,7 @@ public class CreateExpenseRequestValidatorTests
 }
 
 /// <summary>Update-general-info validator: same field policy as create minus shares (OQ16).</summary>
+[UseCulture("vi-VN")]
 public class UpdateExpenseRequestValidatorTests
 {
     private readonly UpdateExpenseRequestValidator _validator = new();
@@ -199,6 +201,7 @@ public class UpdateExpenseRequestValidatorTests
 }
 
 /// <summary>Share add/update validators: <c>MemberUuid</c> required; <c>Amount</c> ≥ 0; <c>Note</c> max 500.</summary>
+[UseCulture("vi-VN")]
 public class CreateShareRequestValidatorTests
 {
     private readonly CreateShareRequestValidator _validator = new();
@@ -243,6 +246,7 @@ public class CreateShareRequestValidatorTests
     }
 }
 
+[UseCulture("vi-VN")]
 public class UpdateShareRequestValidatorTests
 {
     private readonly UpdateShareRequestValidator _validator = new();

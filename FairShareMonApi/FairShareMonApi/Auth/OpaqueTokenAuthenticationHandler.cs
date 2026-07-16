@@ -1,8 +1,11 @@
 using System.Text.Encodings.Web;
 using FairShareMonApi.Auth.Abstractions;
 using FairShareMonApi.Constants;
+using FairShareMonApi.Localization.Resources;
 using FairShareMonApi.Models;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Options;
 
 namespace FairShareMonApi.Auth;
@@ -42,7 +45,8 @@ public sealed class OpaqueTokenAuthenticationHandler(
 
     protected override async Task HandleChallengeAsync(AuthenticationProperties properties)
     {
-        var result = ApiResult.Failure(ErrorCodes.Unauthorized, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.");
+        var localizer = Context.RequestServices.GetRequiredService<IStringLocalizer<StringResources>>();
+        var result = ApiResult.Failure(ErrorCodes.Unauthorized, localizer[MessageKeys.Error.Unauthorized].Value);
         Response.StatusCode = result.StatusCode;
         await Response.WriteAsJsonAsync<object>(result, Context.RequestAborted);
     }
@@ -54,7 +58,8 @@ public sealed class OpaqueTokenAuthenticationHandler(
     /// </summary>
     protected override async Task HandleForbiddenAsync(AuthenticationProperties properties)
     {
-        var result = ApiResult.Failure(ErrorCodes.Forbidden, "Bạn không có quyền thực hiện thao tác này.");
+        var localizer = Context.RequestServices.GetRequiredService<IStringLocalizer<StringResources>>();
+        var result = ApiResult.Failure(ErrorCodes.Forbidden, localizer[MessageKeys.Error.Forbidden].Value);
         Response.StatusCode = result.StatusCode;
         await Response.WriteAsJsonAsync<object>(result, Context.RequestAborted);
     }

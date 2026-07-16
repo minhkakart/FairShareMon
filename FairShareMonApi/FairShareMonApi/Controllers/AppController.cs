@@ -24,5 +24,5 @@ public abstract class AppController : ControllerBase
     /// </summary>
     protected AuthenticatedUser AuthenticatedUser =>
         HttpContext.RequestServices.GetRequiredService<IContextAuthenticated>().AuthenticatedUser
-        ?? throw new ErrorException(ErrorCodes.Unauthorized, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.");
+        ?? throw new ErrorException(ErrorCodes.Unauthorized, MessageKeys.Error.Unauthorized);
 }

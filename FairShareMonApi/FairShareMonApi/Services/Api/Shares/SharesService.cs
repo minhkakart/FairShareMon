@@ -68,7 +68,7 @@ public sealed class SharesService(
             case ExpenseWriteStatus.DuplicateShareMember:
                 throw DuplicateShareMember();
             case ExpenseWriteStatus.OwnerRepresentativeShareNotDeletable:
-                throw new ErrorException(ErrorCodes.OwnerRepresentativeShareNotDeletable, "Không thể đổi thành viên của phần gánh thành viên đại diện chủ sổ.");
+                throw new ErrorException(ErrorCodes.OwnerRepresentativeShareNotDeletable, MessageKeys.Error.OwnerRepresentativeShareMemberNotChangeable);
             case ExpenseWriteStatus.EventClosed:
                 throw EventClosed();
             default:
@@ -85,7 +85,7 @@ public sealed class SharesService(
             case ExpenseWriteStatus.Success:
                 return;
             case ExpenseWriteStatus.OwnerRepresentativeShareNotDeletable:
-                throw new ErrorException(ErrorCodes.OwnerRepresentativeShareNotDeletable, "Không thể xóa phần gánh của thành viên đại diện chủ sổ.");
+                throw new ErrorException(ErrorCodes.OwnerRepresentativeShareNotDeletable, MessageKeys.Error.OwnerRepresentativeShareNotDeletable);
             case ExpenseWriteStatus.EventClosed:
                 throw EventClosed();
             default:
@@ -94,17 +94,17 @@ public sealed class SharesService(
     }
 
     private static ErrorException ExpenseNotFound() =>
-        new(ErrorCodes.ExpenseNotFound, "Không tìm thấy phiếu chi tiêu.");
+        new(ErrorCodes.ExpenseNotFound, MessageKeys.Error.ExpenseNotFound);
 
     private static ErrorException ShareNotFound() =>
-        new(ErrorCodes.ShareNotFound, "Không tìm thấy phần gánh.");
+        new(ErrorCodes.ShareNotFound, MessageKeys.Error.ShareNotFound);
 
     private static ErrorException ShareMemberInvalid() =>
-        new(ErrorCodes.ShareMemberInvalid, "Thành viên của phần gánh không hợp lệ hoặc đã bị xóa.");
+        new(ErrorCodes.ShareMemberInvalid, MessageKeys.Error.ShareMemberInvalid);
 
     private static ErrorException DuplicateShareMember() =>
-        new(ErrorCodes.DuplicateShareMember, "Mỗi thành viên chỉ có một phần gánh trong một phiếu.");
+        new(ErrorCodes.DuplicateShareMember, MessageKeys.Error.DuplicateShareMember);
 
     private static ErrorException EventClosed() =>
-        new(ErrorCodes.EventClosed, "Đợt chi tiêu đã chốt, không thể thay đổi.");
+        new(ErrorCodes.EventClosed, MessageKeys.Error.EventClosed);
 }

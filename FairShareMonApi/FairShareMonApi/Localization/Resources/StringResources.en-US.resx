@@ -1,0 +1,429 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Error.Unauthorized" xml:space="preserve">
+    <value>Your session is invalid or has expired.</value>
+  </data>
+  <data name="Error.Forbidden" xml:space="preserve">
+    <value>You do not have permission to perform this action.</value>
+  </data>
+  <data name="Feature.Wallet" xml:space="preserve">
+    <value>wallet</value>
+  </data>
+  <data name="Feature.Qr" xml:space="preserve">
+    <value>QR code</value>
+  </data>
+  <data name="Error.UsernameTaken" xml:space="preserve">
+    <value>This username already exists.</value>
+  </data>
+  <data name="Error.InvalidCredentials" xml:space="preserve">
+    <value>Incorrect username or password.</value>
+  </data>
+  <data name="Error.AccountDisabled" xml:space="preserve">
+    <value>This account has been disabled. Please contact an administrator.</value>
+  </data>
+  <data name="Error.InternalError" xml:space="preserve">
+    <value>A system error has occurred. Please try again later.</value>
+  </data>
+  <data name="Error.InvalidRefreshToken" xml:space="preserve">
+    <value>The refresh token is invalid or has expired.</value>
+  </data>
+  <data name="Error.CurrentPasswordIncorrect" xml:space="preserve">
+    <value>The current password is incorrect.</value>
+  </data>
+  <data name="Error.DefaultCategoryNotDeletable" xml:space="preserve">
+    <value>The default category cannot be deleted.</value>
+  </data>
+  <data name="Error.CategoryNotFound" xml:space="preserve">
+    <value>Category not found.</value>
+  </data>
+  <data name="Error.CategoryNameDuplicate" xml:space="preserve">
+    <value>A category with this name already exists.</value>
+  </data>
+  <data name="Error.EventClosed" xml:space="preserve">
+    <value>The event is closed and cannot be changed.</value>
+  </data>
+  <data name="Error.EventClosedEdit" xml:space="preserve">
+    <value>A closed event cannot be edited.</value>
+  </data>
+  <data name="Error.EventClosedDelete" xml:space="preserve">
+    <value>A closed event cannot be deleted.</value>
+  </data>
+  <data name="Error.EventClosedDetach" xml:space="preserve">
+    <value>An expense cannot be removed from a closed event.</value>
+  </data>
+  <data name="Error.EventRangeExcludesAssignedExpenses" xml:space="preserve">
+    <value>Cannot change the date range: an assigned expense falls outside the new range.</value>
+  </data>
+  <data name="Error.EventNotFound" xml:space="preserve">
+    <value>Event not found.</value>
+  </data>
+  <data name="Error.ExpensePayerInvalid" xml:space="preserve">
+    <value>The payer is invalid or has been deleted.</value>
+  </data>
+  <data name="Error.ExpenseCategoryInvalid" xml:space="preserve">
+    <value>The category is invalid or has been deleted.</value>
+  </data>
+  <data name="Error.ExpenseTagInvalid" xml:space="preserve">
+    <value>The tag is invalid or has been deleted.</value>
+  </data>
+  <data name="Error.ShareMemberInvalid" xml:space="preserve">
+    <value>The share's member is invalid or has been deleted.</value>
+  </data>
+  <data name="Error.DuplicateShareMember" xml:space="preserve">
+    <value>Each member may have only one share per expense.</value>
+  </data>
+  <data name="Error.ExpenseTimeOutOfEventRange" xml:space="preserve">
+    <value>The expense time is outside the event's date range.</value>
+  </data>
+  <data name="Error.ExpenseNotFound" xml:space="preserve">
+    <value>Expense not found.</value>
+  </data>
+  <data name="Error.OwnerRepresentativeNotDeletable" xml:space="preserve">
+    <value>The owner-representative member cannot be deleted.</value>
+  </data>
+  <data name="Error.MemberNotFound" xml:space="preserve">
+    <value>Member not found.</value>
+  </data>
+  <data name="Error.OwnerRepresentativeShareNotDeletable" xml:space="preserve">
+    <value>The owner-representative member's share cannot be deleted.</value>
+  </data>
+  <data name="Error.OwnerRepresentativeShareMemberNotChangeable" xml:space="preserve">
+    <value>The owner-representative member's share cannot be reassigned to another member.</value>
+  </data>
+  <data name="Error.ShareNotFound" xml:space="preserve">
+    <value>Share not found.</value>
+  </data>
+  <data name="Error.MemberLimitReached" xml:space="preserve">
+    <value>Free accounts can create at most {0} members. Upgrade to Premium to remove the limit.</value>
+  </data>
+  <data name="Error.OpenEventLimitReached" xml:space="preserve">
+    <value>Free accounts can have at most {0} open events. Close some events or upgrade to Premium to remove the limit.</value>
+  </data>
+  <data name="Error.MonthlyExpenseLimitReached" xml:space="preserve">
+    <value>Free accounts can create at most {0} expenses per month. Upgrade to Premium to remove the limit.</value>
+  </data>
+  <data name="Error.PremiumFeatureRequired" xml:space="preserve">
+    <value>The {0} feature is available only to Premium accounts. Upgrade to use it.</value>
+  </data>
+  <data name="Error.EventNotClosedForQr" xml:space="preserve">
+    <value>A QR code can be generated only for a closed event.</value>
+  </data>
+  <data name="Error.NoOutstandingDebtForQr" xml:space="preserve">
+    <value>No member has any outstanding debt in this event.</value>
+  </data>
+  <data name="Error.BankAccountNotFound" xml:space="preserve">
+    <value>Bank account not found.</value>
+  </data>
+  <data name="Error.NoBankAccountForQr" xml:space="preserve">
+    <value>There is no bank account available to generate a QR code.</value>
+  </data>
+  <data name="Error.AdminCannotTargetSelf" xml:space="preserve">
+    <value>You cannot perform this action on your own admin account.</value>
+  </data>
+  <data name="Error.AdminCannotTargetAdmin" xml:space="preserve">
+    <value>You cannot disable or demote another admin account, or this action would leave the system with no administrators.</value>
+  </data>
+  <data name="Error.AdminUserNotFound" xml:space="preserve">
+    <value>User not found.</value>
+  </data>
+  <data name="Error.UnsupportedExportFormat" xml:space="preserve">
+    <value>The requested export format is not supported.</value>
+  </data>
+  <data name="Error.TagNotFound" xml:space="preserve">
+    <value>Tag not found.</value>
+  </data>
+  <data name="Error.TagNameDuplicate" xml:space="preserve">
+    <value>A tag with this name already exists.</value>
+  </data>
+  <data name="Envelope.ValidationFailed" xml:space="preserve">
+    <value>The submitted data is invalid.</value>
+  </data>
+  <data name="Envelope.FieldInvalid" xml:space="preserve">
+    <value>Invalid value.</value>
+  </data>
+  <data name="Envelope.InternalError" xml:space="preserve">
+    <value>A system error has occurred. Please try again later.</value>
+  </data>
+  <data name="Serialization.DateTimeMustBeString" xml:space="preserve">
+    <value>The date-time value must be an ISO-8601 string.</value>
+  </data>
+  <data name="Serialization.DateTimeInvalid" xml:space="preserve">
+    <value>The date-time value is invalid.</value>
+  </data>
+  <data name="Serialization.DateTimeInvalidWithValue" xml:space="preserve">
+    <value>The date-time value is invalid: {0}</value>
+  </data>
+  <data name="Success.AdminAccountDisabled" xml:space="preserve">
+    <value>The account has been disabled.</value>
+  </data>
+  <data name="Success.AdminAccountEnabled" xml:space="preserve">
+    <value>The account has been re-enabled.</value>
+  </data>
+  <data name="Success.AdminTokensRevoked" xml:space="preserve">
+    <value>All of the user's sessions have been revoked.</value>
+  </data>
+  <data name="Success.AdminRoleUpdated" xml:space="preserve">
+    <value>The user's role has been updated.</value>
+  </data>
+  <data name="Success.LoggedOut" xml:space="preserve">
+    <value>Signed out successfully.</value>
+  </data>
+  <data name="Success.PasswordChanged" xml:space="preserve">
+    <value>Password changed successfully. Please sign in again on all devices.</value>
+  </data>
+  <data name="Success.BankAccountSetDefault" xml:space="preserve">
+    <value>The default bank account has been set.</value>
+  </data>
+  <data name="Success.BankAccountDeleted" xml:space="preserve">
+    <value>The bank account has been deleted.</value>
+  </data>
+  <data name="Success.CategorySetDefault" xml:space="preserve">
+    <value>The default category has been set.</value>
+  </data>
+  <data name="Success.CategoryDeleted" xml:space="preserve">
+    <value>The category has been deleted.</value>
+  </data>
+  <data name="Success.EventDeleted" xml:space="preserve">
+    <value>The event has been deleted.</value>
+  </data>
+  <data name="Success.EventClosed" xml:space="preserve">
+    <value>The event has been closed.</value>
+  </data>
+  <data name="Success.ExpenseDeleted" xml:space="preserve">
+    <value>The expense has been deleted.</value>
+  </data>
+  <data name="Success.ExpenseSettledUpdated" xml:space="preserve">
+    <value>The settled status has been updated.</value>
+  </data>
+  <data name="Success.ExpenseDetached" xml:space="preserve">
+    <value>The expense has been removed from the event.</value>
+  </data>
+  <data name="Success.ShareDeleted" xml:space="preserve">
+    <value>The share has been deleted.</value>
+  </data>
+  <data name="Success.HealthOk" xml:space="preserve">
+    <value>The system is operating normally.</value>
+  </data>
+  <data name="Success.MemberDeleted" xml:space="preserve">
+    <value>The member has been deleted.</value>
+  </data>
+  <data name="Success.TagDeleted" xml:space="preserve">
+    <value>The tag has been deleted.</value>
+  </data>
+  <data name="Validation.Auth.CurrentPasswordRequired" xml:space="preserve">
+    <value>Current password must not be empty.</value>
+  </data>
+  <data name="Validation.Auth.NewPasswordRequired" xml:space="preserve">
+    <value>New password must not be empty.</value>
+  </data>
+  <data name="Validation.Auth.NewPasswordTooShort" xml:space="preserve">
+    <value>New password must be at least {0} characters.</value>
+  </data>
+  <data name="Validation.Auth.NewPasswordTooLong" xml:space="preserve">
+    <value>New password must not exceed {0} bytes.</value>
+  </data>
+  <data name="Validation.Auth.UsernameRequired" xml:space="preserve">
+    <value>Username must not be empty.</value>
+  </data>
+  <data name="Validation.Auth.PasswordRequired" xml:space="preserve">
+    <value>Password must not be empty.</value>
+  </data>
+  <data name="Validation.Auth.RefreshTokenRequired" xml:space="preserve">
+    <value>Refresh token must not be empty.</value>
+  </data>
+  <data name="Validation.Auth.UsernameLength" xml:space="preserve">
+    <value>Username must be between {0} and {1} characters.</value>
+  </data>
+  <data name="Validation.Auth.UsernamePattern" xml:space="preserve">
+    <value>Username may contain only unaccented letters, digits, and the characters _ . -</value>
+  </data>
+  <data name="Validation.Auth.PasswordTooShort" xml:space="preserve">
+    <value>Password must be at least {0} characters.</value>
+  </data>
+  <data name="Validation.Auth.PasswordTooLong" xml:space="preserve">
+    <value>Password must not exceed {0} bytes.</value>
+  </data>
+  <data name="Validation.Member.NameRequired" xml:space="preserve">
+    <value>Member name must not be empty.</value>
+  </data>
+  <data name="Validation.Member.NameTooLong" xml:space="preserve">
+    <value>Member name must not exceed {0} characters.</value>
+  </data>
+  <data name="Validation.Category.NameRequired" xml:space="preserve">
+    <value>Category name must not be empty.</value>
+  </data>
+  <data name="Validation.Category.NameTooLong" xml:space="preserve">
+    <value>Category name must not exceed {0} characters.</value>
+  </data>
+  <data name="Validation.Category.ColorRequired" xml:space="preserve">
+    <value>Category color must not be empty.</value>
+  </data>
+  <data name="Validation.Category.ColorInvalid" xml:space="preserve">
+    <value>The category color is invalid.</value>
+  </data>
+  <data name="Validation.Category.IconTooLong" xml:space="preserve">
+    <value>The category icon must not exceed {0} characters.</value>
+  </data>
+  <data name="Validation.Tag.NameRequired" xml:space="preserve">
+    <value>Tag name must not be empty.</value>
+  </data>
+  <data name="Validation.Tag.NameTooLong" xml:space="preserve">
+    <value>Tag name must not exceed {0} characters.</value>
+  </data>
+  <data name="Validation.Event.NameRequired" xml:space="preserve">
+    <value>Event name must not be empty.</value>
+  </data>
+  <data name="Validation.Event.NameTooLong" xml:space="preserve">
+    <value>Event name must not exceed {0} characters.</value>
+  </data>
+  <data name="Validation.Event.DescriptionTooLong" xml:space="preserve">
+    <value>Event description must not exceed {0} characters.</value>
+  </data>
+  <data name="Validation.Event.StartDateRequired" xml:space="preserve">
+    <value>Start date must not be empty.</value>
+  </data>
+  <data name="Validation.Event.EndDateRequired" xml:space="preserve">
+    <value>End date must not be empty.</value>
+  </data>
+  <data name="Validation.Event.EndDateBeforeStart" xml:space="preserve">
+    <value>End date must be on or after the start date.</value>
+  </data>
+  <data name="Validation.Expense.NameRequired" xml:space="preserve">
+    <value>Expense name must not be empty.</value>
+  </data>
+  <data name="Validation.Expense.NameTooLong" xml:space="preserve">
+    <value>Expense name must not exceed {0} characters.</value>
+  </data>
+  <data name="Validation.Expense.DescriptionTooLong" xml:space="preserve">
+    <value>Description must not exceed {0} characters.</value>
+  </data>
+  <data name="Validation.Expense.ExpenseTimeRequired" xml:space="preserve">
+    <value>Expense time must not be empty.</value>
+  </data>
+  <data name="Validation.Expense.EventUuidRequired" xml:space="preserve">
+    <value>Event UUID must not be empty.</value>
+  </data>
+  <data name="Validation.Share.MemberRequired" xml:space="preserve">
+    <value>The share's member must not be empty.</value>
+  </data>
+  <data name="Validation.BankAccount.BankBinRequired" xml:space="preserve">
+    <value>Bank code (BIN) must not be empty.</value>
+  </data>
+  <data name="Validation.BankAccount.BankBinPattern" xml:space="preserve">
+    <value>Bank code (BIN) must be exactly 6 digits.</value>
+  </data>
+  <data name="Validation.BankAccount.BankNameRequired" xml:space="preserve">
+    <value>Bank name must not be empty.</value>
+  </data>
+  <data name="Validation.BankAccount.BankNameTooLong" xml:space="preserve">
+    <value>Bank name must not exceed {0} characters.</value>
+  </data>
+  <data name="Validation.BankAccount.AccountNumberRequired" xml:space="preserve">
+    <value>Account number must not be empty.</value>
+  </data>
+  <data name="Validation.BankAccount.AccountNumberInvalid" xml:space="preserve">
+    <value>The account number is invalid.</value>
+  </data>
+  <data name="Validation.BankAccount.AccountHolderNameRequired" xml:space="preserve">
+    <value>Account holder name must not be empty.</value>
+  </data>
+  <data name="Validation.BankAccount.AccountHolderNameTooLong" xml:space="preserve">
+    <value>Account holder name must not exceed {0} characters.</value>
+  </data>
+  <data name="Validation.Common.RangeInvalid" xml:space="preserve">
+    <value>Invalid time range: the start must be on or before the end.</value>
+  </data>
+  <data name="Validation.Common.AmountNegative" xml:space="preserve">
+    <value>The amount must not be negative.</value>
+  </data>
+  <data name="Validation.Common.NoteTooLong" xml:space="preserve">
+    <value>The note must not exceed {0} characters.</value>
+  </data>
+  <data name="Validation.Stats.ScopeConflict" xml:space="preserve">
+    <value>Filter by event or by time range, but not both at once.</value>
+  </data>
+  <data name="Validation.Admin.BucketInvalid" xml:space="preserve">
+    <value>Invalid time bucket. Only day or month is accepted.</value>
+  </data>
+  <data name="Validation.Admin.PageMin" xml:space="preserve">
+    <value>Page number must be greater than or equal to 1.</value>
+  </data>
+  <data name="Validation.Admin.PageSizeRange" xml:space="preserve">
+    <value>Page size must be between 1 and {0}.</value>
+  </data>
+  <data name="Validation.Admin.SortInvalid" xml:space="preserve">
+    <value>Invalid sort field. Only createdAt, username, tier, or status is accepted.</value>
+  </data>
+  <data name="Validation.Admin.DirectionInvalid" xml:space="preserve">
+    <value>Invalid sort direction. Only asc or desc is accepted.</value>
+  </data>
+  <data name="Validation.Admin.CurrencyTooLong" xml:space="preserve">
+    <value>Currency must not exceed {0} characters.</value>
+  </data>
+  <data name="Validation.Admin.ReferenceTooLong" xml:space="preserve">
+    <value>Reference must not exceed {0} characters.</value>
+  </data>
+  <data name="Validation.Admin.RoleRequired" xml:space="preserve">
+    <value>Role must not be empty.</value>
+  </data>
+  <data name="Validation.Admin.RoleInvalid" xml:space="preserve">
+    <value>Invalid role. Only USER or ADMIN is accepted.</value>
+  </data>
+</root>

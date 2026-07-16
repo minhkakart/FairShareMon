@@ -5,6 +5,9 @@ using FairShareMonApi.Services.Api.Events;
 using FairShareMonApi.Services.Api.Export;
 using FairShareMonApi.Services.Api.Stats;
 using FairShareMonApi.Services.Api.Wallet;
+using FairShareMonApi.Constants;
+using FairShareMonApi.Localization.Resources;
+using Microsoft.Extensions.Localization;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
 
@@ -17,7 +20,7 @@ namespace FairShareMonApi.Controllers;
 /// edit/delete are OPEN-only; a closed event rejects every write to its expenses/shares except the
 /// settled flag (§4.4). Thin - all business logic in <see cref="IEventsService"/>.
 /// </summary>
-public class EventsController(IEventsService eventsService, IStatsService statsService, IExportService exportService, IWalletQrService walletQrService) : AppController
+public class EventsController(IEventsService eventsService, IStatsService statsService, IExportService exportService, IWalletQrService walletQrService, IStringLocalizer<StringResources> localizer) : AppController
 {
     [HttpGet]
     [SwaggerOperation(
@@ -70,7 +73,7 @@ public class EventsController(IEventsService eventsService, IStatsService statsS
     public async Task<IActionResult> DeleteAsync([FromRoute] string uuid, CancellationToken cancellationToken)
     {
         await eventsService.DeleteAsync(AuthenticatedUser.Id, uuid, cancellationToken);
-        return ApiResult.SuccessMessage("Đã xóa đợt chi tiêu.");
+        return ApiResult.SuccessMessage(localizer[MessageKeys.Success.EventDeleted].Value);
     }
 
     [HttpGet("{uuid}/balance")]
@@ -125,6 +128,6 @@ public class EventsController(IEventsService eventsService, IStatsService statsS
     public async Task<IActionResult> CloseAsync([FromRoute] string uuid, CancellationToken cancellationToken)
     {
         await eventsService.CloseAsync(AuthenticatedUser.Id, uuid, cancellationToken);
-        return ApiResult.SuccessMessage("Đã chốt đợt chi tiêu.");
+        return ApiResult.SuccessMessage(localizer[MessageKeys.Success.EventClosed].Value);
     }
 }

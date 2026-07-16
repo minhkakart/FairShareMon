@@ -10,6 +10,7 @@ namespace FairShareMonApi.Tests;
 /// the camelCase <c>name</c> key into <c>error.fields</c> is covered end-to-end by
 /// <c>MembersEndpointTests</c>.
 /// </summary>
+[UseCulture("vi-VN")]
 public class CreateMemberRequestValidatorTests
 {
     private readonly CreateMemberRequestValidator _validator = new();
@@ -58,6 +59,7 @@ public class CreateMemberRequestValidatorTests
     }
 }
 
+[UseCulture("vi-VN")]
 public class UpdateMemberRequestValidatorTests
 {
     private readonly UpdateMemberRequestValidator _validator = new();

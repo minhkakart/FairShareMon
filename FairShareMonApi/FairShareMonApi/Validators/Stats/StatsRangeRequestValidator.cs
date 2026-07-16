@@ -1,4 +1,8 @@
 using FairShareMonApi.Models.Stats;
+using FairShareMonApi.Constants;
+using FairShareMonApi.Localization;
+using FairShareMonApi.Localization.Resources;
+using Microsoft.Extensions.Localization;
 using FluentValidation;
 
 namespace FairShareMonApi.Validators.Stats;
@@ -10,10 +14,11 @@ namespace FairShareMonApi.Validators.Stats;
 /// </summary>
 public class StatsRangeRequestValidator : AbstractValidator<StatsRangeRequest>
 {
-    public StatsRangeRequestValidator()
+    public StatsRangeRequestValidator(IStringLocalizer<StringResources>? localizer = null)
     {
+        localizer ??= SharedStringLocalizer.Instance;
         RuleFor(request => request.To)
             .Must((request, to) => !request.From.HasValue || !to.HasValue || request.From.Value <= to.Value)
-            .WithMessage("Khoảng thời gian không hợp lệ: thời điểm bắt đầu phải trước hoặc bằng thời điểm kết thúc.");
+            .WithMessage(_ => localizer[MessageKeys.Validation.Common.RangeInvalid].Value);
     }
 }

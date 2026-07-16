@@ -1,5 +1,9 @@
 using FairShareMonApi.Database.Entities;
 using FairShareMonApi.Models.Admin;
+using FairShareMonApi.Constants;
+using FairShareMonApi.Localization;
+using FairShareMonApi.Localization.Resources;
+using Microsoft.Extensions.Localization;
 using FluentValidation;
 
 namespace FairShareMonApi.Validators.Admin;
@@ -10,22 +14,23 @@ namespace FairShareMonApi.Validators.Admin;
 /// </summary>
 public class GrantTierRequestValidator : AbstractValidator<GrantTierRequest>
 {
-    public GrantTierRequestValidator()
+    public GrantTierRequestValidator(IStringLocalizer<StringResources>? localizer = null)
     {
+        localizer ??= SharedStringLocalizer.Instance;
         RuleFor(request => request.Amount)
-            .GreaterThanOrEqualTo(0).WithMessage("Số tiền không được âm.");
+            .GreaterThanOrEqualTo(0).WithMessage(_ => localizer[MessageKeys.Validation.Common.AmountNegative].Value);
 
         RuleFor(request => request.Currency)
             .MaximumLength(TierGrant.CurrencyMaxLength)
-            .WithMessage($"Đơn vị tiền tệ không được vượt quá {TierGrant.CurrencyMaxLength} ký tự.")
+            .WithMessage(_ => localizer[MessageKeys.Validation.Admin.CurrencyTooLong, TierGrant.CurrencyMaxLength].Value)
             .When(request => !string.IsNullOrEmpty(request.Currency));
 
         RuleFor(request => request.Reference)
             .MaximumLength(TierGrant.ReferenceMaxLength)
-            .WithMessage($"Mã tham chiếu không được vượt quá {TierGrant.ReferenceMaxLength} ký tự.");
+            .WithMessage(_ => localizer[MessageKeys.Validation.Admin.ReferenceTooLong, TierGrant.ReferenceMaxLength].Value);
 
         RuleFor(request => request.Note)
             .MaximumLength(TierGrant.NoteMaxLength)
-            .WithMessage($"Ghi chú không được vượt quá {TierGrant.NoteMaxLength} ký tự.");
+            .WithMessage(_ => localizer[MessageKeys.Validation.Common.NoteTooLong, TierGrant.NoteMaxLength].Value);
     }
 }

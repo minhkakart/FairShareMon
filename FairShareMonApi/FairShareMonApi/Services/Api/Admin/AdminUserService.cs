@@ -260,7 +260,7 @@ public sealed class AdminUserService(
     private async Task<ulong> ResolveActingUserIdAsync(AuthenticatedUser actingAdmin, CancellationToken cancellationToken)
     {
         var actingUser = await userRepository.GetByUuidAsync(actingAdmin.Id, cancellationToken)
-            ?? throw new ErrorException(ErrorCodes.Unauthorized, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.");
+            ?? throw new ErrorException(ErrorCodes.Unauthorized, MessageKeys.Error.Unauthorized);
         return actingUser.Id;
     }
 
@@ -269,13 +269,13 @@ public sealed class AdminUserService(
     {
         if (string.Equals(target.Uuid, actingAdmin.Id, StringComparison.Ordinal))
             throw new ErrorException(ErrorCodes.AdminCannotTargetSelf,
-                "Bạn không thể thực hiện thao tác này với chính tài khoản admin của mình.");
+                MessageKeys.Error.AdminCannotTargetSelf);
 
         if (target.Role == UserRoles.Admin)
             throw new ErrorException(ErrorCodes.AdminCannotTargetAdmin,
-                "Không thể vô hiệu hóa/hạ quyền một tài khoản admin khác, hoặc thao tác này sẽ khiến hệ thống không còn admin nào.");
+                MessageKeys.Error.AdminCannotTargetAdmin);
     }
 
     private static ErrorException UserNotFound() =>
-        new(ErrorCodes.AdminUserNotFound, "Không tìm thấy người dùng.");
+        new(ErrorCodes.AdminUserNotFound, MessageKeys.Error.AdminUserNotFound);
 }

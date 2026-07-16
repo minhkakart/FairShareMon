@@ -3,6 +3,8 @@ using FairShareMonApi.Constants;
 using FairShareMonApi.Database;
 using FairShareMonApi.Database.Entities;
 using FairShareMonApi.Exceptions;
+using FairShareMonApi.Extensions;
+using FairShareMonApi.Localization;
 using FairShareMonApi.Models.Events;
 using FairShareMonApi.Models.Expenses;
 using FairShareMonApi.Repositories;
@@ -277,8 +279,14 @@ public class TierServiceTests
         Assert.Equal(ErrorCodes.MemberLimitReached, exception.Code);
     }
 
+    // Localization D2: the ErrorException now carries a resource KEY (exception.Message == the key) plus
+    // format Args; the interpolated limit number is resolved at the envelope boundary via IStringLocalizer.
+    // These two tests pin the culture and resolve the message the same way the envelope does
+    // (LocalizerExtensions.LocalizeError over the shared localizer), proving the {0} limit number renders
+    // in BOTH cultures.
+
     [Fact]
-    public async Task LimitMessage_IncludesTheConfiguredNumber()
+    public async Task LimitMessage_ResolvesInterpolatedNumber_InVietnamese()
     {
         AsFree();
         _members.Count = 7;
@@ -286,8 +294,29 @@ public class TierServiceTests
         var exception = await Assert.ThrowsAsync<ErrorException>(() =>
             CreateService(maxMembers: 7).EnsureCanCreateMemberAsync(UserUuid));
 
-        Assert.Contains("7", exception.Message);        // interpolated limit number
-        Assert.Contains("Premium", exception.Message);  // names the upsell
+        Assert.Equal(ErrorCodes.MemberLimitReached, exception.Code);          // stable machine contract
+        Assert.Equal(MessageKeys.Error.MemberLimitReached, exception.MessageKey);
+
+        using var _ = new CultureScope("vi-VN");
+        var message = SharedStringLocalizer.Instance.LocalizeError(exception);
+        Assert.Contains("7", message);         // interpolated configured limit
+        Assert.Contains("Premium", message);   // names the upsell
+        Assert.Contains("Nâng cấp", message);  // Vietnamese text (not English)
+    }
+
+    [Fact]
+    public async Task LimitMessage_ResolvesInterpolatedNumber_InEnglish()
+    {
+        AsFree();
+        _members.Count = 7;
+
+        var exception = await Assert.ThrowsAsync<ErrorException>(() =>
+            CreateService(maxMembers: 7).EnsureCanCreateMemberAsync(UserUuid));
+
+        using var _ = new CultureScope("en-US");
+        var message = SharedStringLocalizer.Instance.LocalizeError(exception);
+        Assert.Contains("7", message);                    // interpolated configured limit
+        Assert.Contains("Upgrade to Premium", message);   // English text
     }
 
     // ---- Fakes ------------------------------------------------------------------------------------

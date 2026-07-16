@@ -1,6 +1,10 @@
 using System.Text;
 using FairShareMonApi.Models.Admin;
 using FairShareMonApi.Validators.Auth;
+using FairShareMonApi.Constants;
+using FairShareMonApi.Localization;
+using FairShareMonApi.Localization.Resources;
+using Microsoft.Extensions.Localization;
 using FluentValidation;
 
 namespace FairShareMonApi.Validators.Admin;
@@ -10,13 +14,14 @@ namespace FairShareMonApi.Validators.Admin;
 /// </summary>
 public class ResetPasswordRequestValidator : AbstractValidator<ResetPasswordRequest>
 {
-    public ResetPasswordRequestValidator()
+    public ResetPasswordRequestValidator(IStringLocalizer<StringResources>? localizer = null)
     {
+        localizer ??= SharedStringLocalizer.Instance;
         RuleFor(request => request.NewPassword)
-            .NotEmpty().WithMessage("Mật khẩu mới không được để trống.")
+            .NotEmpty().WithMessage(_ => localizer[MessageKeys.Validation.Auth.NewPasswordRequired].Value)
             .MinimumLength(RegisterRequestValidator.PasswordMinLength)
-            .WithMessage($"Mật khẩu mới phải có ít nhất {RegisterRequestValidator.PasswordMinLength} ký tự.")
+            .WithMessage(_ => localizer[MessageKeys.Validation.Auth.NewPasswordTooShort, RegisterRequestValidator.PasswordMinLength].Value)
             .Must(password => Encoding.UTF8.GetByteCount(password ?? string.Empty) <= RegisterRequestValidator.PasswordMaxBytes)
-            .WithMessage($"Mật khẩu mới không được vượt quá {RegisterRequestValidator.PasswordMaxBytes} byte.");
+            .WithMessage(_ => localizer[MessageKeys.Validation.Auth.NewPasswordTooLong, RegisterRequestValidator.PasswordMaxBytes].Value);
     }
 }

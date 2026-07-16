@@ -45,6 +45,11 @@
              (Be Vietnam Pro, OFL 1.1 - Assets/Fonts/OFL.txt). Embedded so headless Linux/Docker
              renders Vietnamese diacritics without depending on system fonts (planning/wallet-and-qr.md OQ3). -->
         <EmbeddedResource Include="Assets\Fonts\BeVietnamPro-Regular.ttf" />
+        <!-- StringResources.resx (neutral vi-VN) + StringResources.en-US.resx are picked up by the SDK
+             default **/*.resx EmbeddedResource glob; their manifest name is
+             FairShareMonApi.Localization.Resources.StringResources(.en-US), matching the marker type
+             namespace so IStringLocalizer<StringResources> resolves. No Designer/strongly-typed accessor
+             is used - resolution is via IStringLocalizer only (planning/localization-subsystem.md D5/D6). -->
     </ItemGroup>
 
 </Project>

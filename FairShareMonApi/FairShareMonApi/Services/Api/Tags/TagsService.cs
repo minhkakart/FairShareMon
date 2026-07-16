@@ -84,8 +84,8 @@ public sealed class TagsService(
     }
 
     private static ErrorException NotFound() =>
-        new(ErrorCodes.TagNotFound, "Không tìm thấy nhãn.");
+        new(ErrorCodes.TagNotFound, MessageKeys.Error.TagNotFound);
 
     private static ErrorException NameDuplicate() =>
-        new(ErrorCodes.TagNameDuplicate, "Tên nhãn đã tồn tại.");
+        new(ErrorCodes.TagNameDuplicate, MessageKeys.Error.TagNameDuplicate);
 }

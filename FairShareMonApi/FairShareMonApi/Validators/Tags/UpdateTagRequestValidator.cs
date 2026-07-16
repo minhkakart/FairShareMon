@@ -1,5 +1,9 @@
 using FairShareMonApi.Database.Entities;
 using FairShareMonApi.Models.Tags;
+using FairShareMonApi.Constants;
+using FairShareMonApi.Localization;
+using FairShareMonApi.Localization.Resources;
+using Microsoft.Extensions.Localization;
 using FluentValidation;
 
 namespace FairShareMonApi.Validators.Tags;
@@ -10,11 +14,12 @@ namespace FairShareMonApi.Validators.Tags;
 /// </summary>
 public class UpdateTagRequestValidator : AbstractValidator<UpdateTagRequest>
 {
-    public UpdateTagRequestValidator()
+    public UpdateTagRequestValidator(IStringLocalizer<StringResources>? localizer = null)
     {
+        localizer ??= SharedStringLocalizer.Instance;
         RuleFor(request => request.Name)
-            .NotEmpty().WithMessage("Tên nhãn không được để trống.")
+            .NotEmpty().WithMessage(_ => localizer[MessageKeys.Validation.Tag.NameRequired].Value)
             .MaximumLength(Tag.NameMaxLength)
-            .WithMessage($"Tên nhãn không được vượt quá {Tag.NameMaxLength} ký tự.");
+            .WithMessage(_ => localizer[MessageKeys.Validation.Tag.NameTooLong, Tag.NameMaxLength].Value);
     }
 }

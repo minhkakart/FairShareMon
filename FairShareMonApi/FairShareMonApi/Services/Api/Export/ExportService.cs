@@ -294,5 +294,5 @@ public sealed class ExportService(
     }
 
     private static ErrorException UnsupportedFormat() =>
-        new(ErrorCodes.ValidationFailed, "Định dạng xuất không được hỗ trợ.");
+        new(ErrorCodes.ValidationFailed, MessageKeys.Error.UnsupportedExportFormat);
 }

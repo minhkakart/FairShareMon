@@ -1,6 +1,9 @@
 using FairShareMonApi.Models;
 using FairShareMonApi.Models.Categories;
 using FairShareMonApi.Services.Api.Categories;
+using FairShareMonApi.Constants;
+using FairShareMonApi.Localization.Resources;
+using Microsoft.Extensions.Localization;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
 
@@ -12,7 +15,7 @@ namespace FairShareMonApi.Controllers;
 /// resource-owned - a category that isn't the caller's yields 404 (never 403). Thin - all business
 /// logic in <see cref="ICategoriesService"/>.
 /// </summary>
-public class CategoriesController(ICategoriesService categoriesService) : AppController
+public class CategoriesController(ICategoriesService categoriesService, IStringLocalizer<StringResources> localizer) : AppController
 {
     [HttpGet]
     [SwaggerOperation(
@@ -64,7 +67,7 @@ public class CategoriesController(ICategoriesService categoriesService) : AppCon
     public async Task<IActionResult> SetDefaultAsync([FromRoute] string uuid, CancellationToken cancellationToken)
     {
         await categoriesService.SetDefaultAsync(AuthenticatedUser.Id, uuid, cancellationToken);
-        return ApiResult.SuccessMessage("Đã đặt danh mục mặc định.");
+        return ApiResult.SuccessMessage(localizer[MessageKeys.Success.CategorySetDefault].Value);
     }
 
     [HttpDelete("{uuid}")]
@@ -77,6 +80,6 @@ public class CategoriesController(ICategoriesService categoriesService) : AppCon
     public async Task<IActionResult> DeleteAsync([FromRoute] string uuid, CancellationToken cancellationToken)
     {
         await categoriesService.DeleteAsync(AuthenticatedUser.Id, uuid, cancellationToken);
-        return ApiResult.SuccessMessage("Đã xóa danh mục.");
+        return ApiResult.SuccessMessage(localizer[MessageKeys.Success.CategoryDeleted].Value);
     }
 }

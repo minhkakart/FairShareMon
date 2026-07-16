@@ -1,5 +1,9 @@
 using FairShareMonApi.Database.Entities;
 using FairShareMonApi.Models.Categories;
+using FairShareMonApi.Constants;
+using FairShareMonApi.Localization;
+using FairShareMonApi.Localization.Resources;
+using Microsoft.Extensions.Localization;
 using FluentValidation;
 
 namespace FairShareMonApi.Validators.Categories;
@@ -11,19 +15,20 @@ namespace FairShareMonApi.Validators.Categories;
 /// </summary>
 public class UpdateCategoryRequestValidator : AbstractValidator<UpdateCategoryRequest>
 {
-    public UpdateCategoryRequestValidator()
+    public UpdateCategoryRequestValidator(IStringLocalizer<StringResources>? localizer = null)
     {
+        localizer ??= SharedStringLocalizer.Instance;
         RuleFor(request => request.Name)
-            .NotEmpty().WithMessage("Tên danh mục không được để trống.")
+            .NotEmpty().WithMessage(_ => localizer[MessageKeys.Validation.Category.NameRequired].Value)
             .MaximumLength(Category.NameMaxLength)
-            .WithMessage($"Tên danh mục không được vượt quá {Category.NameMaxLength} ký tự.");
+            .WithMessage(_ => localizer[MessageKeys.Validation.Category.NameTooLong, Category.NameMaxLength].Value);
 
         RuleFor(request => request.Color)
-            .NotEmpty().WithMessage("Màu danh mục không được để trống.")
-            .Matches(CreateCategoryRequestValidator.ColorPattern).WithMessage("Màu danh mục không hợp lệ.");
+            .NotEmpty().WithMessage(_ => localizer[MessageKeys.Validation.Category.ColorRequired].Value)
+            .Matches(CreateCategoryRequestValidator.ColorPattern).WithMessage(_ => localizer[MessageKeys.Validation.Category.ColorInvalid].Value);
 
         RuleFor(request => request.Icon)
             .MaximumLength(Category.IconMaxLength)
-            .WithMessage($"Icon danh mục không được vượt quá {Category.IconMaxLength} ký tự.");
+            .WithMessage(_ => localizer[MessageKeys.Validation.Category.IconTooLong, Category.IconMaxLength].Value);
     }
 }

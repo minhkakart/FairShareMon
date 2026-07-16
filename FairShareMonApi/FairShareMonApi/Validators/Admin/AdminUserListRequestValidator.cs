@@ -1,4 +1,8 @@
 using FairShareMonApi.Models.Admin;
+using FairShareMonApi.Constants;
+using FairShareMonApi.Localization;
+using FairShareMonApi.Localization.Resources;
+using Microsoft.Extensions.Localization;
 using FluentValidation;
 
 namespace FairShareMonApi.Validators.Admin;
@@ -14,21 +18,22 @@ public class AdminUserListRequestValidator : AbstractValidator<AdminUserListRequ
     private static readonly string[] AllowedSorts = ["createdAt", "username", "tier", "status"];
     private static readonly string[] AllowedDirections = ["asc", "desc"];
 
-    public AdminUserListRequestValidator()
+    public AdminUserListRequestValidator(IStringLocalizer<StringResources>? localizer = null)
     {
+        localizer ??= SharedStringLocalizer.Instance;
         RuleFor(request => request.Page)
-            .GreaterThanOrEqualTo(1).WithMessage("Số trang phải lớn hơn hoặc bằng 1.");
+            .GreaterThanOrEqualTo(1).WithMessage(_ => localizer[MessageKeys.Validation.Admin.PageMin].Value);
 
         RuleFor(request => request.PageSize)
             .InclusiveBetween(1, MaxPageSize)
-            .WithMessage($"Kích thước trang phải trong khoảng 1 đến {MaxPageSize}.");
+            .WithMessage(_ => localizer[MessageKeys.Validation.Admin.PageSizeRange, MaxPageSize].Value);
 
         RuleFor(request => request.Sort)
             .Must(sort => AllowedSorts.Contains(sort))
-            .WithMessage("Trường sắp xếp không hợp lệ. Chỉ chấp nhận createdAt, username, tier hoặc status.");
+            .WithMessage(_ => localizer[MessageKeys.Validation.Admin.SortInvalid].Value);
 
         RuleFor(request => request.Direction)
             .Must(direction => AllowedDirections.Contains(direction))
-            .WithMessage("Chiều sắp xếp không hợp lệ. Chỉ chấp nhận asc hoặc desc.");
+            .WithMessage(_ => localizer[MessageKeys.Validation.Admin.DirectionInvalid].Value);
     }
 }

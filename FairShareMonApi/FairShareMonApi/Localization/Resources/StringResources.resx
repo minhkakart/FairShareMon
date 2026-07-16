@@ -1,0 +1,429 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Error.Unauthorized" xml:space="preserve">
+    <value>Phiên đăng nhập không hợp lệ hoặc đã hết hạn.</value>
+  </data>
+  <data name="Error.Forbidden" xml:space="preserve">
+    <value>Bạn không có quyền thực hiện thao tác này.</value>
+  </data>
+  <data name="Feature.Wallet" xml:space="preserve">
+    <value>ví ngân hàng</value>
+  </data>
+  <data name="Feature.Qr" xml:space="preserve">
+    <value>tạo mã QR</value>
+  </data>
+  <data name="Error.UsernameTaken" xml:space="preserve">
+    <value>Tên đăng nhập đã tồn tại.</value>
+  </data>
+  <data name="Error.InvalidCredentials" xml:space="preserve">
+    <value>Tên đăng nhập hoặc mật khẩu không đúng.</value>
+  </data>
+  <data name="Error.AccountDisabled" xml:space="preserve">
+    <value>Tài khoản đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên.</value>
+  </data>
+  <data name="Error.InternalError" xml:space="preserve">
+    <value>Đã xảy ra lỗi hệ thống. Vui lòng thử lại sau.</value>
+  </data>
+  <data name="Error.InvalidRefreshToken" xml:space="preserve">
+    <value>Mã gia hạn phiên không hợp lệ hoặc đã hết hạn.</value>
+  </data>
+  <data name="Error.CurrentPasswordIncorrect" xml:space="preserve">
+    <value>Mật khẩu hiện tại không đúng.</value>
+  </data>
+  <data name="Error.DefaultCategoryNotDeletable" xml:space="preserve">
+    <value>Không thể xóa danh mục mặc định.</value>
+  </data>
+  <data name="Error.CategoryNotFound" xml:space="preserve">
+    <value>Không tìm thấy danh mục.</value>
+  </data>
+  <data name="Error.CategoryNameDuplicate" xml:space="preserve">
+    <value>Tên danh mục đã tồn tại.</value>
+  </data>
+  <data name="Error.EventClosed" xml:space="preserve">
+    <value>Đợt chi tiêu đã chốt, không thể thay đổi.</value>
+  </data>
+  <data name="Error.EventClosedEdit" xml:space="preserve">
+    <value>Không thể sửa đợt đã chốt.</value>
+  </data>
+  <data name="Error.EventClosedDelete" xml:space="preserve">
+    <value>Không thể xóa đợt đã chốt.</value>
+  </data>
+  <data name="Error.EventClosedDetach" xml:space="preserve">
+    <value>Không thể gỡ phiếu khỏi đợt đã chốt.</value>
+  </data>
+  <data name="Error.EventRangeExcludesAssignedExpenses" xml:space="preserve">
+    <value>Không thể đổi khoảng thời gian: có phiếu đã gán nằm ngoài khoảng thời gian mới.</value>
+  </data>
+  <data name="Error.EventNotFound" xml:space="preserve">
+    <value>Không tìm thấy đợt chi tiêu.</value>
+  </data>
+  <data name="Error.ExpensePayerInvalid" xml:space="preserve">
+    <value>Người trả không hợp lệ hoặc đã bị xóa.</value>
+  </data>
+  <data name="Error.ExpenseCategoryInvalid" xml:space="preserve">
+    <value>Danh mục không hợp lệ hoặc đã bị xóa.</value>
+  </data>
+  <data name="Error.ExpenseTagInvalid" xml:space="preserve">
+    <value>Nhãn không hợp lệ hoặc đã bị xóa.</value>
+  </data>
+  <data name="Error.ShareMemberInvalid" xml:space="preserve">
+    <value>Thành viên của phần gánh không hợp lệ hoặc đã bị xóa.</value>
+  </data>
+  <data name="Error.DuplicateShareMember" xml:space="preserve">
+    <value>Mỗi thành viên chỉ có một phần gánh trong một phiếu.</value>
+  </data>
+  <data name="Error.ExpenseTimeOutOfEventRange" xml:space="preserve">
+    <value>Thời điểm chi của phiếu không nằm trong khoảng thời gian của đợt.</value>
+  </data>
+  <data name="Error.ExpenseNotFound" xml:space="preserve">
+    <value>Không tìm thấy phiếu chi tiêu.</value>
+  </data>
+  <data name="Error.OwnerRepresentativeNotDeletable" xml:space="preserve">
+    <value>Không thể xóa thành viên đại diện chủ sổ.</value>
+  </data>
+  <data name="Error.MemberNotFound" xml:space="preserve">
+    <value>Không tìm thấy thành viên.</value>
+  </data>
+  <data name="Error.OwnerRepresentativeShareNotDeletable" xml:space="preserve">
+    <value>Không thể xóa phần gánh của thành viên đại diện chủ sổ.</value>
+  </data>
+  <data name="Error.OwnerRepresentativeShareMemberNotChangeable" xml:space="preserve">
+    <value>Không thể đổi thành viên của phần gánh thành viên đại diện chủ sổ.</value>
+  </data>
+  <data name="Error.ShareNotFound" xml:space="preserve">
+    <value>Không tìm thấy phần gánh.</value>
+  </data>
+  <data name="Error.MemberLimitReached" xml:space="preserve">
+    <value>Tài khoản Free chỉ được tạo tối đa {0} thành viên. Nâng cấp Premium để bỏ giới hạn.</value>
+  </data>
+  <data name="Error.OpenEventLimitReached" xml:space="preserve">
+    <value>Tài khoản Free chỉ được có tối đa {0} đợt đang mở. Chốt bớt đợt hoặc nâng cấp Premium để bỏ giới hạn.</value>
+  </data>
+  <data name="Error.MonthlyExpenseLimitReached" xml:space="preserve">
+    <value>Tài khoản Free chỉ được tạo tối đa {0} phiếu chi tiêu mỗi tháng. Nâng cấp Premium để bỏ giới hạn.</value>
+  </data>
+  <data name="Error.PremiumFeatureRequired" xml:space="preserve">
+    <value>Tính năng {0} chỉ dành cho tài khoản Premium. Nâng cấp để sử dụng.</value>
+  </data>
+  <data name="Error.EventNotClosedForQr" xml:space="preserve">
+    <value>Chỉ có thể tạo mã QR cho đợt đã chốt.</value>
+  </data>
+  <data name="Error.NoOutstandingDebtForQr" xml:space="preserve">
+    <value>Không có thành viên nào còn nợ trong đợt này.</value>
+  </data>
+  <data name="Error.BankAccountNotFound" xml:space="preserve">
+    <value>Không tìm thấy tài khoản ngân hàng.</value>
+  </data>
+  <data name="Error.NoBankAccountForQr" xml:space="preserve">
+    <value>Chưa có tài khoản ngân hàng để tạo mã QR.</value>
+  </data>
+  <data name="Error.AdminCannotTargetSelf" xml:space="preserve">
+    <value>Bạn không thể thực hiện thao tác này với chính tài khoản admin của mình.</value>
+  </data>
+  <data name="Error.AdminCannotTargetAdmin" xml:space="preserve">
+    <value>Không thể vô hiệu hóa/hạ quyền một tài khoản admin khác, hoặc thao tác này sẽ khiến hệ thống không còn admin nào.</value>
+  </data>
+  <data name="Error.AdminUserNotFound" xml:space="preserve">
+    <value>Không tìm thấy người dùng.</value>
+  </data>
+  <data name="Error.UnsupportedExportFormat" xml:space="preserve">
+    <value>Định dạng xuất không được hỗ trợ.</value>
+  </data>
+  <data name="Error.TagNotFound" xml:space="preserve">
+    <value>Không tìm thấy nhãn.</value>
+  </data>
+  <data name="Error.TagNameDuplicate" xml:space="preserve">
+    <value>Tên nhãn đã tồn tại.</value>
+  </data>
+  <data name="Envelope.ValidationFailed" xml:space="preserve">
+    <value>Dữ liệu gửi lên không hợp lệ.</value>
+  </data>
+  <data name="Envelope.FieldInvalid" xml:space="preserve">
+    <value>Giá trị không hợp lệ.</value>
+  </data>
+  <data name="Envelope.InternalError" xml:space="preserve">
+    <value>Đã xảy ra lỗi hệ thống. Vui lòng thử lại sau.</value>
+  </data>
+  <data name="Serialization.DateTimeMustBeString" xml:space="preserve">
+    <value>Giá trị ngày giờ phải là chuỗi ISO-8601.</value>
+  </data>
+  <data name="Serialization.DateTimeInvalid" xml:space="preserve">
+    <value>Giá trị ngày giờ không hợp lệ.</value>
+  </data>
+  <data name="Serialization.DateTimeInvalidWithValue" xml:space="preserve">
+    <value>Giá trị ngày giờ không hợp lệ: {0}</value>
+  </data>
+  <data name="Success.AdminAccountDisabled" xml:space="preserve">
+    <value>Đã vô hiệu hóa tài khoản.</value>
+  </data>
+  <data name="Success.AdminAccountEnabled" xml:space="preserve">
+    <value>Đã bật lại tài khoản.</value>
+  </data>
+  <data name="Success.AdminTokensRevoked" xml:space="preserve">
+    <value>Đã thu hồi toàn bộ phiên của người dùng.</value>
+  </data>
+  <data name="Success.AdminRoleUpdated" xml:space="preserve">
+    <value>Đã cập nhật vai trò người dùng.</value>
+  </data>
+  <data name="Success.LoggedOut" xml:space="preserve">
+    <value>Đăng xuất thành công.</value>
+  </data>
+  <data name="Success.PasswordChanged" xml:space="preserve">
+    <value>Đổi mật khẩu thành công. Vui lòng đăng nhập lại trên mọi thiết bị.</value>
+  </data>
+  <data name="Success.BankAccountSetDefault" xml:space="preserve">
+    <value>Đã đặt tài khoản ngân hàng mặc định.</value>
+  </data>
+  <data name="Success.BankAccountDeleted" xml:space="preserve">
+    <value>Đã xóa tài khoản ngân hàng.</value>
+  </data>
+  <data name="Success.CategorySetDefault" xml:space="preserve">
+    <value>Đã đặt danh mục mặc định.</value>
+  </data>
+  <data name="Success.CategoryDeleted" xml:space="preserve">
+    <value>Đã xóa danh mục.</value>
+  </data>
+  <data name="Success.EventDeleted" xml:space="preserve">
+    <value>Đã xóa đợt chi tiêu.</value>
+  </data>
+  <data name="Success.EventClosed" xml:space="preserve">
+    <value>Đã chốt đợt chi tiêu.</value>
+  </data>
+  <data name="Success.ExpenseDeleted" xml:space="preserve">
+    <value>Đã xóa phiếu chi tiêu.</value>
+  </data>
+  <data name="Success.ExpenseSettledUpdated" xml:space="preserve">
+    <value>Đã cập nhật trạng thái đã trả.</value>
+  </data>
+  <data name="Success.ExpenseDetached" xml:space="preserve">
+    <value>Đã gỡ phiếu khỏi đợt chi tiêu.</value>
+  </data>
+  <data name="Success.ShareDeleted" xml:space="preserve">
+    <value>Đã xóa phần gánh.</value>
+  </data>
+  <data name="Success.HealthOk" xml:space="preserve">
+    <value>Hệ thống hoạt động bình thường.</value>
+  </data>
+  <data name="Success.MemberDeleted" xml:space="preserve">
+    <value>Đã xóa thành viên.</value>
+  </data>
+  <data name="Success.TagDeleted" xml:space="preserve">
+    <value>Đã xóa nhãn.</value>
+  </data>
+  <data name="Validation.Auth.CurrentPasswordRequired" xml:space="preserve">
+    <value>Mật khẩu hiện tại không được để trống.</value>
+  </data>
+  <data name="Validation.Auth.NewPasswordRequired" xml:space="preserve">
+    <value>Mật khẩu mới không được để trống.</value>
+  </data>
+  <data name="Validation.Auth.NewPasswordTooShort" xml:space="preserve">
+    <value>Mật khẩu mới phải có ít nhất {0} ký tự.</value>
+  </data>
+  <data name="Validation.Auth.NewPasswordTooLong" xml:space="preserve">
+    <value>Mật khẩu mới không được vượt quá {0} byte.</value>
+  </data>
+  <data name="Validation.Auth.UsernameRequired" xml:space="preserve">
+    <value>Tên đăng nhập không được để trống.</value>
+  </data>
+  <data name="Validation.Auth.PasswordRequired" xml:space="preserve">
+    <value>Mật khẩu không được để trống.</value>
+  </data>
+  <data name="Validation.Auth.RefreshTokenRequired" xml:space="preserve">
+    <value>Mã gia hạn phiên không được để trống.</value>
+  </data>
+  <data name="Validation.Auth.UsernameLength" xml:space="preserve">
+    <value>Tên đăng nhập phải có từ {0} đến {1} ký tự.</value>
+  </data>
+  <data name="Validation.Auth.UsernamePattern" xml:space="preserve">
+    <value>Tên đăng nhập chỉ được chứa chữ cái không dấu, chữ số và các ký tự _ . -</value>
+  </data>
+  <data name="Validation.Auth.PasswordTooShort" xml:space="preserve">
+    <value>Mật khẩu phải có ít nhất {0} ký tự.</value>
+  </data>
+  <data name="Validation.Auth.PasswordTooLong" xml:space="preserve">
+    <value>Mật khẩu không được vượt quá {0} byte.</value>
+  </data>
+  <data name="Validation.Member.NameRequired" xml:space="preserve">
+    <value>Tên thành viên không được để trống.</value>
+  </data>
+  <data name="Validation.Member.NameTooLong" xml:space="preserve">
+    <value>Tên thành viên không được vượt quá {0} ký tự.</value>
+  </data>
+  <data name="Validation.Category.NameRequired" xml:space="preserve">
+    <value>Tên danh mục không được để trống.</value>
+  </data>
+  <data name="Validation.Category.NameTooLong" xml:space="preserve">
+    <value>Tên danh mục không được vượt quá {0} ký tự.</value>
+  </data>
+  <data name="Validation.Category.ColorRequired" xml:space="preserve">
+    <value>Màu danh mục không được để trống.</value>
+  </data>
+  <data name="Validation.Category.ColorInvalid" xml:space="preserve">
+    <value>Màu danh mục không hợp lệ.</value>
+  </data>
+  <data name="Validation.Category.IconTooLong" xml:space="preserve">
+    <value>Icon danh mục không được vượt quá {0} ký tự.</value>
+  </data>
+  <data name="Validation.Tag.NameRequired" xml:space="preserve">
+    <value>Tên nhãn không được để trống.</value>
+  </data>
+  <data name="Validation.Tag.NameTooLong" xml:space="preserve">
+    <value>Tên nhãn không được vượt quá {0} ký tự.</value>
+  </data>
+  <data name="Validation.Event.NameRequired" xml:space="preserve">
+    <value>Tên đợt không được để trống.</value>
+  </data>
+  <data name="Validation.Event.NameTooLong" xml:space="preserve">
+    <value>Tên đợt không được vượt quá {0} ký tự.</value>
+  </data>
+  <data name="Validation.Event.DescriptionTooLong" xml:space="preserve">
+    <value>Mô tả đợt không được vượt quá {0} ký tự.</value>
+  </data>
+  <data name="Validation.Event.StartDateRequired" xml:space="preserve">
+    <value>Ngày bắt đầu không được để trống.</value>
+  </data>
+  <data name="Validation.Event.EndDateRequired" xml:space="preserve">
+    <value>Ngày kết thúc không được để trống.</value>
+  </data>
+  <data name="Validation.Event.EndDateBeforeStart" xml:space="preserve">
+    <value>Ngày kết thúc phải sau hoặc bằng ngày bắt đầu.</value>
+  </data>
+  <data name="Validation.Expense.NameRequired" xml:space="preserve">
+    <value>Tên phiếu chi tiêu không được để trống.</value>
+  </data>
+  <data name="Validation.Expense.NameTooLong" xml:space="preserve">
+    <value>Tên phiếu chi tiêu không được vượt quá {0} ký tự.</value>
+  </data>
+  <data name="Validation.Expense.DescriptionTooLong" xml:space="preserve">
+    <value>Mô tả không được vượt quá {0} ký tự.</value>
+  </data>
+  <data name="Validation.Expense.ExpenseTimeRequired" xml:space="preserve">
+    <value>Thời điểm chi không được để trống.</value>
+  </data>
+  <data name="Validation.Expense.EventUuidRequired" xml:space="preserve">
+    <value>UUID đợt chi tiêu không được để trống.</value>
+  </data>
+  <data name="Validation.Share.MemberRequired" xml:space="preserve">
+    <value>Thành viên của phần gánh không được để trống.</value>
+  </data>
+  <data name="Validation.BankAccount.BankBinRequired" xml:space="preserve">
+    <value>Mã ngân hàng (BIN) không được để trống.</value>
+  </data>
+  <data name="Validation.BankAccount.BankBinPattern" xml:space="preserve">
+    <value>Mã ngân hàng (BIN) phải gồm đúng 6 chữ số.</value>
+  </data>
+  <data name="Validation.BankAccount.BankNameRequired" xml:space="preserve">
+    <value>Tên ngân hàng không được để trống.</value>
+  </data>
+  <data name="Validation.BankAccount.BankNameTooLong" xml:space="preserve">
+    <value>Tên ngân hàng không được vượt quá {0} ký tự.</value>
+  </data>
+  <data name="Validation.BankAccount.AccountNumberRequired" xml:space="preserve">
+    <value>Số tài khoản không được để trống.</value>
+  </data>
+  <data name="Validation.BankAccount.AccountNumberInvalid" xml:space="preserve">
+    <value>Số tài khoản không hợp lệ.</value>
+  </data>
+  <data name="Validation.BankAccount.AccountHolderNameRequired" xml:space="preserve">
+    <value>Tên chủ tài khoản không được để trống.</value>
+  </data>
+  <data name="Validation.BankAccount.AccountHolderNameTooLong" xml:space="preserve">
+    <value>Tên chủ tài khoản không được vượt quá {0} ký tự.</value>
+  </data>
+  <data name="Validation.Common.RangeInvalid" xml:space="preserve">
+    <value>Khoảng thời gian không hợp lệ: thời điểm bắt đầu phải trước hoặc bằng thời điểm kết thúc.</value>
+  </data>
+  <data name="Validation.Common.AmountNegative" xml:space="preserve">
+    <value>Số tiền không được âm.</value>
+  </data>
+  <data name="Validation.Common.NoteTooLong" xml:space="preserve">
+    <value>Ghi chú không được vượt quá {0} ký tự.</value>
+  </data>
+  <data name="Validation.Stats.ScopeConflict" xml:space="preserve">
+    <value>Chỉ được lọc theo đợt hoặc theo khoảng thời gian, không dùng đồng thời.</value>
+  </data>
+  <data name="Validation.Admin.BucketInvalid" xml:space="preserve">
+    <value>Độ chia thời gian không hợp lệ. Chỉ chấp nhận day hoặc month.</value>
+  </data>
+  <data name="Validation.Admin.PageMin" xml:space="preserve">
+    <value>Số trang phải lớn hơn hoặc bằng 1.</value>
+  </data>
+  <data name="Validation.Admin.PageSizeRange" xml:space="preserve">
+    <value>Kích thước trang phải trong khoảng 1 đến {0}.</value>
+  </data>
+  <data name="Validation.Admin.SortInvalid" xml:space="preserve">
+    <value>Trường sắp xếp không hợp lệ. Chỉ chấp nhận createdAt, username, tier hoặc status.</value>
+  </data>
+  <data name="Validation.Admin.DirectionInvalid" xml:space="preserve">
+    <value>Chiều sắp xếp không hợp lệ. Chỉ chấp nhận asc hoặc desc.</value>
+  </data>
+  <data name="Validation.Admin.CurrencyTooLong" xml:space="preserve">
+    <value>Đơn vị tiền tệ không được vượt quá {0} ký tự.</value>
+  </data>
+  <data name="Validation.Admin.ReferenceTooLong" xml:space="preserve">
+    <value>Mã tham chiếu không được vượt quá {0} ký tự.</value>
+  </data>
+  <data name="Validation.Admin.RoleRequired" xml:space="preserve">
+    <value>Vai trò không được để trống.</value>
+  </data>
+  <data name="Validation.Admin.RoleInvalid" xml:space="preserve">
+    <value>Vai trò không hợp lệ. Chỉ chấp nhận USER hoặc ADMIN.</value>
+  </data>
+</root>

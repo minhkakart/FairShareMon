@@ -1,6 +1,9 @@
 using FairShareMonApi.Models;
 using FairShareMonApi.Models.Tags;
 using FairShareMonApi.Services.Api.Tags;
+using FairShareMonApi.Constants;
+using FairShareMonApi.Localization.Resources;
+using Microsoft.Extensions.Localization;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
 
@@ -11,7 +14,7 @@ namespace FairShareMonApi.Controllers;
 /// tags. All actions require a valid access token and are resource-owned - a tag that isn't the
 /// caller's yields 404 (never 403). Thin - all business logic in <see cref="ITagsService"/>.
 /// </summary>
-public class TagsController(ITagsService tagsService) : AppController
+public class TagsController(ITagsService tagsService, IStringLocalizer<StringResources> localizer) : AppController
 {
     [HttpGet]
     [SwaggerOperation(
@@ -63,6 +66,6 @@ public class TagsController(ITagsService tagsService) : AppController
     public async Task<IActionResult> DeleteAsync([FromRoute] string uuid, CancellationToken cancellationToken)
     {
         await tagsService.DeleteAsync(AuthenticatedUser.Id, uuid, cancellationToken);
-        return ApiResult.SuccessMessage("Đã xóa nhãn.");
+        return ApiResult.SuccessMessage(localizer[MessageKeys.Success.TagDeleted].Value);
     }
 }

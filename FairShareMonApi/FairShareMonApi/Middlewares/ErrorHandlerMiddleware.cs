@@ -1,7 +1,10 @@
 using FairShareMonApi.Attributes;
 using FairShareMonApi.Constants;
 using FairShareMonApi.Exceptions;
+using FairShareMonApi.Extensions;
+using FairShareMonApi.Localization.Resources;
 using FairShareMonApi.Models;
+using Microsoft.Extensions.Localization;
 
 namespace FairShareMonApi.Middlewares;
 
@@ -28,10 +31,19 @@ public class ErrorHandlerMiddleware(RequestDelegate next, ILogger<ErrorHandlerMi
             if (context.Response.HasStarted || context.GetEndpoint()?.Metadata.GetMetadata<ResponseWrappedAttribute>() is null)
                 throw;
 
+            // Resolve the request localizer at the envelope boundary (CurrentUICulture is already set by
+            // UseAppLocalization). Fall back to the neutral (Vietnamese) resource if it cannot be resolved.
+            var localizer = context.RequestServices.GetService(typeof(IStringLocalizer<StringResources>)) as IStringLocalizer<StringResources>;
+
             var result = exception switch
             {
-                ErrorException errorException => ApiResult.Failure(errorException),
-                _ => ApiResult.Failure(ErrorCodes.InternalError, "Đã xảy ra lỗi hệ thống. Vui lòng thử lại sau.")
+                ErrorException errorException => ApiResult.Failure(
+                    errorException.Code,
+                    localizer?.LocalizeError(errorException) ?? errorException.MessageKey,
+                    statusCode: errorException.HttpStatus),
+                _ => ApiResult.Failure(
+                    ErrorCodes.InternalError,
+                    localizer is not null ? localizer[MessageKeys.Envelope.InternalError].Value : "Đã xảy ra lỗi hệ thống. Vui lòng thử lại sau.")
             };
 
             if (result.StatusCode >= StatusCodes.Status500InternalServerError)

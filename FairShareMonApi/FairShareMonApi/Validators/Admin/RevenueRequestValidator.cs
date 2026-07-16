@@ -1,5 +1,8 @@
 using FairShareMonApi.Constants;
 using FairShareMonApi.Models.Admin;
+using FairShareMonApi.Localization;
+using FairShareMonApi.Localization.Resources;
+using Microsoft.Extensions.Localization;
 using FluentValidation;
 
 namespace FairShareMonApi.Validators.Admin;
@@ -12,14 +15,15 @@ public class RevenueRequestValidator : AbstractValidator<RevenueRequest>
 {
     private static readonly string[] AllowedBuckets = [DashboardBuckets.Day, DashboardBuckets.Month];
 
-    public RevenueRequestValidator()
+    public RevenueRequestValidator(IStringLocalizer<StringResources>? localizer = null)
     {
+        localizer ??= SharedStringLocalizer.Instance;
         RuleFor(request => request.To)
             .Must((request, to) => !request.From.HasValue || !to.HasValue || request.From.Value <= to.Value)
-            .WithMessage("Khoảng thời gian không hợp lệ: thời điểm bắt đầu phải trước hoặc bằng thời điểm kết thúc.");
+            .WithMessage(_ => localizer[MessageKeys.Validation.Common.RangeInvalid].Value);
 
         RuleFor(request => request.Bucket)
             .Must(bucket => AllowedBuckets.Contains(bucket))
-            .WithMessage("Độ chia thời gian không hợp lệ. Chỉ chấp nhận day hoặc month.");
+            .WithMessage(_ => localizer[MessageKeys.Validation.Admin.BucketInvalid].Value);
     }
 }

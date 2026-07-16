@@ -75,7 +75,7 @@ public sealed class EventsService(
 
         var data = new UpdateEventData(request.Name.Trim(), request.Description?.Trim(), request.StartDate, request.EndDate, requestTimeZone.Zone);
         var result = await eventRepository.UpdateAsync(userUuid, eventUuid, data, cancellationToken);
-        ThrowIfFailed(result.Status, "Không thể sửa đợt đã chốt.");
+        ThrowIfFailed(result.Status, MessageKeys.Error.EventClosedEdit);
 
         return await LoadResponseAsync(userUuid, eventUuid, cancellationToken);
     }
@@ -89,7 +89,7 @@ public sealed class EventsService(
     public async Task DeleteAsync(string userUuid, string eventUuid, CancellationToken cancellationToken = default)
     {
         var status = await eventRepository.DeleteAsync(userUuid, eventUuid, cancellationToken);
-        ThrowIfFailed(status, "Không thể xóa đợt đã chốt.");
+        ThrowIfFailed(status, MessageKeys.Error.EventClosedDelete);
     }
 
     private async Task<EventResponse> LoadResponseAsync(string userUuid, string eventUuid, CancellationToken cancellationToken)
@@ -100,22 +100,22 @@ public sealed class EventsService(
         return mapper.Map<EventResponse>(evt);
     }
 
-    private static void ThrowIfFailed(EventWriteStatus status, string? closedMessage = null)
+    private static void ThrowIfFailed(EventWriteStatus status, string? closedMessageKey = null)
     {
         switch (status)
         {
             case EventWriteStatus.Success:
                 return;
             case EventWriteStatus.EventClosed:
-                throw new ErrorException(ErrorCodes.EventClosed, closedMessage ?? "Đợt chi tiêu đã chốt, không thể thay đổi.");
+                throw new ErrorException(ErrorCodes.EventClosed, closedMessageKey ?? MessageKeys.Error.EventClosed);
             case EventWriteStatus.RangeExcludesAssignedExpenses:
                 throw new ErrorException(ErrorCodes.EventRangeExcludesAssignedExpenses,
-                    "Không thể đổi khoảng thời gian: có phiếu đã gán nằm ngoài khoảng thời gian mới.");
+                    MessageKeys.Error.EventRangeExcludesAssignedExpenses);
             default:
                 throw NotFound();
         }
     }
 
     private static ErrorException NotFound() =>
-        new(ErrorCodes.EventNotFound, "Không tìm thấy đợt chi tiêu.");
+        new(ErrorCodes.EventNotFound, MessageKeys.Error.EventNotFound);
 }

@@ -11,6 +11,7 @@ namespace FairShareMonApi.Tests;
 /// the camelCase <c>name</c> key into <c>error.fields</c> is covered end-to-end by
 /// <c>TagsEndpointTests</c>.
 /// </summary>
+[UseCulture("vi-VN")]
 public class CreateTagRequestValidatorTests
 {
     private readonly CreateTagRequestValidator _validator = new();
@@ -56,6 +57,7 @@ public class CreateTagRequestValidatorTests
     }
 }
 
+[UseCulture("vi-VN")]
 public class UpdateTagRequestValidatorTests
 {
     private readonly UpdateTagRequestValidator _validator = new();

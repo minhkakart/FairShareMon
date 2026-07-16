@@ -1,4 +1,8 @@
 using FairShareMonApi.Models.Stats;
+using FairShareMonApi.Constants;
+using FairShareMonApi.Localization;
+using FairShareMonApi.Localization.Resources;
+using Microsoft.Extensions.Localization;
 using FluentValidation;
 
 namespace FairShareMonApi.Validators.Stats;
@@ -11,14 +15,15 @@ namespace FairShareMonApi.Validators.Stats;
 /// </summary>
 public class ByCategoryStatsRequestValidator : AbstractValidator<ByCategoryStatsRequest>
 {
-    public ByCategoryStatsRequestValidator()
+    public ByCategoryStatsRequestValidator(IStringLocalizer<StringResources>? localizer = null)
     {
+        localizer ??= SharedStringLocalizer.Instance;
         RuleFor(request => request.To)
             .Must((request, to) => !request.From.HasValue || !to.HasValue || request.From.Value <= to.Value)
-            .WithMessage("Khoảng thời gian không hợp lệ: thời điểm bắt đầu phải trước hoặc bằng thời điểm kết thúc.");
+            .WithMessage(_ => localizer[MessageKeys.Validation.Common.RangeInvalid].Value);
 
         RuleFor(request => request.EventUuid)
             .Must((request, eventUuid) => string.IsNullOrEmpty(eventUuid) || (!request.From.HasValue && !request.To.HasValue))
-            .WithMessage("Chỉ được lọc theo đợt hoặc theo khoảng thời gian, không dùng đồng thời.");
+            .WithMessage(_ => localizer[MessageKeys.Validation.Stats.ScopeConflict].Value);
     }
 }

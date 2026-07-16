@@ -1,5 +1,9 @@
 using FairShareMonApi.Database.Entities;
 using FairShareMonApi.Models.Shares;
+using FairShareMonApi.Constants;
+using FairShareMonApi.Localization;
+using FairShareMonApi.Localization.Resources;
+using Microsoft.Extensions.Localization;
 using FluentValidation;
 
 namespace FairShareMonApi.Validators.Shares;
@@ -11,16 +15,17 @@ namespace FairShareMonApi.Validators.Shares;
 /// </summary>
 public class UpdateShareRequestValidator : AbstractValidator<UpdateShareRequest>
 {
-    public UpdateShareRequestValidator()
+    public UpdateShareRequestValidator(IStringLocalizer<StringResources>? localizer = null)
     {
+        localizer ??= SharedStringLocalizer.Instance;
         RuleFor(request => request.MemberUuid)
-            .NotEmpty().WithMessage("Thành viên của phần gánh không được để trống.");
+            .NotEmpty().WithMessage(_ => localizer[MessageKeys.Validation.Share.MemberRequired].Value);
 
         RuleFor(request => request.Amount)
-            .GreaterThanOrEqualTo(0).WithMessage("Số tiền không được âm.");
+            .GreaterThanOrEqualTo(0).WithMessage(_ => localizer[MessageKeys.Validation.Common.AmountNegative].Value);
 
         RuleFor(request => request.Note)
             .MaximumLength(Share.NoteMaxLength)
-            .WithMessage($"Ghi chú không được vượt quá {Share.NoteMaxLength} ký tự.");
+            .WithMessage(_ => localizer[MessageKeys.Validation.Common.NoteTooLong, Share.NoteMaxLength].Value);
     }
 }

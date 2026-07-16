@@ -3,6 +3,7 @@ using DiDecoration.Extensions;
 using FairShareMonApi.Attributes.MvcFilters;
 using FairShareMonApi.Auth;
 using FairShareMonApi.Database;
+using FairShareMonApi.Extensions;
 using FairShareMonApi.Middlewares;
 using FairShareMonApi.Serialization;
 using FairShareMonApi.Swagger;
@@ -11,6 +12,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Localization;
 using Microsoft.OpenApi.Models;
 using NLog;
 using NLog.Extensions.Logging;
@@ -28,16 +30,23 @@ builder.Logging.AddNLog();
 // present every DateTime in the request zone (X-Time-Zone header -> app-default) while storage stays
 // UTC (planning/timezone-aware-datetimes.md). HttpContextAccessor is a stateless AsyncLocal wrapper,
 // so a fresh instance here reads the same per-request HttpContext the middleware populates.
+builder.Services.AddControllers(options => options.Filters.Add<ErrorHandlerFilter>());
+// The UTC-aware DateTime converters emit localized parse errors (planning/localization-subsystem.md D4),
+// so they need an IStringLocalizerFactory resolved from DI. Configure MVC's JsonOptions through a
+// DI-aware options configurator rather than the inline AddJsonOptions lambda.
 builder.Services
-    .AddControllers(options => options.Filters.Add<ErrorHandlerFilter>())
-    .AddJsonOptions(options =>
+    .AddOptions<Microsoft.AspNetCore.Mvc.JsonOptions>()
+    .Configure<IStringLocalizerFactory>((options, localizerFactory) =>
     {
         var httpContextAccessor = new HttpContextAccessor();
-        options.JsonSerializerOptions.Converters.Add(new UtcAwareDateTimeConverter(httpContextAccessor, builder.Configuration));
-        options.JsonSerializerOptions.Converters.Add(new UtcAwareNullableDateTimeConverter(httpContextAccessor, builder.Configuration));
+        options.JsonSerializerOptions.Converters.Add(new UtcAwareDateTimeConverter(httpContextAccessor, builder.Configuration, localizerFactory));
+        options.JsonSerializerOptions.Converters.Add(new UtcAwareNullableDateTimeConverter(httpContextAccessor, builder.Configuration, localizerFactory));
     });
 builder.Services.Configure<ApiBehaviorOptions>(options => options.SuppressModelStateInvalidFilter = true);
 builder.Services.AddHttpContextAccessor();
+// Runtime message localization: IStringLocalizer<StringResources> over the resx family (neutral vi-VN +
+// en-US satellite). Culture is resolved per request by UseAppLocalization below.
+builder.Services.AddAppLocalization();
 
 // Attribute-driven DI (DiDecoration): [ScopedService] / [SingletonService] / [TransientService].
 builder.Services.RegisterDecorators(builder.Configuration, typeof(Program).Assembly);
@@ -137,6 +146,10 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseRouting();
+// Resolve the request culture (?culture= -> Accept-Language -> app-default) into CurrentUICulture before
+// any endpoint, filter, validator, or JSON converter runs, so IStringLocalizer resolves per request.
+// Placed beside RequestTimeZoneMiddleware and before ErrorHandlerMiddleware (planning/localization-subsystem.md).
+app.UseAppLocalization(app.Configuration);
 // Resolve the request timezone (X-Time-Zone header -> app-default) into HttpContext.Items early, so the
 // singleton JSON converters and scoped IRequestTimeZone both read one resolution. No auth dependency.
 app.UseMiddleware<RequestTimeZoneMiddleware>();

@@ -1,6 +1,9 @@
 using FairShareMonApi.Models;
 using FairShareMonApi.Models.Members;
 using FairShareMonApi.Services.Api.Members;
+using FairShareMonApi.Constants;
+using FairShareMonApi.Localization.Resources;
+using Microsoft.Extensions.Localization;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
 
@@ -12,7 +15,7 @@ namespace FairShareMonApi.Controllers;
 /// member that isn't the caller's yields 404 (never 403). Thin - all business logic in
 /// <see cref="IMembersService"/>.
 /// </summary>
-public class MembersController(IMembersService membersService) : AppController
+public class MembersController(IMembersService membersService, IStringLocalizer<StringResources> localizer) : AppController
 {
     [HttpGet]
     [SwaggerOperation(
@@ -65,6 +68,6 @@ public class MembersController(IMembersService membersService) : AppController
     public async Task<IActionResult> DeleteAsync([FromRoute] string uuid, CancellationToken cancellationToken)
     {
         await membersService.DeleteAsync(AuthenticatedUser.Id, uuid, cancellationToken);
-        return ApiResult.SuccessMessage("Đã xóa thành viên.");
+        return ApiResult.SuccessMessage(localizer[MessageKeys.Success.MemberDeleted].Value);
     }
 }

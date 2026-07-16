@@ -11,6 +11,7 @@ namespace FairShareMonApi.Tests;
 /// Step-9 list; the camelCase <c>name</c>/<c>color</c>/<c>icon</c> keys into <c>error.fields</c> are
 /// covered end-to-end by <c>CategoriesEndpointTests</c>.
 /// </summary>
+[UseCulture("vi-VN")]
 public class CreateCategoryRequestValidatorTests
 {
     private readonly CreateCategoryRequestValidator _validator = new();
@@ -118,6 +119,7 @@ public class CreateCategoryRequestValidatorTests
     }
 }
 
+[UseCulture("vi-VN")]
 public class UpdateCategoryRequestValidatorTests
 {
     private readonly UpdateCategoryRequestValidator _validator = new();

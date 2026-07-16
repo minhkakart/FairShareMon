@@ -2,6 +2,9 @@ using FairShareMonApi.Models;
 using FairShareMonApi.Models.Auth;
 using FairShareMonApi.Services.Api.Auth;
 using Microsoft.AspNetCore.Authorization;
+using FairShareMonApi.Constants;
+using FairShareMonApi.Localization.Resources;
+using Microsoft.Extensions.Localization;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
 
@@ -12,7 +15,7 @@ namespace FairShareMonApi.Controllers;
 /// change-password require a valid access token (FallbackPolicy). Thin - all business logic in
 /// <see cref="IAuthService"/>.
 /// </summary>
-public class AuthController(IAuthService authService) : AppController
+public class AuthController(IAuthService authService, IStringLocalizer<StringResources> localizer) : AppController
 {
     private const string BearerPrefix = "Bearer ";
 
@@ -63,7 +66,7 @@ public class AuthController(IAuthService authService) : AppController
             : string.Empty;
 
         await authService.LogoutAsync(rawToken, cancellationToken);
-        return ApiResult.SuccessMessage("Đăng xuất thành công.");
+        return ApiResult.SuccessMessage(localizer[MessageKeys.Success.LoggedOut].Value);
     }
 
     [HttpPost("change-password")]
@@ -76,6 +79,6 @@ public class AuthController(IAuthService authService) : AppController
     public async Task<IActionResult> ChangePasswordAsync([FromBody] ChangePasswordRequest request, CancellationToken cancellationToken)
     {
         await authService.ChangePasswordAsync(AuthenticatedUser.Id, request, cancellationToken);
-        return ApiResult.SuccessMessage("Đổi mật khẩu thành công. Vui lòng đăng nhập lại trên mọi thiết bị.");
+        return ApiResult.SuccessMessage(localizer[MessageKeys.Success.PasswordChanged].Value);
     }
 }
