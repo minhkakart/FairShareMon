@@ -48,6 +48,12 @@ builder.Services.AddHttpContextAccessor();
 // en-US satellite). Culture is resolved per request by UseAppLocalization below.
 builder.Services.AddAppLocalization();
 
+// CORS: single "DefaultCors" policy. Configured origins (App:AllowedOrigins) are honored in every
+// environment; localhost/loopback/private origins are auto-allowed ONLY in Development
+// (planning/cors-configuration.md). Bearer token lives in the Authorization header, so credentialed
+// CORS via SetIsOriginAllowed + AllowCredentials is safe.
+builder.Services.AddDefaultCorsPolicy(builder.Configuration, builder.Environment.IsDevelopment());
+
 // Attribute-driven DI (DiDecoration): [ScopedService] / [SingletonService] / [TransientService].
 builder.Services.RegisterDecorators(builder.Configuration, typeof(Program).Assembly);
 
@@ -146,6 +152,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseRouting();
+// CORS must run after routing and before authentication/authorization so preflight and
+// cross-origin responses carry the Access-Control-* headers (planning/cors-configuration.md).
+app.UseCors(CorsExtensions.DefaultCorsPolicyName);
 // Resolve the request culture (?culture= -> Accept-Language -> app-default) into CurrentUICulture before
 // any endpoint, filter, validator, or JSON converter runs, so IStringLocalizer resolves per request.
 // Placed beside RequestTimeZoneMiddleware and before ErrorHandlerMiddleware (planning/localization-subsystem.md).
