@@ -86,6 +86,9 @@
       # The gitignored appsettings.*.local.json is excluded from the image, so the API is configured
       # entirely via env vars here (Program.cs makes env vars win). Hosts are the compose service names.
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+      # Apply EF Core migrations on startup (schema comes from the migrations compiled into the image).
+      # Keep on a SINGLE api instance only — no cross-instance migration lock.
+      App__RunMigrationsOnStartup: "true"
       ConnectionStrings__Default: "Server=mariadb;Port=3306;Database=fairsharemon;User=root;Password=${MARIADB_ROOT_PASSWORD}"
       Redis__Configuration: "redis:6379,password=${REDIS_PASSWORD}"
       # Production CORS allows only configured origins — must include the public web origin.

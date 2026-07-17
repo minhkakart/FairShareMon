@@ -172,6 +172,21 @@ builder.Services.AddAuthorization(options =>
 
 var app = builder.Build();
 
+// Apply pending EF Core migrations at startup when explicitly enabled (App:RunMigrationsOnStartup).
+// OFF by default so tests and local runs are unaffected and boot still tolerates an unreachable DB;
+// the deployment sets App__RunMigrationsOnStartup=true so `docker compose up` brings the schema
+// current from the migrations compiled into the assembly. Single-writer: enable on one api instance
+// only (EF has no cross-instance migration lock for MySQL) — run migrations before scaling out.
+if (app.Configuration.GetValue<bool>("App:RunMigrationsOnStartup"))
+{
+    using var migrationScope = app.Services.CreateScope();
+    var migrationLogger = migrationScope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    var migrationDb = migrationScope.ServiceProvider.GetRequiredService<AppDbContext>();
+    migrationLogger.LogInformation("Applying database migrations on startup...");
+    migrationDb.Database.Migrate();
+    migrationLogger.LogInformation("Database migrations applied.");
+}
+
 // Forwarded headers must run first so the request scheme/remote IP are rewritten from the proxy's
 // X-Forwarded-* headers before any middleware reads them (options configured above).
 app.UseForwardedHeaders();

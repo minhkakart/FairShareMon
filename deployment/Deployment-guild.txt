@@ -101,30 +101,33 @@ Validate the compose file, then build the images and start everything:
     docker compose up -d --build
 
 MariaDB creates the `fairsharemon` database on first boot (config/mariadb/
-init_database.sql). The api waits for MariaDB + Redis to be healthy before it
-starts.
+init_database.sql). The api waits for MariaDB + Redis to be healthy, then applies
+the EF Core schema automatically on startup (see A) — so `docker compose up` is
+the whole deploy.
 
 ================================================================================
 AFTER THE FIRST BRING-UP
 ================================================================================
 
-A) APPLY THE DATABASE SCHEMA (required on first deploy)
-   The init script creates the empty database; the tables come from EF Core
-   migrations. Generate an idempotent schema script (needs the .NET 8 SDK +
-   `dotnet-ef`; the design-time factory lets this run offline) and apply it to
-   the running MariaDB:
+A) DATABASE SCHEMA — applied automatically
+   The api applies EF Core migrations on startup (App__RunMigrationsOnStartup=true
+   in docker-compose.yml), from the migrations compiled into the image — so the
+   schema is brought current by `docker compose up`, with no manual step. A
+   redeploy (see Operations) auto-applies any new migrations in a release.
 
-       dotnet tool install --global dotnet-ef        # once, if not installed
+   SCALING: keep migrate-on-startup on a SINGLE api instance. EF has no
+   cross-instance migration lock for MySQL — if you scale the api, apply
+   migrations from one instance first, then run the rest with
+   App__RunMigrationsOnStartup=false.
+
+   Manual fallback (only if you disable auto-migrate) — generate an idempotent
+   script and pipe it into MariaDB:
        cd ../FairShareMonApi
        dotnet ef migrations script --idempotent \
-           --project FairShareMonApi/FairShareMonApi.csproj \
-           -o schema.sql
+           --project FairShareMonApi/FairShareMonApi.csproj -o schema.sql
        cd ../deployment
        docker compose exec -T mariadb \
            mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" fairsharemon < ../FairShareMonApi/schema.sql
-
-   Re-run this same command after any future release that adds migrations
-   (idempotent = safe to re-apply).
 
 B) VERIFY
        docker compose ps                         # all services Up / healthy
@@ -147,8 +150,8 @@ Logs:        docker compose logs -f api        (or nginx / web / mariadb / redis
 fail2ban:    docker compose exec fail2ban fail2ban-client status fsm-auth-login
              ...unban:  fail2ban-client set fsm-auth-login unbanip <ip>
              live bans: data/blocked/banned.conf  (nginx auto-reloads ~10s)
-Redeploy:    git pull && docker compose up -d --build   (then re-run schema step
-             if the release added migrations)
+Redeploy:    git pull && docker compose up -d --build   (auto-applies any new
+             migrations on api startup)
 Restart one: docker compose restart nginx
 Tune limits: edit the zones in config/nginx/nginx.conf and the thresholds in
              data/fail2ban/jail.d/fairsharemon.conf, then `docker compose up -d`.
