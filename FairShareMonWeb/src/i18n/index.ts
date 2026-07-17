@@ -11,6 +11,7 @@ import viSettings from "./locales/vi-VN/settings.json";
 import viMembers from "./locales/vi-VN/members.json";
 import viCategories from "./locales/vi-VN/categories.json";
 import viTags from "./locales/vi-VN/tags.json";
+import viExpenses from "./locales/vi-VN/expenses.json";
 import enCommon from "./locales/en-US/common.json";
 import enAuth from "./locales/en-US/auth.json";
 import enErrors from "./locales/en-US/errors.json";
@@ -19,6 +20,7 @@ import enSettings from "./locales/en-US/settings.json";
 import enMembers from "./locales/en-US/members.json";
 import enCategories from "./locales/en-US/categories.json";
 import enTags from "./locales/en-US/tags.json";
+import enExpenses from "./locales/en-US/expenses.json";
 
 export const SUPPORTED_LOCALES = ["vi-VN", "en-US"] as const;
 export const DEFAULT_LOCALE: Locale = "vi-VN";
@@ -35,6 +37,7 @@ export const resources = {
     members: viMembers,
     categories: viCategories,
     tags: viTags,
+    expenses: viExpenses,
   },
   "en-US": {
     common: enCommon,
@@ -45,6 +48,7 @@ export const resources = {
     members: enMembers,
     categories: enCategories,
     tags: enTags,
+    expenses: enExpenses,
   },
 } as const;
 
@@ -57,6 +61,7 @@ export const NAMESPACES = [
   "members",
   "categories",
   "tags",
+  "expenses",
 ] as const;
 
 function isLocale(value: string | null): value is Locale {

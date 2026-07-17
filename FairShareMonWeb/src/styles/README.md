@@ -94,6 +94,36 @@ implementer's `LocaleProvider` owns `"vi-VN" | "en-US"` and on change must:
   settled (neutral). The **sign glyph is the color-independent cue** — meaning
   never rests on color alone (red-green CVD safe).
 
+## Form-control primitives (pickers)
+
+The input family all share the TextField frame (2.5rem control, sunken surface,
+same border/focus ring) so they line up in a form row:
+
+- `<Select>` — single-select on **Radix Select** (keyboard, typeahead, ARIA
+  combobox/listbox, portalled positioning). Controlled: `value` +
+  `onValueChange`. Pass `options: {value,label,disabled?,meta?}[]` and an optional
+  `renderOption(option)` slot rendered inside Radix `ItemText` — so the SELECTED
+  option's custom content (a `CategoryMarker`, a member's owner-rep /
+  "(đã xóa)" treatment) is mirrored into the trigger automatically. `label`,
+  `placeholder`, `hint`, `error`, `required`, `disabled`, `hideLabelVisually`.
+  **Radix forbids an empty-string item value** — use a sentinel like `"all"` for
+  a "no filter" option, not `""`.
+- `<TagMultiSelect>` — multi-select whose `value` is an array of ids. Selected
+  tags read as removable chips; a checkbox-list popover (native checkboxes,
+  Escape / outside-click to close) toggles membership. `options: {value,label}[]`,
+  `onChange`, `label`, `placeholder`, `hint`, `error`, plus localized
+  `toggleLabel` / `removeLabel(label)` / `emptyLabel`.
+- `<MoneyInput>` — whole-VND numeric field. Accepts integers only (digits are
+  stripped, so negatives are impossible), emits a plain `number | null`, shows a
+  grouped figure (`1.234.567`) while blurred and raw digits while focused (no
+  caret jumps), and pairs with `<Money>` (same vi-VN, 0-decimal rule). Wire to
+  RHF via a `Controller` (the value is a number). Inject the app
+  `formatMoneyVnd` grouping via `format`.
+
+`hideLabelVisually` (also on `TextField`) keeps the `<label>` for assistive tech
+while removing it visually — use it only where a visible column header already
+labels the field for sighted users (the share-editor rows).
+
 ## Domain visual states
 
 - **Settled (đã trả):** `<Badge tone="settled" icon={<Check/>}>`.

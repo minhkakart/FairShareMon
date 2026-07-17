@@ -1,0 +1,113 @@
+/* MoneyInput — matches TextField exactly, plus tabular numerals and a trailing
+   currency unit. Digits align in a column (share editor rows) via tabular-nums. */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-2);
+}
+
+.label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fs-space-1);
+  font-size: var(--fs-text-sm);
+  font-weight: var(--fs-weight-medium);
+  color: var(--fs-color-text);
+  line-height: var(--fs-leading-snug);
+}
+
+.required {
+  color: var(--fs-color-danger-text);
+  font-weight: var(--fs-weight-bold);
+}
+
+.labelHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.control {
+  display: flex;
+  align-items: center;
+  background-color: var(--fs-color-surface-sunken);
+  border: 1px solid var(--fs-color-border);
+  border-radius: var(--fs-radius-md);
+  transition:
+    border-color var(--fs-duration-fast) var(--fs-ease-standard),
+    box-shadow var(--fs-duration-fast) var(--fs-ease-standard);
+}
+
+.control:hover {
+  border-color: var(--fs-color-border-strong);
+}
+
+.control:focus-within {
+  border-color: var(--fs-color-focus);
+  box-shadow: var(--fs-shadow-focus);
+}
+
+.controlInvalid {
+  border-color: var(--fs-color-danger);
+}
+.controlInvalid:focus-within {
+  border-color: var(--fs-color-danger);
+  box-shadow: 0 0 0 3px var(--fs-color-danger-surface);
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  height: 2.5rem;
+  padding-inline: var(--fs-space-3);
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--fs-color-text);
+  border-radius: var(--fs-radius-md);
+  /* Money reads right-to-left as digits group — tabular so columns align. */
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+.input::placeholder {
+  color: var(--fs-color-text-muted);
+}
+
+.input:disabled {
+  cursor: not-allowed;
+  color: var(--fs-color-text-disabled);
+}
+
+.unit {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  padding-inline-end: var(--fs-space-3);
+  color: var(--fs-color-text-secondary);
+  font-size: var(--fs-text-md);
+  font-weight: var(--fs-weight-medium);
+}
+
+.hint {
+  font-size: var(--fs-text-sm);
+  line-height: var(--fs-leading-snug);
+  color: var(--fs-color-text-secondary);
+}
+
+.error {
+  display: flex;
+  gap: var(--fs-space-1);
+  font-size: var(--fs-text-sm);
+  line-height: var(--fs-leading-snug);
+  color: var(--fs-color-danger-text);
+  font-weight: var(--fs-weight-medium);
+}

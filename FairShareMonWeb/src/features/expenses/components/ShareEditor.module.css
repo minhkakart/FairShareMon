@@ -1,0 +1,116 @@
+.shareEditor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-3);
+}
+
+/* Row grid: member | amount | note | remove. Collapses to stacked on narrow. */
+.shareRow {
+  display: grid;
+  grid-template-columns: minmax(11rem, 1.4fr) minmax(8rem, 0.9fr) minmax(9rem, 1.3fr) auto;
+  gap: var(--fs-space-3);
+  align-items: start;
+}
+
+.shareRowLocked {
+  padding: var(--fs-space-2) var(--fs-space-3);
+  margin-inline: calc(-1 * var(--fs-space-3));
+  background-color: var(--fs-color-surface-sunken);
+  border-radius: var(--fs-radius-md);
+  align-items: center;
+}
+
+.lockedMember {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--fs-space-2);
+}
+.lockedMemberName {
+  font-weight: var(--fs-weight-medium);
+  color: var(--fs-color-text);
+}
+
+.shareRemove {
+  display: flex;
+  justify-content: flex-end;
+  min-width: 2.5rem;
+  padding-top: 0.35rem;
+}
+.lockHint {
+  display: inline-flex;
+  color: var(--fs-color-text-muted);
+  padding-top: 0.35rem;
+}
+.lockHint svg {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.sharesError {
+  margin: 0;
+  font-size: var(--fs-text-sm);
+  color: var(--fs-color-danger-text, var(--fs-color-danger));
+}
+
+.shareFooter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--fs-space-3);
+  padding-top: var(--fs-space-3);
+  border-top: 1px dashed var(--fs-color-border);
+}
+
+.runningTotal {
+  display: flex;
+  align-items: baseline;
+  gap: var(--fs-space-3);
+  flex-wrap: wrap;
+}
+.runningTotalLabel {
+  font-size: var(--fs-text-sm);
+  color: var(--fs-color-text-secondary);
+}
+.runningTotalHint {
+  color: var(--fs-color-text-muted);
+}
+
+.ownerRepNote {
+  display: flex;
+  align-items: center;
+  gap: var(--fs-space-2);
+  margin: 0;
+  font-size: var(--fs-text-sm);
+  color: var(--fs-color-text-secondary);
+}
+.ownerRepNote svg {
+  flex: none;
+  color: var(--fs-color-info, var(--fs-color-primary));
+}
+
+@media (max-width: 40rem) {
+  .shareRow {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "member remove"
+      "amount amount"
+      "note   note";
+    gap: var(--fs-space-2);
+    padding-block: var(--fs-space-2);
+    border-bottom: 1px solid var(--fs-color-border-subtle);
+  }
+  .shareMember {
+    grid-area: member;
+  }
+  .shareRemove {
+    grid-area: remove;
+  }
+  .shareAmount {
+    grid-area: amount;
+  }
+  .shareNote {
+    grid-area: note;
+  }
+}

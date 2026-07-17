@@ -54,6 +54,18 @@ export type { IconPickerProps } from "./IconPicker/IconPicker";
 export { Money } from "./Money/Money";
 export type { MoneyProps } from "./Money/Money";
 
+export { Select } from "./Select/Select";
+export type { SelectProps, SelectOption } from "./Select/Select";
+
+export { TagMultiSelect } from "./TagMultiSelect/TagMultiSelect";
+export type {
+  TagMultiSelectProps,
+  TagOption,
+} from "./TagMultiSelect/TagMultiSelect";
+
+export { MoneyInput } from "./MoneyInput/MoneyInput";
+export type { MoneyInputProps } from "./MoneyInput/MoneyInput";
+
 export { Alert } from "./Alert/Alert";
 export type { AlertProps, AlertTone } from "./Alert/Alert";
 

@@ -19,6 +19,12 @@ export type TextFieldProps = Omit<
   error?: ReactNode;
   /** Marks the label with a required asterisk (visual + SR text). */
   required?: boolean;
+  /**
+   * Visually hide the label while keeping it for assistive tech. Use only when a
+   * visible column header / adjacent context already labels the field for sighted
+   * users (e.g. a share-editor row). The `<label for>` association is preserved.
+   */
+  hideLabelVisually?: boolean;
   /** Optional element rendered inside the field on the trailing edge. */
   addonEnd?: ReactNode;
   id?: string;
@@ -37,6 +43,7 @@ export function TextField({
   hint,
   error,
   required,
+  hideLabelVisually,
   addonEnd,
   id,
   className,
@@ -54,7 +61,10 @@ export function TextField({
 
   return (
     <div className={cx(styles.field, className)}>
-      <label className={styles.label} htmlFor={fieldId}>
+      <label
+        className={cx(styles.label, hideLabelVisually && styles.labelHidden)}
+        htmlFor={fieldId}
+      >
         <span>{label}</span>
         {required ? (
           <span className={styles.required} aria-hidden="true">

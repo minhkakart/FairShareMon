@@ -1,0 +1,28 @@
+.memberCell {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--fs-space-2);
+}
+
+.deletedTag {
+  font-size: var(--fs-text-sm);
+  color: var(--fs-color-text-secondary);
+  font-style: italic;
+}
+
+.muted {
+  color: var(--fs-color-text-secondary);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

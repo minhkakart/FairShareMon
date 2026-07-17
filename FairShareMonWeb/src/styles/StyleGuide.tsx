@@ -43,6 +43,7 @@ import {
   UpgradePrompt,
 } from "../components/ui";
 import type { Locale, ThemePreference } from "../components/ui";
+import { M4Showcase } from "./M4Showcase";
 import styles from "./StyleGuide.module.css";
 
 /**
@@ -562,6 +563,9 @@ export function StyleGuide() {
           </p>
           <CategoryPickersDemo />
         </Section>
+
+        {/* M4 — EXPENSES & SHARES: pickers + complex surfaces */}
+        <M4Showcase />
 
         <Section title="Bố cục xác thực (auth)">
           <div className={styles.authPreview}>

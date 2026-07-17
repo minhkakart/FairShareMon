@@ -29,5 +29,18 @@
   "tag": {
     "nameRequired": "Tên nhãn không được để trống.",
     "nameTooLong": "Tên nhãn không được vượt quá 100 ký tự."
+  },
+  "expense": {
+    "nameRequired": "Tên phiếu không được để trống.",
+    "nameTooLong": "Tên phiếu không được vượt quá 200 ký tự.",
+    "timeRequired": "Vui lòng chọn thời điểm chi.",
+    "descriptionTooLong": "Mô tả không được vượt quá 1000 ký tự."
+  },
+  "share": {
+    "memberRequired": "Vui lòng chọn thành viên.",
+    "amountNegative": "Số tiền phải là số nguyên không âm.",
+    "noteTooLong": "Ghi chú không được vượt quá 500 ký tự.",
+    "duplicateMember": "Mỗi thành viên chỉ có một phần gánh trong một phiếu.",
+    "ownerRepRequired": "Phải có phần gánh của thành viên đại diện chủ sổ."
   }
 }

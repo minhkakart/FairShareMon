@@ -1,0 +1,30 @@
+.filterBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--fs-space-3);
+}
+.filterDate {
+  flex: 1 1 9rem;
+  min-width: 8rem;
+}
+.filterField {
+  flex: 1 1 12rem;
+  min-width: 10rem;
+}
+.filterToggle {
+  display: flex;
+  align-items: center;
+  gap: var(--fs-space-2);
+  min-height: 2.5rem;
+  font-size: var(--fs-text-sm);
+  color: var(--fs-color-text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.filterClear {
+  display: flex;
+  align-items: center;
+  min-height: 2.5rem;
+  margin-inline-start: auto;
+}

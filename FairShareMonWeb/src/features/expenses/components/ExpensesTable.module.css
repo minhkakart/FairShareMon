@@ -1,0 +1,27 @@
+.nameLink {
+  color: var(--fs-color-text);
+  font-weight: var(--fs-weight-medium);
+  text-decoration: none;
+}
+.nameLink:hover {
+  text-decoration: underline;
+  color: var(--fs-color-primary);
+}
+.nameLink:focus-visible {
+  outline: 2px solid var(--fs-color-focus-ring, var(--fs-color-primary));
+  outline-offset: 2px;
+  border-radius: var(--fs-radius-sm);
+}
+
+.inlineWrap {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--fs-space-2);
+}
+
+.deletedTag {
+  font-size: var(--fs-text-sm);
+  color: var(--fs-color-text-secondary);
+  font-style: italic;
+}

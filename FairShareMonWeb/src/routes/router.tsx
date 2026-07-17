@@ -14,6 +14,9 @@ import { SettingsPage } from "@/features/settings/pages/SettingsPage";
 import { MembersPage } from "@/features/members/pages/MembersPage";
 import { CategoriesPage } from "@/features/categories/pages/CategoriesPage";
 import { TagsPage } from "@/features/tags/pages/TagsPage";
+import { ExpensesPage } from "@/features/expenses/pages/ExpensesPage";
+import { ExpenseCreatePage } from "@/features/expenses/pages/ExpenseCreatePage";
+import { ExpenseDetailPage } from "@/features/expenses/pages/ExpenseDetailPage";
 import { AdminPage } from "@/features/admin/pages/AdminPage";
 
 export const router = createBrowserRouter([
@@ -43,7 +46,11 @@ export const router = createBrowserRouter([
               { path: "tags", element: <TagsPage /> },
               {
                 path: "expenses",
-                element: <StubPage titleKey="common:nav.expenses" />,
+                children: [
+                  { index: true, element: <ExpensesPage /> },
+                  { path: "new", element: <ExpenseCreatePage /> },
+                  { path: ":uuid", element: <ExpenseDetailPage /> },
+                ],
               },
               {
                 path: "events",

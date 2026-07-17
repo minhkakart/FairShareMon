@@ -1,0 +1,14 @@
+.inlineError {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--fs-space-3);
+  font-size: var(--fs-text-sm);
+  color: var(--fs-color-danger-text, var(--fs-color-danger));
+}
+
+.empty {
+  margin: 0;
+  font-size: var(--fs-text-sm);
+  color: var(--fs-color-text-secondary);
+}

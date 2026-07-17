@@ -1,0 +1,202 @@
+import { useState } from "react";
+import {
+  Badge,
+  Button,
+  Card,
+  CardBody,
+  CardHeader,
+  Money,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeaderCell,
+  TableRow,
+} from "@/components/ui";
+import { useT } from "@/i18n/useT";
+import { formatMoneyVnd } from "@/i18n/format";
+import { useMembersQuery } from "@/features/members/hooks/useMembers";
+import type { ExpenseResponse, ShareResponse } from "../api/types";
+import { ShareFormDialog } from "./ShareFormDialog";
+import { DeleteShareDialog } from "./DeleteShareDialog";
+import { PlusIcon, StarIcon } from "./icons";
+import styles from "./SharesSection.module.css";
+
+export type SharesSectionProps = {
+  expense: ExpenseResponse;
+  /** True when the owning event is closed — write controls are disabled (R4). */
+  disabled: boolean;
+};
+
+/**
+ * The shares breakdown (B4): a table of member / amount / note with the derived
+ * total row, plus add / edit / delete controls. The owner-representative row has
+ * no delete control (mirrors `7002`) and a "khóa" note; a soft-deleted member
+ * shows "(đã xóa)". All write controls are hidden/disabled when the event is
+ * closed. Add/edit pickers exclude members that already have a share (mirrors
+ * `7003`).
+ */
+export function SharesSection({ expense, disabled }: SharesSectionProps) {
+  const { t } = useT();
+  const membersQuery = useMembersQuery(false);
+  const members = membersQuery.data ?? [];
+
+  const [addOpen, setAddOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<ShareResponse | undefined>();
+  const [deleteTarget, setDeleteTarget] = useState<ShareResponse | null>(null);
+
+  function openEdit(share: ShareResponse) {
+    setEditTarget(share);
+    setEditOpen(true);
+  }
+
+  return (
+    <Card>
+      <CardHeader
+        title={t("expenses:shares.sectionTitle")}
+        action={
+          disabled ? undefined : (
+            <Button
+              variant="secondary"
+              size="sm"
+              iconStart={<PlusIcon />}
+              disabled={membersQuery.isPending}
+              onClick={() => setAddOpen(true)}
+            >
+              {t("expenses:shares.add")}
+            </Button>
+          )
+        }
+      />
+      <CardBody>
+        <Table caption={t("expenses:shares.caption")} captionHidden>
+          <TableHead>
+            <TableRow>
+              <TableHeaderCell scope="col">
+                {t("expenses:shares.memberLabel")}
+              </TableHeaderCell>
+              <TableHeaderCell scope="col" numeric>
+                {t("expenses:shares.amountLabel")}
+              </TableHeaderCell>
+              <TableHeaderCell scope="col">
+                {t("expenses:shares.noteLabel")}
+              </TableHeaderCell>
+              <TableHeaderCell scope="col" align="right">
+                <span className={styles.srOnly}>
+                  {t("expenses:list.actions")}
+                </span>
+              </TableHeaderCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {expense.shares.map((share) => {
+              const ownerRep = share.member.isOwnerRepresentative;
+              return (
+                <TableRow key={share.uuid} deleted={share.member.isDeleted}>
+                  <TableHeaderCell scope="row">
+                    <span className={styles.memberCell}>
+                      {share.member.name}
+                      {ownerRep ? (
+                        <Badge tone="info" icon={<StarIcon />}>
+                          {t("expenses:badge.ownerRep")}
+                        </Badge>
+                      ) : null}
+                      {share.member.isDeleted ? (
+                        <span className={styles.deletedTag}>
+                          {t("expenses:badge.deletedTag")}
+                        </span>
+                      ) : null}
+                    </span>
+                  </TableHeaderCell>
+                  <TableCell numeric>
+                    <Money amount={share.amount} format={formatMoneyVnd} />
+                  </TableCell>
+                  <TableCell>
+                    {share.note ? (
+                      share.note
+                    ) : (
+                      <span className={styles.muted}>—</span>
+                    )}
+                  </TableCell>
+                  <TableCell actions>
+                    {disabled ? (
+                      <span className={styles.muted}>
+                        {t("expenses:shares.readOnly")}
+                      </span>
+                    ) : (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          aria-label={t("expenses:shares.editNamed", {
+                            name: share.member.name,
+                          })}
+                          onClick={() => openEdit(share)}
+                        >
+                          {t("expenses:shares.edit")}
+                        </Button>
+                        {ownerRep ? (
+                          <span className={styles.muted}>
+                            {t("expenses:shares.locked")}
+                          </span>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            aria-label={t("expenses:shares.removeNamed", {
+                              name: share.member.name,
+                            })}
+                            onClick={() => setDeleteTarget(share)}
+                          >
+                            {t("expenses:shares.remove")}
+                          </Button>
+                        )}
+                      </>
+                    )}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+            <TableRow>
+              <TableHeaderCell scope="row">
+                {t("expenses:shares.total")}
+              </TableHeaderCell>
+              <TableCell numeric>
+                <Money amount={expense.total} size="lg" format={formatMoneyVnd} />
+              </TableCell>
+              <TableCell />
+              <TableCell />
+            </TableRow>
+          </TableBody>
+        </Table>
+      </CardBody>
+
+      <ShareFormDialog
+        expenseUuid={expense.uuid}
+        mode="add"
+        members={members}
+        existingShares={expense.shares}
+        open={addOpen}
+        onOpenChange={setAddOpen}
+      />
+      <ShareFormDialog
+        expenseUuid={expense.uuid}
+        mode="edit"
+        share={editTarget}
+        members={members}
+        existingShares={expense.shares}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+      />
+      <DeleteShareDialog
+        expenseUuid={expense.uuid}
+        share={deleteTarget}
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+      />
+    </Card>
+  );
+}

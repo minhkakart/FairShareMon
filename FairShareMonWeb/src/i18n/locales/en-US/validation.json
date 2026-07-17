@@ -29,5 +29,18 @@
   "tag": {
     "nameRequired": "Tag name is required.",
     "nameTooLong": "Tag name must not exceed 100 characters."
+  },
+  "expense": {
+    "nameRequired": "Expense name is required.",
+    "nameTooLong": "Expense name must not exceed 200 characters.",
+    "timeRequired": "Please choose an expense time.",
+    "descriptionTooLong": "Description must not exceed 1000 characters."
+  },
+  "share": {
+    "memberRequired": "Please choose a member.",
+    "amountNegative": "Amount must be a non-negative whole number.",
+    "noteTooLong": "Note must not exceed 500 characters.",
+    "duplicateMember": "Each member can have only one share per expense.",
+    "ownerRepRequired": "The owner-representative's share is required."
   }
 }

@@ -11,6 +11,7 @@ export const APP_NAMESPACES = [
   "members",
   "categories",
   "tags",
+  "expenses",
 ] as const;
 
 /**

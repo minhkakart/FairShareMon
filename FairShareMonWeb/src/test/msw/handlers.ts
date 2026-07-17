@@ -331,6 +331,195 @@ function tagResponse(tag: TagRecord) {
   };
 }
 
+// --- Expenses store (mock backend) ----------------------------------------
+interface ShareRecord {
+  uuid: string;
+  memberUuid: string;
+  amount: number;
+  note: string | null;
+  createdAt: string;
+}
+interface ExpenseRecord {
+  uuid: string;
+  name: string;
+  description: string | null;
+  expenseTime: string;
+  payerMemberUuid: string;
+  categoryUuid: string;
+  tagUuids: string[];
+  isSettled: boolean;
+  settledAt: string | null;
+  shares: ShareRecord[];
+  eventUuid: string | null;
+  createdAt: string;
+}
+interface AuditRecord {
+  uuid: string;
+  entityType: "Expense" | "Share";
+  entityUuid: string;
+  expenseUuid: string;
+  action: "Create" | "Update" | "Delete";
+  before: unknown;
+  after: unknown;
+  createdAt: string;
+}
+
+const expensesByUser = new Map<string, ExpenseRecord[]>();
+// Audit logs survive expense hard-delete — keyed by expenseUuid, per user.
+const auditByUser = new Map<string, AuditRecord[]>();
+let auditSeq = 0;
+
+function getExpenses(username: string): ExpenseRecord[] {
+  let list = expensesByUser.get(username);
+  if (!list) {
+    list = [];
+    expensesByUser.set(username, list);
+  }
+  return list;
+}
+function getAudit(username: string): AuditRecord[] {
+  let list = auditByUser.get(username);
+  if (!list) {
+    list = [];
+    auditByUser.set(username, list);
+  }
+  return list;
+}
+
+function memberByUuid(username: string, uuid: string): MemberRecord | undefined {
+  return getMembers(username).find((m) => m.uuid === uuid);
+}
+function categoryByUuid(
+  username: string,
+  uuid: string,
+): CategoryRecord | undefined {
+  return getCategories(username).find((c) => c.uuid === uuid);
+}
+
+function auditNow(): string {
+  // Strictly increasing timestamps so the history renders in a stable order.
+  return new Date(Date.now() + auditSeq++).toISOString();
+}
+
+function expenseSnapshot(username: string, e: ExpenseRecord) {
+  const payer = memberByUuid(username, e.payerMemberUuid);
+  const category = categoryByUuid(username, e.categoryUuid);
+  const tags = e.tagUuids
+    .map((uuid) => getTags(username).find((tg) => tg.uuid === uuid))
+    .filter((tg): tg is TagRecord => Boolean(tg))
+    .map((tg) => ({ uuid: tg.uuid, name: tg.name }));
+  return {
+    uuid: e.uuid,
+    name: e.name,
+    description: e.description,
+    expenseTime: e.expenseTime,
+    payerMemberUuid: e.payerMemberUuid,
+    payerMemberName: payer?.name ?? "",
+    categoryUuid: e.categoryUuid,
+    categoryName: category?.name ?? "",
+    tags,
+    isSettled: e.isSettled,
+  };
+}
+function shareSnapshot(username: string, expenseUuid: string, s: ShareRecord) {
+  const member = memberByUuid(username, s.memberUuid);
+  return {
+    uuid: s.uuid,
+    expenseUuid,
+    memberUuid: s.memberUuid,
+    memberName: member?.name ?? "",
+    amount: s.amount,
+    note: s.note,
+  };
+}
+function pushAudit(
+  username: string,
+  entry: Omit<AuditRecord, "uuid" | "createdAt">,
+) {
+  getAudit(username).push({
+    ...entry,
+    uuid: `al-${rand()}`,
+    createdAt: auditNow(),
+  });
+}
+
+function memberResponse(username: string, uuid: string) {
+  const m = memberByUuid(username, uuid);
+  return m
+    ? {
+        uuid: m.uuid,
+        name: m.name,
+        isOwnerRepresentative: m.isOwnerRepresentative,
+        isDeleted: m.isDeleted,
+        createdAt: m.createdAt,
+      }
+    : {
+        uuid,
+        name: "(không rõ)",
+        isOwnerRepresentative: false,
+        isDeleted: true,
+        createdAt: "2026-01-01T00:00:00+00:00",
+      };
+}
+function shareResponse(username: string, s: ShareRecord) {
+  return {
+    uuid: s.uuid,
+    member: memberResponse(username, s.memberUuid),
+    amount: s.amount,
+    note: s.note,
+    createdAt: s.createdAt,
+  };
+}
+function expenseTotal(e: ExpenseRecord): number {
+  return e.shares.reduce((sum, s) => sum + s.amount, 0);
+}
+function expenseResponse(username: string, e: ExpenseRecord) {
+  return {
+    uuid: e.uuid,
+    name: e.name,
+    description: e.description,
+    expenseTime: e.expenseTime,
+    total: expenseTotal(e),
+    category: categoryResponse(
+      categoryByUuid(username, e.categoryUuid) ?? seedCategories()[0],
+    ),
+    payer: memberResponse(username, e.payerMemberUuid),
+    isSettled: e.isSettled,
+    settledAt: e.settledAt,
+    shares: e.shares.map((s) => shareResponse(username, s)),
+    tags: e.tagUuids
+      .map((uuid) => getTags(username).find((tg) => tg.uuid === uuid))
+      .filter((tg): tg is TagRecord => Boolean(tg))
+      .map(tagResponse),
+    eventUuid: e.eventUuid,
+    eventName: null,
+    eventIsClosed: null,
+    createdAt: e.createdAt,
+  };
+}
+function expenseSummary(username: string, e: ExpenseRecord) {
+  return {
+    uuid: e.uuid,
+    name: e.name,
+    expenseTime: e.expenseTime,
+    total: expenseTotal(e),
+    category: categoryResponse(
+      categoryByUuid(username, e.categoryUuid) ?? seedCategories()[0],
+    ),
+    payer: memberResponse(username, e.payerMemberUuid),
+    isSettled: e.isSettled,
+    settledAt: e.settledAt,
+    tagNames: e.tagUuids
+      .map((uuid) => getTags(username).find((tg) => tg.uuid === uuid)?.name)
+      .filter((n): n is string => Boolean(n)),
+    shareCount: e.shares.length,
+    eventUuid: e.eventUuid,
+    eventName: null,
+    eventIsClosed: null,
+    createdAt: e.createdAt,
+  };
+}
+
 function issueTokens(username: string) {
   const now = Date.now();
   const refreshToken = `refresh-${username}-${now}-${rand()}`;
@@ -764,4 +953,421 @@ export const handlers = [
     tag.isDeleted = true;
     return ok({ message: "Đã xóa nhãn." });
   }),
+
+  // --- Expenses -----------------------------------------------------------
+  http.get("*/api/v1/expenses", ({ request }) => {
+    const username = usernameFromAuthHeader(
+      request.headers.get("Authorization"),
+    );
+    if (!username) {
+      return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
+    }
+    const url = new URL(request.url);
+    const from = url.searchParams.get("from");
+    const to = url.searchParams.get("to");
+    const categoryUuid = url.searchParams.get("categoryUuid");
+    const tagUuid = url.searchParams.get("tagUuid");
+    const settled = url.searchParams.get("settled");
+    const looseOnly = url.searchParams.get("looseOnly");
+
+    let list = getExpenses(username).slice();
+    if (from) list = list.filter((e) => e.expenseTime >= from);
+    if (to) list = list.filter((e) => e.expenseTime <= to);
+    if (categoryUuid) list = list.filter((e) => e.categoryUuid === categoryUuid);
+    if (tagUuid) list = list.filter((e) => e.tagUuids.includes(tagUuid));
+    if (settled === "true") list = list.filter((e) => e.isSettled);
+    if (settled === "false") list = list.filter((e) => !e.isSettled);
+    if (looseOnly === "true") list = list.filter((e) => !e.eventUuid);
+    // expenseTime DESC.
+    list.sort((a, b) => (a.expenseTime < b.expenseTime ? 1 : -1));
+    return ok(list.map((e) => expenseSummary(username, e)));
+  }),
+
+  http.get("*/api/v1/expenses/:uuid/history", ({ request, params }) => {
+    const username = usernameFromAuthHeader(
+      request.headers.get("Authorization"),
+    );
+    if (!username) {
+      return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
+    }
+    const logs = getAudit(username)
+      .filter((a) => a.expenseUuid === params.uuid)
+      .sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1));
+    return ok(logs);
+  }),
+
+  http.get("*/api/v1/expenses/:uuid/export", ({ request, params }) => {
+    const username = usernameFromAuthHeader(
+      request.headers.get("Authorization"),
+    );
+    if (!username) {
+      return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
+    }
+    const expense = getExpenses(username).find((e) => e.uuid === params.uuid);
+    if (!expense) {
+      return fail(6000, "Không tìm thấy phiếu chi tiêu.", 404);
+    }
+    const rows = [
+      ["Thành viên", "Số tiền", "Ghi chú"],
+      ...expense.shares.map((s) => [
+        memberByUuid(username, s.memberUuid)?.name ?? "",
+        String(s.amount),
+        s.note ?? "",
+      ]),
+    ];
+    const csv =
+      `﻿${expense.name}\r\n\r\n` +
+      rows.map((r) => r.join(",")).join("\r\n") +
+      "\r\n";
+    return new HttpResponse(csv, {
+      headers: {
+        "Content-Type": "text/csv; charset=utf-8",
+        "Content-Disposition": `attachment; filename="expense-${expense.uuid}.csv"`,
+      },
+    });
+  }),
+
+  http.get("*/api/v1/expenses/:uuid", ({ request, params }) => {
+    const username = usernameFromAuthHeader(
+      request.headers.get("Authorization"),
+    );
+    if (!username) {
+      return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
+    }
+    const expense = getExpenses(username).find((e) => e.uuid === params.uuid);
+    if (!expense) {
+      return fail(6000, "Không tìm thấy phiếu chi tiêu.", 404);
+    }
+    return ok(expenseResponse(username, expense));
+  }),
+
+  http.post("*/api/v1/expenses", async ({ request }) => {
+    const username = usernameFromAuthHeader(
+      request.headers.get("Authorization"),
+    );
+    if (!username) {
+      return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
+    }
+    const body = (await request.json()) as {
+      name?: unknown;
+      description?: unknown;
+      expenseTime?: unknown;
+      payerMemberUuid?: string;
+      categoryUuid?: string;
+      tagUuids?: string[];
+      shares?: { memberUuid: string; amount: number; note?: string | null }[];
+    };
+    const name = typeof body.name === "string" ? body.name.trim() : "";
+    if (name.length === 0 || name.length > 200) {
+      return fail(1001, "Dữ liệu không hợp lệ.", 400, {
+        name: ["Tên phiếu không được để trống."],
+      });
+    }
+    if (!body.expenseTime || typeof body.expenseTime !== "string") {
+      return fail(1001, "Dữ liệu không hợp lệ.", 400, {
+        expenseTime: ["Vui lòng chọn thời điểm chi."],
+      });
+    }
+    const ownerRep = getMembers(username).find((m) => m.isOwnerRepresentative);
+    const payerUuid = body.payerMemberUuid || ownerRep?.uuid || "";
+    const payer = memberByUuid(username, payerUuid);
+    if (!payer || payer.isDeleted) {
+      return fail(6001, "Người trả không hợp lệ.", 400);
+    }
+    const defaultCat = getCategories(username).find((c) => c.isDefault);
+    const catUuid = body.categoryUuid || defaultCat?.uuid || "";
+    const category = categoryByUuid(username, catUuid);
+    if (!category || category.isDeleted) {
+      return fail(6002, "Danh mục không hợp lệ.", 400);
+    }
+    const tagUuids = body.tagUuids ?? [];
+    for (const tu of tagUuids) {
+      const tg = getTags(username).find((x) => x.uuid === tu);
+      if (!tg || tg.isDeleted) return fail(6003, "Nhãn không hợp lệ.", 400);
+    }
+    const inputShares = body.shares ?? [];
+    const seen = new Set<string>();
+    for (const s of inputShares) {
+      if (seen.has(s.memberUuid))
+        return fail(7003, "Trùng thành viên phần gánh.", 400);
+      seen.add(s.memberUuid);
+      const m = memberByUuid(username, s.memberUuid);
+      if (!m || m.isDeleted) return fail(7001, "Thành viên không hợp lệ.", 400);
+    }
+    // Auto-inject the owner-rep 0đ share if missing.
+    if (ownerRep && !seen.has(ownerRep.uuid)) {
+      inputShares.unshift({ memberUuid: ownerRep.uuid, amount: 0, note: null });
+    }
+    const now = new Date().toISOString();
+    const record: ExpenseRecord = {
+      uuid: `e-${rand()}`,
+      name,
+      description:
+        typeof body.description === "string" && body.description
+          ? body.description
+          : null,
+      expenseTime: body.expenseTime,
+      payerMemberUuid: payerUuid,
+      categoryUuid: catUuid,
+      tagUuids,
+      isSettled: false,
+      settledAt: null,
+      shares: inputShares.map((s) => ({
+        uuid: `s-${rand()}`,
+        memberUuid: s.memberUuid,
+        amount: s.amount ?? 0,
+        note: s.note ?? null,
+        createdAt: now,
+      })),
+      eventUuid: null,
+      createdAt: now,
+    };
+    getExpenses(username).push(record);
+    pushAudit(username, {
+      entityType: "Expense",
+      entityUuid: record.uuid,
+      expenseUuid: record.uuid,
+      action: "Create",
+      before: null,
+      after: expenseSnapshot(username, record),
+    });
+    for (const s of record.shares) {
+      pushAudit(username, {
+        entityType: "Share",
+        entityUuid: s.uuid,
+        expenseUuid: record.uuid,
+        action: "Create",
+        before: null,
+        after: shareSnapshot(username, record.uuid, s),
+      });
+    }
+    return ok(expenseResponse(username, record));
+  }),
+
+  http.put("*/api/v1/expenses/:uuid/settled", async ({ request, params }) => {
+    const username = usernameFromAuthHeader(
+      request.headers.get("Authorization"),
+    );
+    if (!username) {
+      return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
+    }
+    const expense = getExpenses(username).find((e) => e.uuid === params.uuid);
+    if (!expense) return fail(6000, "Không tìm thấy phiếu chi tiêu.", 404);
+    const body = (await request.json()) as { isSettled?: boolean };
+    expense.isSettled = Boolean(body.isSettled);
+    expense.settledAt = expense.isSettled ? new Date().toISOString() : null;
+    return ok({ message: "Đã cập nhật trạng thái đã trả." });
+  }),
+
+  http.put("*/api/v1/expenses/:uuid", async ({ request, params }) => {
+    const username = usernameFromAuthHeader(
+      request.headers.get("Authorization"),
+    );
+    if (!username) {
+      return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
+    }
+    const expense = getExpenses(username).find((e) => e.uuid === params.uuid);
+    if (!expense) return fail(6000, "Không tìm thấy phiếu chi tiêu.", 404);
+    const body = (await request.json()) as {
+      name?: unknown;
+      description?: unknown;
+      expenseTime?: unknown;
+      payerMemberUuid?: string;
+      categoryUuid?: string;
+      tagUuids?: string[];
+    };
+    const name = typeof body.name === "string" ? body.name.trim() : "";
+    if (name.length === 0 || name.length > 200) {
+      return fail(1001, "Dữ liệu không hợp lệ.", 400, {
+        name: ["Tên phiếu không được để trống."],
+      });
+    }
+    const ownerRep = getMembers(username).find((m) => m.isOwnerRepresentative);
+    const payerUuid = body.payerMemberUuid || ownerRep?.uuid || "";
+    const payer = memberByUuid(username, payerUuid);
+    if (!payer || payer.isDeleted) return fail(6001, "Người trả không hợp lệ.", 400);
+    const defaultCat = getCategories(username).find((c) => c.isDefault);
+    const catUuid = body.categoryUuid || defaultCat?.uuid || "";
+    const category = categoryByUuid(username, catUuid);
+    if (!category || category.isDeleted)
+      return fail(6002, "Danh mục không hợp lệ.", 400);
+    const tagUuids = body.tagUuids ?? [];
+    for (const tu of tagUuids) {
+      const tg = getTags(username).find((x) => x.uuid === tu);
+      if (!tg || tg.isDeleted) return fail(6003, "Nhãn không hợp lệ.", 400);
+    }
+    const before = expenseSnapshot(username, expense);
+    expense.name = name;
+    expense.description =
+      typeof body.description === "string" && body.description
+        ? body.description
+        : null;
+    if (typeof body.expenseTime === "string") expense.expenseTime = body.expenseTime;
+    expense.payerMemberUuid = payerUuid;
+    expense.categoryUuid = catUuid;
+    expense.tagUuids = tagUuids;
+    const after = expenseSnapshot(username, expense);
+    if (JSON.stringify(before) !== JSON.stringify(after)) {
+      pushAudit(username, {
+        entityType: "Expense",
+        entityUuid: expense.uuid,
+        expenseUuid: expense.uuid,
+        action: "Update",
+        before,
+        after,
+      });
+    }
+    return ok(expenseResponse(username, expense));
+  }),
+
+  http.delete("*/api/v1/expenses/:uuid", ({ request, params }) => {
+    const username = usernameFromAuthHeader(
+      request.headers.get("Authorization"),
+    );
+    if (!username) {
+      return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
+    }
+    const list = getExpenses(username);
+    const idx = list.findIndex((e) => e.uuid === params.uuid);
+    if (idx === -1) return fail(6000, "Không tìm thấy phiếu chi tiêu.", 404);
+    const expense = list[idx];
+    for (const s of expense.shares) {
+      pushAudit(username, {
+        entityType: "Share",
+        entityUuid: s.uuid,
+        expenseUuid: expense.uuid,
+        action: "Delete",
+        before: shareSnapshot(username, expense.uuid, s),
+        after: null,
+      });
+    }
+    pushAudit(username, {
+      entityType: "Expense",
+      entityUuid: expense.uuid,
+      expenseUuid: expense.uuid,
+      action: "Delete",
+      before: expenseSnapshot(username, expense),
+      after: null,
+    });
+    list.splice(idx, 1);
+    return ok({ message: "Đã xóa phiếu chi tiêu." });
+  }),
+
+  http.post("*/api/v1/expenses/:uuid/shares", async ({ request, params }) => {
+    const username = usernameFromAuthHeader(
+      request.headers.get("Authorization"),
+    );
+    if (!username) {
+      return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
+    }
+    const expense = getExpenses(username).find((e) => e.uuid === params.uuid);
+    if (!expense) return fail(6000, "Không tìm thấy phiếu chi tiêu.", 404);
+    const body = (await request.json()) as {
+      memberUuid?: string;
+      amount?: number;
+      note?: string | null;
+    };
+    const member = memberByUuid(username, body.memberUuid ?? "");
+    if (!member || member.isDeleted)
+      return fail(7001, "Thành viên không hợp lệ.", 400);
+    if (expense.shares.some((s) => s.memberUuid === body.memberUuid))
+      return fail(7003, "Trùng thành viên phần gánh.", 400);
+    const share: ShareRecord = {
+      uuid: `s-${rand()}`,
+      memberUuid: body.memberUuid ?? "",
+      amount: body.amount ?? 0,
+      note: body.note ?? null,
+      createdAt: new Date().toISOString(),
+    };
+    expense.shares.push(share);
+    pushAudit(username, {
+      entityType: "Share",
+      entityUuid: share.uuid,
+      expenseUuid: expense.uuid,
+      action: "Create",
+      before: null,
+      after: shareSnapshot(username, expense.uuid, share),
+    });
+    return ok(shareResponse(username, share));
+  }),
+
+  http.put(
+    "*/api/v1/expenses/:uuid/shares/:shareUuid",
+    async ({ request, params }) => {
+      const username = usernameFromAuthHeader(
+        request.headers.get("Authorization"),
+      );
+      if (!username) {
+        return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
+      }
+      const expense = getExpenses(username).find((e) => e.uuid === params.uuid);
+      if (!expense) return fail(7000, "Không tìm thấy phần gánh.", 404);
+      const share = expense.shares.find((s) => s.uuid === params.shareUuid);
+      if (!share) return fail(7000, "Không tìm thấy phần gánh.", 404);
+      const body = (await request.json()) as {
+        memberUuid?: string;
+        amount?: number;
+        note?: string | null;
+      };
+      const member = memberByUuid(username, body.memberUuid ?? "");
+      if (!member || member.isDeleted)
+        return fail(7001, "Thành viên không hợp lệ.", 400);
+      if (
+        body.memberUuid !== share.memberUuid &&
+        expense.shares.some((s) => s.memberUuid === body.memberUuid)
+      ) {
+        return fail(7003, "Trùng thành viên phần gánh.", 400);
+      }
+      const before = shareSnapshot(username, expense.uuid, share);
+      share.memberUuid = body.memberUuid ?? share.memberUuid;
+      share.amount = body.amount ?? 0;
+      share.note = body.note ?? null;
+      const after = shareSnapshot(username, expense.uuid, share);
+      if (JSON.stringify(before) !== JSON.stringify(after)) {
+        pushAudit(username, {
+          entityType: "Share",
+          entityUuid: share.uuid,
+          expenseUuid: expense.uuid,
+          action: "Update",
+          before,
+          after,
+        });
+      }
+      return ok(shareResponse(username, share));
+    },
+  ),
+
+  http.delete(
+    "*/api/v1/expenses/:uuid/shares/:shareUuid",
+    ({ request, params }) => {
+      const username = usernameFromAuthHeader(
+        request.headers.get("Authorization"),
+      );
+      if (!username) {
+        return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
+      }
+      const expense = getExpenses(username).find((e) => e.uuid === params.uuid);
+      if (!expense) return fail(7000, "Không tìm thấy phần gánh.", 404);
+      const share = expense.shares.find((s) => s.uuid === params.shareUuid);
+      if (!share) return fail(7000, "Không tìm thấy phần gánh.", 404);
+      const member = memberByUuid(username, share.memberUuid);
+      if (member?.isOwnerRepresentative) {
+        return fail(
+          7002,
+          "Không thể xóa phần gánh của thành viên đại diện chủ sổ.",
+          400,
+        );
+      }
+      expense.shares = expense.shares.filter((s) => s.uuid !== share.uuid);
+      pushAudit(username, {
+        entityType: "Share",
+        entityUuid: share.uuid,
+        expenseUuid: expense.uuid,
+        action: "Delete",
+        before: shareSnapshot(username, expense.uuid, share),
+        after: null,
+      });
+      return ok({ message: "Đã xóa phần gánh." });
+    },
+  ),
 ];

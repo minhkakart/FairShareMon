@@ -1,0 +1,18 @@
+.memberOption {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fs-space-2);
+  min-width: 0;
+}
+
+.memberName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.deletedTag {
+  font-size: var(--fs-text-sm);
+  color: var(--fs-color-text-secondary);
+  font-style: italic;
+}

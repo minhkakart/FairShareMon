@@ -32,7 +32,13 @@ export const ErrorCodes = {
   TagNotFound: 5000,
   TagNameDuplicate: 5001,
   ExpenseNotFound: 6000,
+  ExpensePayerInvalid: 6001,
+  ExpenseCategoryInvalid: 6002,
+  ExpenseTagInvalid: 6003,
   ShareNotFound: 7000,
+  ShareMemberInvalid: 7001,
+  OwnerRepresentativeShareNotDeletable: 7002,
+  DuplicateShareMember: 7003,
 
   // 9xxx — events
   EventNotFound: 9000,
