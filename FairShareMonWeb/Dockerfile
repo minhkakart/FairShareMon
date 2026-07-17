@@ -8,7 +8,7 @@ WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@9 --activate
 
 # Install dependencies first so this layer is cached until the manifests change.
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
 # Vite inlines VITE_* at BUILD time. src/config/env.ts requires VITE_API_BASE_URL in a prod build
