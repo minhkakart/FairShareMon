@@ -39,6 +39,18 @@ export type {
 export { Badge } from "./Badge/Badge";
 export type { BadgeProps, BadgeTone } from "./Badge/Badge";
 
+export { CategoryMarker } from "./CategoryMarker/CategoryMarker";
+export type {
+  CategoryMarkerProps,
+  CategoryMarkerSize,
+} from "./CategoryMarker/CategoryMarker";
+
+export { ColorPicker, CURATED_COLORS } from "./ColorPicker/ColorPicker";
+export type { ColorPickerProps } from "./ColorPicker/ColorPicker";
+
+export { IconPicker, CURATED_ICONS } from "./IconPicker/IconPicker";
+export type { IconPickerProps } from "./IconPicker/IconPicker";
+
 export { Money } from "./Money/Money";
 export type { MoneyProps } from "./Money/Money";
 

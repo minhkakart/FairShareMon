@@ -1,0 +1,62 @@
+{
+  "title": "Danh mục",
+  "subtitle": "Quản lý các danh mục chi tiêu — mỗi danh mục có màu và biểu tượng để phân loại và vẽ biểu đồ.",
+  "add": "Thêm danh mục",
+  "showDeleted": "Hiện danh mục đã xóa",
+  "table": {
+    "caption": "Danh sách danh mục",
+    "category": "Danh mục",
+    "status": "Trạng thái",
+    "actions": "Hành động"
+  },
+  "badge": {
+    "default": "Mặc định",
+    "deleted": "Đã xóa"
+  },
+  "default": {
+    "notDeletable": "Danh mục mặc định không thể xóa."
+  },
+  "actions": {
+    "edit": "Sửa",
+    "setDefault": "Đặt mặc định",
+    "delete": "Xóa",
+    "editNamed": "Sửa {{name}}",
+    "setDefaultNamed": "Đặt {{name}} làm mặc định",
+    "deleteNamed": "Xóa {{name}}"
+  },
+  "form": {
+    "createTitle": "Thêm danh mục",
+    "editTitle": "Sửa danh mục",
+    "nameLabel": "Tên danh mục",
+    "namePlaceholder": "Ví dụ: Ăn uống",
+    "colorLabel": "Màu",
+    "colorHexLabel": "Mã màu tùy chỉnh (#RRGGBB)",
+    "colorInvalidHex": "Mã màu phải có dạng #RRGGBB.",
+    "iconLabel": "Biểu tượng",
+    "iconNone": "Không có",
+    "reactivateHint": "Nếu trùng tên một danh mục đã xóa, danh mục đó sẽ được khôi phục.",
+    "submitCreate": "Thêm",
+    "submitEdit": "Lưu",
+    "cancel": "Hủy"
+  },
+  "delete": {
+    "title": "Xóa {{name}}?",
+    "body": "Danh mục sẽ không còn xuất hiện khi tạo dữ liệu mới, nhưng toàn bộ dữ liệu lịch sử vẫn được giữ nguyên. Bạn có thể xem lại danh mục đã xóa bằng cách bật \"Hiện danh mục đã xóa\".",
+    "confirmButton": "Xóa danh mục",
+    "cancel": "Hủy"
+  },
+  "toast": {
+    "created": "Đã thêm danh mục.",
+    "updated": "Đã cập nhật danh mục.",
+    "deleted": "Đã xóa danh mục.",
+    "defaultSet": "Đã đặt danh mục mặc định."
+  },
+  "empty": {
+    "title": "Chưa có danh mục nào",
+    "body": "Danh sách danh mục hiện đang trống."
+  },
+  "error": {
+    "title": "Không tải được danh sách danh mục",
+    "retry": "Thử lại"
+  }
+}

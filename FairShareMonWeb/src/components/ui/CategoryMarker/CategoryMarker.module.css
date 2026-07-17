@@ -1,0 +1,95 @@
+.marker {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fs-space-2);
+  min-width: 0;
+}
+
+/* The tile: a rounded square tinted with the category color. The pure hue stays
+   present via a stronger border ring (and the fallback dot) so the swatch reads
+   even when the emoji is multicolor — color is never the sole signal. The tile's
+   own font-size drives the emoji sizing (glyph uses em). */
+.tile {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--fs-radius-sm);
+  background: color-mix(in srgb, var(--marker-color) 16%, var(--fs-color-surface));
+  border: 1px solid color-mix(in srgb, var(--marker-color) 48%, transparent);
+  line-height: 1;
+}
+
+.glyph {
+  line-height: 1;
+  /* Emoji render at their own colors; keep them crisp and centered. */
+  font-size: 0.62em;
+}
+
+/* Fallback when no icon: a solid dot of the exact category color. */
+.dot {
+  width: 42%;
+  height: 42%;
+  border-radius: var(--fs-radius-full);
+  background: var(--marker-color);
+}
+
+.name {
+  min-width: 0;
+  color: var(--fs-color-text);
+  font-weight: var(--fs-weight-medium);
+  overflow-wrap: anywhere;
+}
+
+/* Default-category star pip — anchored to the tile corner, on a surface disc so
+   it stays legible over any tint. The row's status badge carries the SR text. */
+.star {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--fs-radius-full);
+  background: var(--fs-color-surface);
+  color: var(--fs-color-warning);
+  box-shadow: var(--fs-shadow-xs);
+}
+
+/* == Sizes ================================================================= */
+.sm {
+  font-size: var(--fs-text-sm);
+}
+.sm .tile {
+  width: 1.5rem;
+  height: 1.5rem;
+  font-size: 1.5rem;
+}
+.sm .star {
+  width: 0.72rem;
+  height: 0.72rem;
+  right: -0.2rem;
+  top: -0.2rem;
+}
+.sm .star svg {
+  width: 0.5rem;
+  height: 0.5rem;
+}
+
+.md {
+  font-size: var(--fs-text-md);
+}
+.md .tile {
+  width: 1.875rem;
+  height: 1.875rem;
+  font-size: 1.875rem;
+}
+.md .star {
+  width: 0.88rem;
+  height: 0.88rem;
+  right: -0.28rem;
+  top: -0.28rem;
+}
+.md .star svg {
+  width: 0.62rem;
+  height: 0.62rem;
+}

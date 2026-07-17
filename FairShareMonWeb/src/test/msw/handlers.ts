@@ -169,6 +169,168 @@ function usernameFromAuthHeader(authorization: string | null): string | null {
   return authorization.slice("Bearer ".length).split("-")[1] ?? null;
 }
 
+// --- Categories store (mock backend) --------------------------------------
+interface CategoryRecord {
+  uuid: string;
+  name: string;
+  color: string;
+  icon: string | null;
+  isDefault: boolean;
+  isDeleted: boolean;
+  createdAt: string;
+}
+
+const HEX_COLOR = /^#[0-9A-Fa-f]{6}$/;
+
+// username → their categories. Seeded lazily on first access (mirrors the
+// backend registration bootstrap: 5 categories, "Ăn uống" default).
+const categoriesByUser = new Map<string, CategoryRecord[]>();
+
+function seedCategories(): CategoryRecord[] {
+  const base = "2026-01-01T00:00:00+00:00";
+  return [
+    {
+      uuid: `c-${rand()}`,
+      name: "Ăn uống",
+      color: "#F97316",
+      icon: "🍜",
+      isDefault: true,
+      isDeleted: false,
+      createdAt: base,
+    },
+    {
+      uuid: `c-${rand()}`,
+      name: "Đi lại",
+      color: "#3B82F6",
+      icon: "🚗",
+      isDefault: false,
+      isDeleted: false,
+      createdAt: base,
+    },
+    {
+      uuid: `c-${rand()}`,
+      name: "Khách sạn",
+      color: "#8B5CF6",
+      icon: "🏨",
+      isDefault: false,
+      isDeleted: false,
+      createdAt: base,
+    },
+    {
+      uuid: `c-${rand()}`,
+      name: "Mua sắm",
+      color: "#EC4899",
+      icon: "🛍️",
+      isDefault: false,
+      isDeleted: false,
+      createdAt: base,
+    },
+    {
+      uuid: `c-${rand()}`,
+      name: "Khác",
+      color: "#6B7280",
+      icon: "⋯",
+      isDefault: false,
+      isDeleted: false,
+      createdAt: base,
+    },
+    {
+      uuid: `c-${rand()}`,
+      name: "Giải trí (cũ)",
+      color: "#14A074",
+      icon: "🎬",
+      isDefault: false,
+      isDeleted: true,
+      createdAt: base,
+    },
+  ];
+}
+
+function getCategories(username: string): CategoryRecord[] {
+  let list = categoriesByUser.get(username);
+  if (!list) {
+    list = seedCategories();
+    categoriesByUser.set(username, list);
+  }
+  return list;
+}
+
+/** Default first, then name A→Z (vi collation) — matches the backend order. */
+function sortCategories(list: CategoryRecord[]): CategoryRecord[] {
+  return [...list].sort((a, b) => {
+    if (a.isDefault !== b.isDefault) return a.isDefault ? -1 : 1;
+    return a.name.localeCompare(b.name, "vi");
+  });
+}
+
+function categoryResponse(c: CategoryRecord) {
+  return {
+    uuid: c.uuid,
+    name: c.name,
+    color: c.color,
+    icon: c.icon,
+    isDefault: c.isDefault,
+    isDeleted: c.isDeleted,
+    createdAt: c.createdAt,
+  };
+}
+
+// --- Tags store (mock backend) --------------------------------------------
+interface TagRecord {
+  uuid: string;
+  name: string;
+  isDeleted: boolean;
+  createdAt: string;
+}
+
+const tagsByUser = new Map<string, TagRecord[]>();
+
+function seedTags(): TagRecord[] {
+  const base = "2026-01-01T00:00:00+00:00";
+  return [
+    {
+      uuid: `t-${rand()}`,
+      name: "Công tác",
+      isDeleted: false,
+      createdAt: base,
+    },
+    {
+      uuid: `t-${rand()}`,
+      name: "Du lịch",
+      isDeleted: false,
+      createdAt: base,
+    },
+    {
+      uuid: `t-${rand()}`,
+      name: "Sinh nhật (cũ)",
+      isDeleted: true,
+      createdAt: base,
+    },
+  ];
+}
+
+function getTags(username: string): TagRecord[] {
+  let list = tagsByUser.get(username);
+  if (!list) {
+    list = seedTags();
+    tagsByUser.set(username, list);
+  }
+  return list;
+}
+
+function sortTags(list: TagRecord[]): TagRecord[] {
+  return [...list].sort((a, b) => a.name.localeCompare(b.name, "vi"));
+}
+
+function tagResponse(tag: TagRecord) {
+  return {
+    uuid: tag.uuid,
+    name: tag.name,
+    isDeleted: tag.isDeleted,
+    createdAt: tag.createdAt,
+  };
+}
+
 function issueTokens(username: string) {
   const now = Date.now();
   const refreshToken = `refresh-${username}-${now}-${rand()}`;
@@ -340,5 +502,266 @@ export const handlers = [
     }
     member.isDeleted = true;
     return ok({ message: "Đã xóa thành viên." });
+  }),
+
+  // --- Categories ---------------------------------------------------------
+  http.get("*/api/v1/categories", ({ request }) => {
+    const username = usernameFromAuthHeader(
+      request.headers.get("Authorization"),
+    );
+    if (!username) {
+      return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
+    }
+    const includeDeleted =
+      new URL(request.url).searchParams.get("includeDeleted") === "true";
+    const list = getCategories(username).filter(
+      (c) => includeDeleted || !c.isDeleted,
+    );
+    return ok(sortCategories(list).map(categoryResponse));
+  }),
+
+  http.post("*/api/v1/categories", async ({ request }) => {
+    const username = usernameFromAuthHeader(
+      request.headers.get("Authorization"),
+    );
+    if (!username) {
+      return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
+    }
+    const body = (await request.json()) as {
+      name?: unknown;
+      color?: unknown;
+      icon?: unknown;
+    };
+    const name = validateName(body.name);
+    if (typeof name !== "string") {
+      return fail(1001, "Dữ liệu không hợp lệ.", 400, {
+        name: ["Tên danh mục không được để trống."],
+      });
+    }
+    const color = typeof body.color === "string" ? body.color : "";
+    if (!HEX_COLOR.test(color)) {
+      return fail(1001, "Dữ liệu không hợp lệ.", 400, {
+        color: ["Màu phải có dạng #RRGGBB."],
+      });
+    }
+    const icon = typeof body.icon === "string" && body.icon ? body.icon : null;
+    const list = getCategories(username);
+    // Reactivation: a name matching a soft-deleted category revives it and
+    // overwrites its color/icon (default flag untouched); returns 200.
+    const deletedMatch = list.find(
+      (c) => c.isDeleted && c.name.localeCompare(name, "vi", { sensitivity: "accent" }) === 0,
+    );
+    if (deletedMatch) {
+      deletedMatch.isDeleted = false;
+      deletedMatch.name = name;
+      deletedMatch.color = color;
+      deletedMatch.icon = icon;
+      return ok(categoryResponse(deletedMatch));
+    }
+    // Active-name collision → 4001.
+    const activeDup = list.find(
+      (c) => !c.isDeleted && c.name.localeCompare(name, "vi", { sensitivity: "accent" }) === 0,
+    );
+    if (activeDup) {
+      return fail(4001, "Tên danh mục đã tồn tại.", 400);
+    }
+    const record: CategoryRecord = {
+      uuid: `c-${rand()}`,
+      name,
+      color,
+      icon,
+      isDefault: false,
+      isDeleted: false,
+      createdAt: new Date().toISOString(),
+    };
+    list.push(record);
+    return ok(categoryResponse(record));
+  }),
+
+  http.put("*/api/v1/categories/:uuid/default", ({ request, params }) => {
+    const username = usernameFromAuthHeader(
+      request.headers.get("Authorization"),
+    );
+    if (!username) {
+      return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
+    }
+    const list = getCategories(username);
+    const target = list.find((c) => c.uuid === params.uuid && !c.isDeleted);
+    if (!target) {
+      return fail(4000, "Không tìm thấy danh mục.", 404);
+    }
+    // Atomic swap: clear the old default, set this one.
+    for (const c of list) c.isDefault = false;
+    target.isDefault = true;
+    return ok({ message: "Đã đặt danh mục mặc định." });
+  }),
+
+  http.put("*/api/v1/categories/:uuid", async ({ request, params }) => {
+    const username = usernameFromAuthHeader(
+      request.headers.get("Authorization"),
+    );
+    if (!username) {
+      return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
+    }
+    const body = (await request.json()) as {
+      name?: unknown;
+      color?: unknown;
+      icon?: unknown;
+    };
+    const name = validateName(body.name);
+    if (typeof name !== "string") {
+      return fail(1001, "Dữ liệu không hợp lệ.", 400, {
+        name: ["Tên danh mục không được để trống."],
+      });
+    }
+    const color = typeof body.color === "string" ? body.color : "";
+    if (!HEX_COLOR.test(color)) {
+      return fail(1001, "Dữ liệu không hợp lệ.", 400, {
+        color: ["Màu phải có dạng #RRGGBB."],
+      });
+    }
+    const icon = typeof body.icon === "string" && body.icon ? body.icon : null;
+    const list = getCategories(username);
+    const category = list.find((c) => c.uuid === params.uuid && !c.isDeleted);
+    if (!category) {
+      return fail(4000, "Không tìm thấy danh mục.", 404);
+    }
+    const dup = list.find(
+      (c) =>
+        c.uuid !== category.uuid &&
+        !c.isDeleted &&
+        c.name.localeCompare(name, "vi", { sensitivity: "accent" }) === 0,
+    );
+    if (dup) {
+      return fail(4001, "Tên danh mục đã tồn tại.", 400);
+    }
+    category.name = name;
+    category.color = color;
+    category.icon = icon;
+    return ok(categoryResponse(category));
+  }),
+
+  http.delete("*/api/v1/categories/:uuid", ({ request, params }) => {
+    const username = usernameFromAuthHeader(
+      request.headers.get("Authorization"),
+    );
+    if (!username) {
+      return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
+    }
+    const category = getCategories(username).find(
+      (c) => c.uuid === params.uuid && !c.isDeleted,
+    );
+    if (!category) {
+      return fail(4000, "Không tìm thấy danh mục.", 404);
+    }
+    if (category.isDefault) {
+      return fail(4002, "Không thể xóa danh mục mặc định.", 400);
+    }
+    category.isDeleted = true;
+    return ok({ message: "Đã xóa danh mục." });
+  }),
+
+  // --- Tags ---------------------------------------------------------------
+  http.get("*/api/v1/tags", ({ request }) => {
+    const username = usernameFromAuthHeader(
+      request.headers.get("Authorization"),
+    );
+    if (!username) {
+      return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
+    }
+    const includeDeleted =
+      new URL(request.url).searchParams.get("includeDeleted") === "true";
+    const list = getTags(username).filter((tag) => includeDeleted || !tag.isDeleted);
+    return ok(sortTags(list).map(tagResponse));
+  }),
+
+  http.post("*/api/v1/tags", async ({ request }) => {
+    const username = usernameFromAuthHeader(
+      request.headers.get("Authorization"),
+    );
+    if (!username) {
+      return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
+    }
+    const body = (await request.json()) as { name?: unknown };
+    const name = validateName(body.name);
+    if (typeof name !== "string") {
+      return fail(1001, "Dữ liệu không hợp lệ.", 400, {
+        name: ["Tên nhãn không được để trống."],
+      });
+    }
+    const list = getTags(username);
+    // Reactivation: a name matching a soft-deleted tag revives it (keeps uuid +
+    // history); returns 200.
+    const deletedMatch = list.find(
+      (tag) => tag.isDeleted && tag.name.localeCompare(name, "vi", { sensitivity: "accent" }) === 0,
+    );
+    if (deletedMatch) {
+      deletedMatch.isDeleted = false;
+      deletedMatch.name = name;
+      return ok(tagResponse(deletedMatch));
+    }
+    const activeDup = list.find(
+      (tag) => !tag.isDeleted && tag.name.localeCompare(name, "vi", { sensitivity: "accent" }) === 0,
+    );
+    if (activeDup) {
+      return fail(5001, "Tên nhãn đã tồn tại.", 400);
+    }
+    const record: TagRecord = {
+      uuid: `t-${rand()}`,
+      name,
+      isDeleted: false,
+      createdAt: new Date().toISOString(),
+    };
+    list.push(record);
+    return ok(tagResponse(record));
+  }),
+
+  http.put("*/api/v1/tags/:uuid", async ({ request, params }) => {
+    const username = usernameFromAuthHeader(
+      request.headers.get("Authorization"),
+    );
+    if (!username) {
+      return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
+    }
+    const body = (await request.json()) as { name?: unknown };
+    const name = validateName(body.name);
+    if (typeof name !== "string") {
+      return fail(1001, "Dữ liệu không hợp lệ.", 400, {
+        name: ["Tên nhãn không được để trống."],
+      });
+    }
+    const list = getTags(username);
+    const tag = list.find((tg) => tg.uuid === params.uuid && !tg.isDeleted);
+    if (!tag) {
+      return fail(5000, "Không tìm thấy nhãn.", 404);
+    }
+    const dup = list.find(
+      (tg) =>
+        tg.uuid !== tag.uuid &&
+        !tg.isDeleted &&
+        tg.name.localeCompare(name, "vi", { sensitivity: "accent" }) === 0,
+    );
+    if (dup) {
+      return fail(5001, "Tên nhãn đã tồn tại.", 400);
+    }
+    tag.name = name;
+    return ok(tagResponse(tag));
+  }),
+
+  http.delete("*/api/v1/tags/:uuid", ({ request, params }) => {
+    const username = usernameFromAuthHeader(
+      request.headers.get("Authorization"),
+    );
+    if (!username) {
+      return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
+    }
+    const tag = getTags(username).find(
+      (tg) => tg.uuid === params.uuid && !tg.isDeleted,
+    );
+    if (!tag) {
+      return fail(5000, "Không tìm thấy nhãn.", 404);
+    }
+    tag.isDeleted = true;
+    return ok({ message: "Đã xóa nhãn." });
   }),
 ];

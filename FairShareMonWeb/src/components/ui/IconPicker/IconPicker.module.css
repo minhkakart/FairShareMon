@@ -1,0 +1,75 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-2);
+}
+
+.label {
+  font-size: var(--fs-text-sm);
+  font-weight: var(--fs-weight-medium);
+  color: var(--fs-color-text);
+  line-height: var(--fs-leading-snug);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(2.5rem, 1fr));
+  gap: var(--fs-space-2);
+  max-width: 24rem;
+}
+
+.option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 1px solid var(--fs-color-border);
+  border-radius: var(--fs-radius-md);
+  background-color: var(--fs-color-surface-sunken);
+  cursor: pointer;
+  transition:
+    background-color var(--fs-duration-fast) var(--fs-ease-standard),
+    border-color var(--fs-duration-fast) var(--fs-ease-standard),
+    box-shadow var(--fs-duration-fast) var(--fs-ease-standard);
+}
+
+.option:hover {
+  background-color: var(--fs-color-surface-hover);
+  border-color: var(--fs-color-border-strong);
+}
+
+/* Selection: tinted fill + jade border + halo. The ring/tint is reinforced by
+   aria-checked; not conveyed by color alone. */
+.optionSelected {
+  background-color: var(--fs-color-primary-subtle);
+  border-color: var(--fs-color-primary);
+  box-shadow: 0 0 0 1px var(--fs-color-primary);
+}
+
+.glyph {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+/* The "no icon" option reads as an action, not an emoji. */
+.clear {
+  color: var(--fs-color-text-secondary);
+}
+.clear.optionSelected {
+  color: var(--fs-color-primary);
+}
+.clearIcon {
+  display: inline-flex;
+}
+.clearIcon svg {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.error {
+  font-size: var(--fs-text-sm);
+  line-height: var(--fs-leading-snug);
+  color: var(--fs-color-danger-text);
+  font-weight: var(--fs-weight-medium);
+}

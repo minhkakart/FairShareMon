@@ -27,6 +27,19 @@
   border-bottom: 1px solid var(--fs-color-border-subtle);
 }
 
+.setDefaultBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fs-space-1);
+}
+.setDefaultIcon {
+  display: inline-flex;
+}
+.setDefaultIcon svg {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+
 .note {
   font-size: var(--fs-text-sm);
   color: var(--fs-color-text-secondary);

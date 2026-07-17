@@ -1,0 +1,184 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-2);
+}
+
+.label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fs-space-1);
+  font-size: var(--fs-text-sm);
+  font-weight: var(--fs-weight-medium);
+  color: var(--fs-color-text);
+  line-height: var(--fs-leading-snug);
+}
+
+.required {
+  color: var(--fs-color-danger-text);
+  font-weight: var(--fs-weight-bold);
+}
+
+/* == Swatch radiogroup ===================================================== */
+.swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--fs-space-2);
+}
+
+.swatch {
+  position: relative;
+  width: 1.875rem;
+  height: 1.875rem;
+  padding: 0;
+  border: none;
+  border-radius: var(--fs-radius-md);
+  background: var(--swatch-color);
+  cursor: pointer;
+  /* A hairline scrim keeps very light swatches distinct from the surface. */
+  box-shadow: inset 0 0 0 1px rgba(19, 24, 22, 0.12);
+  transition:
+    transform var(--fs-duration-fast) var(--fs-ease-standard),
+    box-shadow var(--fs-duration-fast) var(--fs-ease-standard);
+}
+
+.swatch:hover {
+  transform: translateY(-1px);
+}
+
+/* Selection halo: surface gap + jade ring. Drawn OUTSIDE the swatch so the cue
+   is a shape change, never dependent on the swatch color contrasting a ring. */
+.swatchSelected {
+  box-shadow:
+    inset 0 0 0 1px rgba(19, 24, 22, 0.12),
+    0 0 0 2px var(--fs-color-surface),
+    0 0 0 4px var(--fs-color-primary);
+}
+
+/* Corner check on a surface disc — always legible over any swatch color. */
+.check {
+  position: absolute;
+  right: -0.3rem;
+  bottom: -0.3rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  border-radius: var(--fs-radius-full);
+  background: var(--fs-color-surface);
+  color: var(--fs-color-primary);
+  box-shadow: var(--fs-shadow-xs);
+}
+.check svg {
+  width: 0.72rem;
+  height: 0.72rem;
+}
+
+/* == Custom hex path ======================================================= */
+.custom {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--fs-space-3);
+  flex-wrap: wrap;
+}
+
+/* Native color input, visually presented as a swatch button. The real control
+   sits on top at zero opacity so the OS picker still opens on click/keyboard. */
+.customPreview {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--fs-radius-md);
+  cursor: pointer;
+}
+
+.previewSwatch {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--fs-radius-md);
+  background: var(--swatch-color);
+  border: 1px solid var(--fs-color-border);
+  box-shadow: inset 0 0 0 1px rgba(19, 24, 22, 0.08);
+}
+
+.nativeInput {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  opacity: 0;
+  cursor: pointer;
+}
+/* Keep the visible focus ring on the swatch wrapper when the hidden input is
+   keyboard-focused. */
+.nativeInput:focus-visible + * {
+  outline: none;
+}
+.customPreview:focus-within .previewSwatch {
+  outline: 2px solid var(--fs-color-focus);
+  outline-offset: 2px;
+}
+
+.hexField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-1);
+  min-width: 8.5rem;
+}
+
+.hexLabel {
+  font-size: var(--fs-text-xs);
+  font-weight: var(--fs-weight-medium);
+  color: var(--fs-color-text-secondary);
+}
+
+.hexInput {
+  height: 2.5rem;
+  padding-inline: var(--fs-space-3);
+  background-color: var(--fs-color-surface-sunken);
+  border: 1px solid var(--fs-color-border);
+  border-radius: var(--fs-radius-md);
+  color: var(--fs-color-text);
+  font-family: var(--fs-font-mono);
+  font-size: var(--fs-text-sm);
+  text-transform: uppercase;
+  transition:
+    border-color var(--fs-duration-fast) var(--fs-ease-standard),
+    box-shadow var(--fs-duration-fast) var(--fs-ease-standard);
+}
+
+.hexInput::placeholder {
+  color: var(--fs-color-text-muted);
+  text-transform: none;
+}
+
+.hexInput:hover {
+  border-color: var(--fs-color-border-strong);
+}
+
+.hexInput:focus-visible {
+  outline: none;
+  border-color: var(--fs-color-focus);
+  box-shadow: var(--fs-shadow-focus);
+}
+
+.hexInvalid {
+  border-color: var(--fs-color-danger);
+}
+.hexInvalid:focus-visible {
+  border-color: var(--fs-color-danger);
+  box-shadow: 0 0 0 3px var(--fs-color-danger-surface);
+}
+
+.error {
+  font-size: var(--fs-text-sm);
+  line-height: var(--fs-leading-snug);
+  color: var(--fs-color-danger-text);
+  font-weight: var(--fs-weight-medium);
+}

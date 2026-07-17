@@ -27,7 +27,10 @@ export const ErrorCodes = {
   MemberNotFound: 3000,
   OwnerRepresentativeNotDeletable: 3001,
   CategoryNotFound: 4000,
+  CategoryNameDuplicate: 4001,
+  DefaultCategoryNotDeletable: 4002,
   TagNotFound: 5000,
+  TagNameDuplicate: 5001,
   ExpenseNotFound: 6000,
   ShareNotFound: 7000,
 

@@ -9,6 +9,8 @@ export const APP_NAMESPACES = [
   "validation",
   "settings",
   "members",
+  "categories",
+  "tags",
 ] as const;
 
 /**

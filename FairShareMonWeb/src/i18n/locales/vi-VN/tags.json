@@ -1,0 +1,50 @@
+{
+  "title": "Nhãn",
+  "subtitle": "Quản lý các nhãn để gắn vào phiếu chi tiêu và lọc dữ liệu.",
+  "add": "Thêm nhãn",
+  "showDeleted": "Hiện nhãn đã xóa",
+  "table": {
+    "caption": "Danh sách nhãn",
+    "tag": "Nhãn",
+    "status": "Trạng thái",
+    "actions": "Hành động"
+  },
+  "badge": {
+    "deleted": "Đã xóa"
+  },
+  "actions": {
+    "rename": "Đổi tên",
+    "delete": "Xóa",
+    "renameNamed": "Đổi tên {{name}}",
+    "deleteNamed": "Xóa {{name}}"
+  },
+  "form": {
+    "createTitle": "Thêm nhãn",
+    "renameTitle": "Đổi tên nhãn",
+    "nameLabel": "Tên nhãn",
+    "namePlaceholder": "Ví dụ: Công tác",
+    "reactivateHint": "Nếu trùng tên một nhãn đã xóa, nhãn đó sẽ được khôi phục.",
+    "submitCreate": "Thêm",
+    "submitRename": "Lưu",
+    "cancel": "Hủy"
+  },
+  "delete": {
+    "title": "Xóa {{name}}?",
+    "body": "Nhãn sẽ không còn xuất hiện khi tạo dữ liệu mới, nhưng toàn bộ dữ liệu lịch sử vẫn được giữ nguyên. Bạn có thể xem lại nhãn đã xóa bằng cách bật \"Hiện nhãn đã xóa\".",
+    "confirmButton": "Xóa nhãn",
+    "cancel": "Hủy"
+  },
+  "toast": {
+    "created": "Đã thêm nhãn.",
+    "renamed": "Đã cập nhật tên nhãn.",
+    "deleted": "Đã xóa nhãn."
+  },
+  "empty": {
+    "title": "Chưa có nhãn nào",
+    "body": "Bạn chưa tạo nhãn nào. Thêm nhãn để phân loại các phiếu chi tiêu."
+  },
+  "error": {
+    "title": "Không tải được danh sách nhãn",
+    "retry": "Thử lại"
+  }
+}

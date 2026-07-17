@@ -1,0 +1,50 @@
+{
+  "title": "Tags",
+  "subtitle": "Manage tags to attach to expenses and filter your data.",
+  "add": "Add tag",
+  "showDeleted": "Show deleted tags",
+  "table": {
+    "caption": "Tags list",
+    "tag": "Tag",
+    "status": "Status",
+    "actions": "Actions"
+  },
+  "badge": {
+    "deleted": "Deleted"
+  },
+  "actions": {
+    "rename": "Rename",
+    "delete": "Delete",
+    "renameNamed": "Rename {{name}}",
+    "deleteNamed": "Delete {{name}}"
+  },
+  "form": {
+    "createTitle": "Add tag",
+    "renameTitle": "Rename tag",
+    "nameLabel": "Tag name",
+    "namePlaceholder": "e.g. Business trip",
+    "reactivateHint": "If the name matches a deleted tag, that tag will be restored.",
+    "submitCreate": "Add",
+    "submitRename": "Save",
+    "cancel": "Cancel"
+  },
+  "delete": {
+    "title": "Delete {{name}}?",
+    "body": "This tag will no longer appear when creating new data, but all historical data is preserved. You can review deleted tags by turning on \"Show deleted tags\".",
+    "confirmButton": "Delete tag",
+    "cancel": "Cancel"
+  },
+  "toast": {
+    "created": "Tag added.",
+    "renamed": "Tag name updated.",
+    "deleted": "Tag deleted."
+  },
+  "empty": {
+    "title": "No tags yet",
+    "body": "You haven't created any tags. Add a tag to classify your expenses."
+  },
+  "error": {
+    "title": "Couldn't load the tags list",
+    "retry": "Try again"
+  }
+}

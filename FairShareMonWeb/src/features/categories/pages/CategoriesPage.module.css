@@ -1,0 +1,23 @@
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--fs-space-3);
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fs-space-2);
+  cursor: pointer;
+  color: var(--fs-color-text);
+  font-size: var(--fs-text-sm);
+}
+
+.toggle input {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--fs-color-accent);
+  cursor: pointer;
+}

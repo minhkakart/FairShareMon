@@ -1,0 +1,62 @@
+{
+  "title": "Categories",
+  "subtitle": "Manage your expense categories — each has a color and icon for classification and charts.",
+  "add": "Add category",
+  "showDeleted": "Show deleted categories",
+  "table": {
+    "caption": "Categories list",
+    "category": "Category",
+    "status": "Status",
+    "actions": "Actions"
+  },
+  "badge": {
+    "default": "Default",
+    "deleted": "Deleted"
+  },
+  "default": {
+    "notDeletable": "The default category cannot be deleted."
+  },
+  "actions": {
+    "edit": "Edit",
+    "setDefault": "Set default",
+    "delete": "Delete",
+    "editNamed": "Edit {{name}}",
+    "setDefaultNamed": "Set {{name}} as default",
+    "deleteNamed": "Delete {{name}}"
+  },
+  "form": {
+    "createTitle": "Add category",
+    "editTitle": "Edit category",
+    "nameLabel": "Category name",
+    "namePlaceholder": "e.g. Food & drink",
+    "colorLabel": "Color",
+    "colorHexLabel": "Custom hex color (#RRGGBB)",
+    "colorInvalidHex": "Color must be in #RRGGBB format.",
+    "iconLabel": "Icon",
+    "iconNone": "None",
+    "reactivateHint": "If the name matches a deleted category, that category will be restored.",
+    "submitCreate": "Add",
+    "submitEdit": "Save",
+    "cancel": "Cancel"
+  },
+  "delete": {
+    "title": "Delete {{name}}?",
+    "body": "This category will no longer appear when creating new data, but all historical data is preserved. You can review deleted categories by turning on \"Show deleted categories\".",
+    "confirmButton": "Delete category",
+    "cancel": "Cancel"
+  },
+  "toast": {
+    "created": "Category added.",
+    "updated": "Category updated.",
+    "deleted": "Category deleted.",
+    "defaultSet": "Default category set."
+  },
+  "empty": {
+    "title": "No categories yet",
+    "body": "The categories list is currently empty."
+  },
+  "error": {
+    "title": "Couldn't load the categories list",
+    "retry": "Try again"
+  }
+}

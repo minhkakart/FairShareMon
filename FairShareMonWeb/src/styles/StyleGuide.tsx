@@ -8,6 +8,8 @@ import {
   Card,
   CardBody,
   CardHeader,
+  CategoryMarker,
+  ColorPicker,
   Dialog,
   DialogContent,
   DialogFooter,
@@ -19,6 +21,7 @@ import {
   Form,
   FormActions,
   FormError,
+  IconPicker,
   LanguageToggle,
   LimitNotice,
   Money,
@@ -548,6 +551,18 @@ export function StyleGuide() {
           </Dialog>
         </Section>
 
+        {/* M3 — CATEGORY PICKERS & MARKER */}
+        <Section title="Danh mục — bảng màu, bảng biểu tượng & thẻ (M3)">
+          <p className={styles.note}>
+            Biểu tượng danh mục là emoji, backend lưu thẳng glyph (🍜 🚗 …).{" "}
+            <code>IconPicker</code> chọn emoji, <code>ColorPicker</code> chọn hex
+            (bảng màu + hex tùy chỉnh), <code>CategoryMarker</code> ghép ô màu +
+            emoji + tên. Màu không bao giờ là tín hiệu duy nhất — luôn kèm emoji
+            và tên; danh mục mặc định có sao + badge chữ "Mặc định".
+          </p>
+          <CategoryPickersDemo />
+        </Section>
+
         <Section title="Bố cục xác thực (auth)">
           <div className={styles.authPreview}>
             <AuthLayout
@@ -611,6 +626,193 @@ function Swatch({
   );
 }
 
+/**
+ * M3 showcase — the category pickers wired to local state, a live marker
+ * preview, and the categories-list treatment (markers, default star + badge,
+ * set-default affordance, soft-deleted read-only row). This mirrors the shape
+ * the web-implementer will build; the design layer owns only the primitives.
+ */
+function CategoryPickersDemo() {
+  const [color, setColor] = useState("#F97316");
+  const [icon, setIcon] = useState<string | null>("🍜");
+
+  return (
+    <div className={styles.stack}>
+      <div className={styles.twoCol}>
+        <Card>
+          <CardHeader title="ColorPicker" />
+          <CardBody>
+            <ColorPicker
+              value={color}
+              onChange={setColor}
+              label="Màu danh mục"
+              hexLabel="Mã màu"
+              invalidHexMessage="Mã màu phải có dạng #RRGGBB."
+              required
+            />
+          </CardBody>
+        </Card>
+        <Card>
+          <CardHeader title="IconPicker" />
+          <CardBody>
+            <IconPicker
+              value={icon}
+              onChange={setIcon}
+              label="Biểu tượng (tùy chọn)"
+              noIconLabel="Không có biểu tượng"
+            />
+          </CardBody>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader title="Xem trước CategoryMarker" />
+        <CardBody>
+          <div className={styles.row}>
+            <CategoryMarker
+              color={color}
+              icon={icon}
+              name="Danh mục xem trước"
+              showLabel
+            />
+            <CategoryMarker color={color} icon={icon} name="Chỉ biểu tượng" />
+            <CategoryMarker color={color} icon={icon} name="Nhỏ" size="sm" />
+            <CategoryMarker
+              color={color}
+              icon={icon}
+              name="Danh mục mặc định"
+              showLabel
+              isDefault
+              defaultLabel="mặc định"
+            />
+          </div>
+        </CardBody>
+      </Card>
+
+      <Table caption="Danh mục (ví dụ)" captionHidden>
+        <TableHead>
+          <TableRow>
+            <TableHeaderCell scope="col">Danh mục</TableHeaderCell>
+            <TableHeaderCell scope="col">Trạng thái</TableHeaderCell>
+            <TableHeaderCell scope="col">
+              <span className={styles.srOnly}>Hành động</span>
+            </TableHeaderCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {/* Default category: star marker + "Mặc định" badge; no set-default,
+              no delete — only edit. */}
+          <TableRow>
+            <TableHeaderCell scope="row">
+              <CategoryMarker
+                color="#F97316"
+                icon="🍜"
+                name="Ăn uống"
+                showLabel
+                isDefault
+                defaultLabel="mặc định"
+              />
+            </TableHeaderCell>
+            <TableCell>
+              <Badge tone="warning" icon={<Star />}>
+                Mặc định
+              </Badge>
+            </TableCell>
+            <TableCell actions>
+              <Button variant="ghost" size="sm" aria-label="Sửa Ăn uống">
+                Sửa
+              </Button>
+            </TableCell>
+          </TableRow>
+          {/* Normal categories: edit + set-default + delete. */}
+          <TableRow>
+            <TableHeaderCell scope="row">
+              <CategoryMarker
+                color="#3B82F6"
+                icon="🚗"
+                name="Đi lại"
+                showLabel
+              />
+            </TableHeaderCell>
+            <TableCell>
+              <Badge tone="neutral">Đang dùng</Badge>
+            </TableCell>
+            <TableCell actions>
+              <Button variant="ghost" size="sm" aria-label="Sửa Đi lại">
+                Sửa
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-label="Đặt Đi lại làm mặc định"
+              >
+                <span className={styles.setDefaultBtn}>
+                  <span className={styles.setDefaultIcon} aria-hidden="true">
+                    <StarOutline />
+                  </span>
+                  Đặt mặc định
+                </span>
+              </Button>
+              <Button variant="ghost" size="sm" aria-label="Xóa Đi lại">
+                Xóa
+              </Button>
+            </TableCell>
+          </TableRow>
+          <TableRow>
+            <TableHeaderCell scope="row">
+              <CategoryMarker
+                color="#8B5CF6"
+                name="Khách sạn (không icon)"
+                showLabel
+              />
+            </TableHeaderCell>
+            <TableCell>
+              <Badge tone="neutral">Đang dùng</Badge>
+            </TableCell>
+            <TableCell actions>
+              <Button variant="ghost" size="sm" aria-label="Sửa Khách sạn">
+                Sửa
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-label="Đặt Khách sạn làm mặc định"
+              >
+                <span className={styles.setDefaultBtn}>
+                  <span className={styles.setDefaultIcon} aria-hidden="true">
+                    <StarOutline />
+                  </span>
+                  Đặt mặc định
+                </span>
+              </Button>
+              <Button variant="ghost" size="sm" aria-label="Xóa Khách sạn">
+                Xóa
+              </Button>
+            </TableCell>
+          </TableRow>
+          {/* Soft-deleted: muted, read-only, "Đã xóa" badge. */}
+          <TableRow deleted>
+            <TableHeaderCell scope="row">
+              <CategoryMarker
+                color="#EC4899"
+                icon="🛍️"
+                name="Mua sắm (cũ)"
+                showLabel
+              />
+            </TableHeaderCell>
+            <TableCell>
+              <Badge tone="neutral">Đã xóa</Badge>
+            </TableCell>
+            <TableCell actions>
+              <span className={styles.note}>—</span>
+            </TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
 /* Tiny inline glyphs for the showcase (feature icons live in feature code). */
 const Dot = () => (
   <svg
@@ -642,6 +844,20 @@ const Check = () => (
 const Star = () => (
   <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
     <path d="M10 2l2.4 5 5.6.6-4.2 3.8 1.2 5.6L10 14.8 5 17l1.2-5.6L2 7.6 7.6 7z" />
+  </svg>
+);
+const StarOutline = () => (
+  <svg
+    viewBox="0 0 20 20"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    aria-hidden="true"
+  >
+    <path
+      d="M10 2.6l2.15 4.5 4.95.55-3.7 3.35 1.05 4.9L10 13.9 5.5 16.3l1.05-4.9-3.7-3.35 4.95-.55z"
+      strokeLinejoin="round"
+    />
   </svg>
 );
 const Receipt = () => (

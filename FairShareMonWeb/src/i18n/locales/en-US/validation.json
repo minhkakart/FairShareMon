@@ -19,5 +19,15 @@
   "member": {
     "nameRequired": "Member name is required.",
     "nameTooLong": "Member name must not exceed 100 characters."
+  },
+  "category": {
+    "nameRequired": "Category name is required.",
+    "nameTooLong": "Category name must not exceed 100 characters.",
+    "colorInvalid": "Color must be in #RRGGBB format.",
+    "iconTooLong": "Icon must not exceed 50 characters."
+  },
+  "tag": {
+    "nameRequired": "Tag name is required.",
+    "nameTooLong": "Tag name must not exceed 100 characters."
   }
 }

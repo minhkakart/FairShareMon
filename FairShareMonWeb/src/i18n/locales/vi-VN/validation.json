@@ -19,5 +19,15 @@
   "member": {
     "nameRequired": "Tên thành viên không được để trống.",
     "nameTooLong": "Tên thành viên không được vượt quá 100 ký tự."
+  },
+  "category": {
+    "nameRequired": "Tên danh mục không được để trống.",
+    "nameTooLong": "Tên danh mục không được vượt quá 100 ký tự.",
+    "colorInvalid": "Màu phải có dạng #RRGGBB.",
+    "iconTooLong": "Biểu tượng không được vượt quá 50 ký tự."
+  },
+  "tag": {
+    "nameRequired": "Tên nhãn không được để trống.",
+    "nameTooLong": "Tên nhãn không được vượt quá 100 ký tự."
   }
 }
