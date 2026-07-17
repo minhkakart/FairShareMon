@@ -13,6 +13,11 @@
 **/dist/
 **/dist-ssr/
 
+# Environment / secret files — never version (keep *.example templates).
+**/.env
+**/.env.*
+!**/.env.example
+
 # IDE / editor / OS.
 .idea/
 .vs/
