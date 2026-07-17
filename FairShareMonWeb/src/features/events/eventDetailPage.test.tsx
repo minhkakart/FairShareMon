@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { Route, Routes } from "react-router-dom";
 import { http, HttpResponse } from "msw";
 import { server } from "@/test/msw/server";
@@ -260,6 +261,52 @@ describe("EventDetailPage closed-event immutability (R4)", () => {
     // …and the balance still renders (its member rows) for a closed event (OQ8a).
     expect(
       await screen.findByRole("rowheader", { name: /An Nguyễn/ }),
+    ).toBeInTheDocument();
+  });
+});
+
+describe("EventDetailPage settlement QR action (M7-MOD)", () => {
+  it("EventDetailPage_OpenEvent_HidesSettlementQrButton", async () => {
+    stubDetail(makeEvent());
+    renderDetail();
+    await screen.findByRole("heading", { level: 1, name: "Đà Lạt" });
+
+    // Closed-only: the settlement QR action is absent while the event is open
+    // (mirrors the backend 12002 closed-only rule; keeps the open-event UI clean).
+    expect(
+      screen.queryByRole("button", { name: "Xem mã QR quyết toán" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("EventDetailPage_ClosedEvent_ShowsSettlementQrButton", async () => {
+    stubDetail(
+      makeEvent({ isClosed: true, closedAt: "2026-07-20T10:00:00+00:00" }),
+      true,
+    );
+    renderDetail();
+    await screen.findByRole("heading", { level: 1, name: "Đà Lạt" });
+
+    expect(
+      screen.getByRole("button", { name: "Xem mã QR quyết toán" }),
+    ).toBeEnabled();
+  });
+
+  it("EventDetailPage_ClickSettlementQr_OpensTheQrDialog", async () => {
+    stubDetail(
+      makeEvent({ isClosed: true, closedAt: "2026-07-20T10:00:00+00:00" }),
+      true,
+    );
+    const user = userEvent.setup();
+    renderDetail();
+    await screen.findByRole("heading", { level: 1, name: "Đà Lạt" });
+
+    await user.click(
+      screen.getByRole("button", { name: "Xem mã QR quyết toán" }),
+    );
+
+    const dialog = await screen.findByRole("dialog");
+    expect(
+      within(dialog).getByRole("heading", { name: "Mã QR quyết toán" }),
     ).toBeInTheDocument();
   });
 });

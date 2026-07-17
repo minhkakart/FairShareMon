@@ -14,6 +14,7 @@ export const APP_NAMESPACES = [
   "expenses",
   "events",
   "stats",
+  "wallet",
 ] as const;
 
 /**

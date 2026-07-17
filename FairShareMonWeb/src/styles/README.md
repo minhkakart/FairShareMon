@@ -255,6 +255,51 @@ specs (thin marks ≤24px, 4px rounded data-end, ≥2px surface gaps), keep labe
 text tokens, and **re-run `scripts/validate_palette.js` if any `--fs-viz-*` hue
 changes**.
 
+## Wallet & QR (M7)
+
+Two net-new surfaces — see `src/styles/M7Showcase.tsx` for the reviewable spec
+(light + dark via `StyleGuide.tsx`). Per OQ5a they are **feature-local** patterns
+the web-implementer rebuilds under `src/features/wallet/components/` — they are
+NOT extracted to `components/ui` until a second consumer appears. Both reuse
+existing primitives (Dialog, Table, Select, UpgradePrompt, EmptyState/ErrorState,
+Alert, Badge, TierBadge, Money, Skeleton); no new tokens, no new dependency.
+
+- **QrDialog** — the one genuinely new composite. A modal showing a VietQR image
+  paired with a human-readable **account block** (bank · account number · holder
+  · amount) — the QR is decorative-plus, so the account block is the accessible
+  channel AND the source the **Copy details** action copies (holder + number, per
+  OQ4a — never the raw VietQR TLV string). Presentational: the implementer passes
+  a `state` discriminated union mapped from the query, an `imageUrl` (the object
+  URL it creates from the PNG `Blob` and **revokes on unmount / re-fetch**), and
+  the account/destination props. States: `loading` (a `Skeleton` sized to the QR
+  frame — zero layout shift) · `ready` (`<img>` + account block) · `premiumGate`
+  (the body **IS** an informational `UpgradePrompt` — Free proactive OR reactive
+  `403 13003`; no navigating action, Premium is a manual grant) · `noAccount`
+  (`12001` → `EmptyState` + a link to `/wallet`) · `noDebt` (`12003` → info
+  `Alert`) · `notClosed` (`12002` → warning `Alert`, defensive) · `error`
+  (`ErrorState` + retry). An optional destination `Select` shows only with **≥2**
+  accounts (OQ2a). Footer: **Download** (primary) + **Copy details**; the live
+  dialog always adds a **Close**. `kind` sets the QR frame aspect — `expense`
+  square (`1/1`), `event` composite taller (`3/4`). **The QR frame stays light in
+  both themes** (a fixed white ground + quiet-zone padding) — a QR must present
+  dark modules on a light ground to scan, so it does not invert in dark mode; the
+  `alt` text names it and points to the account block below.
+- **Wallet list** — the bank-account `Table`: bank name + **BIN** (mono), a
+  **masked account number** (`•••• 1234`) with a per-row **reveal toggle**
+  (`aria-pressed`, eye / eye-off glyph, labelled "Hiện/Ẩn số tài khoản …" — the
+  state is not color-alone; reveal is a Free-safe read of the user's own number),
+  holder, and a **default marker** (`Badge tone="settled"` + star glyph + text —
+  icon+text, never color alone). Account & BIN numbers wear `--fs-font-mono` +
+  `tabular-nums` (a bank number is a code; mono also keeps the reveal toggle from
+  shifting when masked ↔ full). The **Free/Premium split** (OQ1a hybrid, proactive
+  by session tier): a **Premium** user sees the "Thêm tài khoản" action + a per-row
+  actions column (**Set default** on non-default rows, **Edit**, **Delete**); a
+  **Free** user sees an informational `UpgradePrompt` banner above a **read-only**
+  table (no actions column). Empty states double as the tier explainer — Free =
+  "Ví là tính năng Premium", Premium = "add your first account". A stale-tier
+  `403 13003` on any mutation is caught reactively and rendered as the same
+  `UpgradePrompt` (the server is authoritative).
+
 ## App shell & page layout
 
 - **Responsive nav (`AppShell`):** mobile-first. Below **64rem** the inline nav

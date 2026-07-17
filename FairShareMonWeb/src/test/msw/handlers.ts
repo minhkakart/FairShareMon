@@ -647,6 +647,153 @@ function computeBalance(username: string, ev: EventRecord) {
   };
 }
 
+// --- Bank accounts + QR store (mock backend, M7) --------------------------
+interface BankAccountRecord {
+  uuid: string;
+  bankBin: string;
+  bankName: string;
+  accountNumber: string;
+  accountHolderName: string;
+  isDefault: boolean;
+  createdAt: string;
+}
+
+const BANK_BIN_RE = /^\d{6}$/;
+const ACCOUNT_NUMBER_RE = /^\d{6,19}$/;
+
+// username → their bank accounts. Seeded lazily (both demo (Free, downgraded) and
+// admin (Premium) get accounts so the read-only + managed splits are demoable).
+const bankAccountsByUser = new Map<string, BankAccountRecord[]>();
+
+function seedBankAccounts(): BankAccountRecord[] {
+  const base = Date.parse("2026-01-01T00:00:00.000Z");
+  return [
+    {
+      uuid: `ba-${rand()}`,
+      bankBin: "970436",
+      bankName: "Vietcombank",
+      accountNumber: "0071001234567",
+      accountHolderName: "NGUYEN VAN MINH",
+      isDefault: true,
+      createdAt: new Date(base).toISOString(),
+    },
+    {
+      uuid: `ba-${rand()}`,
+      bankBin: "970407",
+      bankName: "Techcombank",
+      accountNumber: "19024681012345",
+      accountHolderName: "NGUYEN VAN MINH",
+      isDefault: false,
+      createdAt: new Date(base + 1000).toISOString(),
+    },
+  ];
+}
+
+function getBankAccounts(username: string): BankAccountRecord[] {
+  let list = bankAccountsByUser.get(username);
+  if (!list) {
+    list = seedBankAccounts();
+    bankAccountsByUser.set(username, list);
+  }
+  return list;
+}
+
+/** Default first, then most-recently-added — matches the backend order. */
+function sortBankAccounts(list: BankAccountRecord[]): BankAccountRecord[] {
+  return [...list].sort((a, b) => {
+    if (a.isDefault !== b.isDefault) return a.isDefault ? -1 : 1;
+    return a.createdAt < b.createdAt ? 1 : -1;
+  });
+}
+
+function bankAccountResponse(r: BankAccountRecord) {
+  return {
+    uuid: r.uuid,
+    bankBin: r.bankBin,
+    bankName: r.bankName,
+    accountNumber: r.accountNumber,
+    accountHolderName: r.accountHolderName,
+    isDefault: r.isDefault,
+    createdAt: r.createdAt,
+  };
+}
+
+function isPremiumUser(username: string): boolean {
+  return (profiles.get(username)?.tier ?? "FREE").toUpperCase() === "PREMIUM";
+}
+
+/**
+ * Test-only: register (or upgrade) a user's profile so the Premium-gated wallet +
+ * QR handlers (`isPremiumUser`) treat them as the given tier. Additive — the
+ * browser-mock `demo`/`admin` users are untouched. The M7 wallet specs seed a
+ * fresh username per test (store isolation) and call this to exercise the REAL
+ * committed mutation handlers (atomic default-swap, delete-promotion, validation).
+ */
+export function registerTestProfile(username: string, tier = "PREMIUM"): void {
+  profiles.set(username, {
+    uuid: `uuid-${username}`,
+    tier,
+    role: "USER",
+    createdAt: "2026-01-01T00:00:00+00:00",
+  });
+}
+
+/** The shared Premium-gate failure (403 13003) used by wallet mutations + QR. */
+function premiumGate() {
+  return fail(
+    13003,
+    "Tính năng này chỉ dành cho tài khoản Premium. Nâng cấp để sử dụng.",
+    403,
+  );
+}
+
+/** Validate a bank-account body the way the backend validator does. */
+function validateBankAccount(body: {
+  bankBin?: unknown;
+  bankName?: unknown;
+  accountNumber?: unknown;
+  accountHolderName?: unknown;
+}): Record<string, string[]> | null {
+  const bankBin = typeof body.bankBin === "string" ? body.bankBin.trim() : "";
+  const bankName = typeof body.bankName === "string" ? body.bankName.trim() : "";
+  const accountNumber =
+    typeof body.accountNumber === "string" ? body.accountNumber.trim() : "";
+  const holder =
+    typeof body.accountHolderName === "string"
+      ? body.accountHolderName.trim()
+      : "";
+  if (!BANK_BIN_RE.test(bankBin)) {
+    return { bankBin: ["BIN gồm đúng 6 chữ số."] };
+  }
+  if (bankName.length === 0 || bankName.length > 100) {
+    return { bankName: ["Tên ngân hàng không được để trống."] };
+  }
+  if (!ACCOUNT_NUMBER_RE.test(accountNumber)) {
+    return { accountNumber: ["Số tài khoản gồm 6–19 chữ số."] };
+  }
+  if (holder.length === 0 || holder.length > 100) {
+    return { accountHolderName: ["Tên chủ tài khoản không được để trống."] };
+  }
+  return null;
+}
+
+/** A tiny 1×1 PNG so the QR blob path (fetch → object URL → <img> → download) is
+ *  exercisable end-to-end without a real image generator. */
+const PNG_1x1_BASE64 =
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HBwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+
+function pngResponse(name: string) {
+  const binary = atob(PNG_1x1_BASE64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  return new HttpResponse(bytes, {
+    headers: {
+      "Content-Type": "image/png",
+      "Content-Disposition": `attachment; filename="${name}"`,
+    },
+  });
+}
+
 function issueTokens(username: string) {
   const now = Date.now();
   const refreshToken = `refresh-${username}-${now}-${rand()}`;
@@ -1866,5 +2013,147 @@ export const handlers = [
       to: eventUuid ? null : (to ?? null),
       rows,
     });
+  }),
+
+  // --- Bank accounts (M7) — reads Free, mutations Premium (403 13003) ------
+  http.get("*/api/v1/bank-accounts", ({ request }) => {
+    const username = usernameFromAuthHeader(
+      request.headers.get("Authorization"),
+    );
+    if (!username) {
+      return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
+    }
+    return ok(sortBankAccounts(getBankAccounts(username)).map(bankAccountResponse));
+  }),
+
+  http.post("*/api/v1/bank-accounts", async ({ request }) => {
+    const username = usernameFromAuthHeader(
+      request.headers.get("Authorization"),
+    );
+    if (!username) {
+      return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
+    }
+    if (!isPremiumUser(username)) return premiumGate();
+    const body = (await request.json()) as Record<string, unknown>;
+    const fields = validateBankAccount(body);
+    if (fields) return fail(1001, "Dữ liệu không hợp lệ.", 400, fields);
+    const list = getBankAccounts(username);
+    const record: BankAccountRecord = {
+      uuid: `ba-${rand()}`,
+      bankBin: String(body.bankBin).trim(),
+      bankName: String(body.bankName).trim(),
+      accountNumber: String(body.accountNumber).trim(),
+      accountHolderName: String(body.accountHolderName).trim(),
+      isDefault: list.length === 0, // first account auto-default
+      createdAt: new Date().toISOString(),
+    };
+    list.push(record);
+    return ok(bankAccountResponse(record));
+  }),
+
+  http.put("*/api/v1/bank-accounts/:uuid/default", ({ request, params }) => {
+    const username = usernameFromAuthHeader(
+      request.headers.get("Authorization"),
+    );
+    if (!username) {
+      return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
+    }
+    if (!isPremiumUser(username)) return premiumGate();
+    const list = getBankAccounts(username);
+    const target = list.find((a) => a.uuid === params.uuid);
+    if (!target) return fail(12000, "Không tìm thấy tài khoản ngân hàng.", 404);
+    for (const a of list) a.isDefault = false;
+    target.isDefault = true;
+    return ok({ message: "Đã đặt tài khoản ngân hàng mặc định." });
+  }),
+
+  http.put("*/api/v1/bank-accounts/:uuid", async ({ request, params }) => {
+    const username = usernameFromAuthHeader(
+      request.headers.get("Authorization"),
+    );
+    if (!username) {
+      return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
+    }
+    if (!isPremiumUser(username)) return premiumGate();
+    const account = getBankAccounts(username).find((a) => a.uuid === params.uuid);
+    if (!account) return fail(12000, "Không tìm thấy tài khoản ngân hàng.", 404);
+    const body = (await request.json()) as Record<string, unknown>;
+    const fields = validateBankAccount(body);
+    if (fields) return fail(1001, "Dữ liệu không hợp lệ.", 400, fields);
+    account.bankBin = String(body.bankBin).trim();
+    account.bankName = String(body.bankName).trim();
+    account.accountNumber = String(body.accountNumber).trim();
+    account.accountHolderName = String(body.accountHolderName).trim();
+    return ok(bankAccountResponse(account));
+  }),
+
+  http.delete("*/api/v1/bank-accounts/:uuid", ({ request, params }) => {
+    const username = usernameFromAuthHeader(
+      request.headers.get("Authorization"),
+    );
+    if (!username) {
+      return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
+    }
+    if (!isPremiumUser(username)) return premiumGate();
+    const list = getBankAccounts(username);
+    const idx = list.findIndex((a) => a.uuid === params.uuid);
+    if (idx === -1) return fail(12000, "Không tìm thấy tài khoản ngân hàng.", 404);
+    const wasDefault = list[idx].isDefault;
+    list.splice(idx, 1);
+    // Delete-of-default promotes the most-recently-added remaining account.
+    if (wasDefault && list.length > 0) {
+      const newest = list.reduce((a, b) => (a.createdAt >= b.createdAt ? a : b));
+      newest.isDefault = true;
+    }
+    return ok({ message: "Đã xóa tài khoản ngân hàng." });
+  }),
+
+  // --- QR (M7) — both endpoints Premium (403 13003) -----------------------
+  http.get("*/api/v1/expenses/:uuid/qr", ({ request, params }) => {
+    const username = usernameFromAuthHeader(
+      request.headers.get("Authorization"),
+    );
+    if (!username) {
+      return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
+    }
+    if (!isPremiumUser(username)) return premiumGate();
+    const expense = getExpenses(username).find((e) => e.uuid === params.uuid);
+    if (!expense) return fail(6000, "Không tìm thấy phiếu chi tiêu.", 404);
+    const override = new URL(request.url).searchParams.get("bankAccountUuid");
+    const accounts = getBankAccounts(username);
+    if (accounts.length === 0) {
+      return fail(12001, "Chưa có tài khoản ngân hàng nhận tiền.", 400);
+    }
+    if (override && !accounts.some((a) => a.uuid === override)) {
+      return fail(12000, "Không tìm thấy tài khoản ngân hàng.", 404);
+    }
+    return pngResponse(`expense-qr-${expense.uuid}.png`);
+  }),
+
+  http.get("*/api/v1/events/:uuid/qr", ({ request, params }) => {
+    const username = usernameFromAuthHeader(
+      request.headers.get("Authorization"),
+    );
+    if (!username) {
+      return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
+    }
+    if (!isPremiumUser(username)) return premiumGate();
+    const ev = eventByUuid(username, String(params.uuid));
+    if (!ev) return fail(9000, "Không tìm thấy đợt chi tiêu.", 404);
+    if (!ev.isClosed) return fail(12002, "Đợt chưa được chốt.", 400);
+    const balance = computeBalance(username, ev);
+    const someoneOwes = balance.rows.some((r) => r.balance < 0);
+    if (!someoneOwes) {
+      return fail(12003, "Không còn ai nợ trong đợt này.", 400);
+    }
+    const override = new URL(request.url).searchParams.get("bankAccountUuid");
+    const accounts = getBankAccounts(username);
+    if (accounts.length === 0) {
+      return fail(12001, "Chưa có tài khoản ngân hàng nhận tiền.", 400);
+    }
+    if (override && !accounts.some((a) => a.uuid === override)) {
+      return fail(12000, "Không tìm thấy tài khoản ngân hàng.", 404);
+    }
+    return pngResponse(`event-qr-${ev.uuid}.png`);
   }),
 ];

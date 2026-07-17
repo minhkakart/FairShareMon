@@ -1,0 +1,13 @@
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: var(--fs-space-3);
+}
+
+/* Free read-only wallet: the info banner above the read-only table on one
+   vertical rhythm. */
+.walletStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-4);
+}

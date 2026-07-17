@@ -26,6 +26,8 @@ import { EventExpensesSection } from "../components/EventExpensesSection";
 import { EventFormDialog } from "../components/EventFormDialog";
 import { DeleteEventDialog } from "../components/DeleteEventDialog";
 import { CloseEventDialog } from "../components/CloseEventDialog";
+import { QrDialog } from "@/features/wallet/components/QrDialog";
+import { QrIcon } from "@/features/wallet/components/icons";
 import {
   DownloadIcon,
   LockIcon,
@@ -56,6 +58,7 @@ function DetailView({ event }: { event: EventResponse }) {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [closeOpen, setCloseOpen] = useState(false);
+  const [qrOpen, setQrOpen] = useState(false);
 
   const closed = event.isClosed;
 
@@ -102,6 +105,16 @@ function DetailView({ event }: { event: EventResponse }) {
           >
             {t("events:detail.export")}
           </Button>
+          {closed ? (
+            <Button
+              variant="secondary"
+              size="sm"
+              iconStart={<QrIcon />}
+              onClick={() => setQrOpen(true)}
+            >
+              {t("wallet:qr.showEvent")}
+            </Button>
+          ) : null}
           {!closed ? (
             <>
               <Button
@@ -180,6 +193,15 @@ function DetailView({ event }: { event: EventResponse }) {
         open={closeOpen}
         onOpenChange={setCloseOpen}
       />
+      {closed ? (
+        <QrDialog
+          open={qrOpen}
+          onOpenChange={setQrOpen}
+          kind="event"
+          targetUuid={event.uuid}
+          title={t("wallet:qr.eventTitle")}
+        />
+      ) : null}
     </Stack>
   );
 }

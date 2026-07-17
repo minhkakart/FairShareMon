@@ -31,6 +31,8 @@ import { ExpenseAuditSection } from "../components/ExpenseAuditSection";
 import { ExpenseEditDialog } from "../components/ExpenseEditDialog";
 import { DeleteExpenseDialog } from "../components/DeleteExpenseDialog";
 import { ExpenseEventControl } from "../components/ExpenseEventControl";
+import { QrDialog } from "@/features/wallet/components/QrDialog";
+import { QrIcon } from "@/features/wallet/components/icons";
 import {
   CheckIcon,
   ClockIcon,
@@ -62,6 +64,7 @@ function DetailView({ expense }: { expense: ExpenseResponse }) {
   const exportExpense = useExportExpense();
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [qrOpen, setQrOpen] = useState(false);
 
   // Pickers for the edit dialog (cache-warmed; only needed on edit).
   const membersQuery = useMembersQuery(false);
@@ -120,6 +123,14 @@ function DetailView({ expense }: { expense: ExpenseResponse }) {
             onClick={() => setEditOpen(true)}
           >
             {t("expenses:detail.edit")}
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            iconStart={<QrIcon />}
+            onClick={() => setQrOpen(true)}
+          >
+            {t("wallet:qr.showExpense")}
           </Button>
           <Button
             variant="secondary"
@@ -232,6 +243,14 @@ function DetailView({ expense }: { expense: ExpenseResponse }) {
         name={expense.name}
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
+      />
+      <QrDialog
+        open={qrOpen}
+        onOpenChange={setQrOpen}
+        kind="expense"
+        targetUuid={expense.uuid}
+        title={t("wallet:qr.expenseTitle")}
+        amount={expense.total}
       />
     </Stack>
   );

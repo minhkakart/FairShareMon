@@ -53,5 +53,15 @@
   },
   "stats": {
     "rangeInvalid": "“To” must be on or after “From”."
+  },
+  "bankAccount": {
+    "bankNameRequired": "Bank name is required.",
+    "bankNameTooLong": "Bank name must not exceed 100 characters.",
+    "binRequired": "Please enter the bank code (BIN).",
+    "binPattern": "The BIN must be exactly 6 digits.",
+    "accountNumberRequired": "Please enter the account number.",
+    "accountNumberInvalid": "The account number must be 6–19 digits.",
+    "holderRequired": "Account holder name is required.",
+    "holderTooLong": "Account holder name must not exceed 100 characters."
   }
 }

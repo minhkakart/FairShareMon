@@ -32,6 +32,19 @@ if (typeof globalThis.ResizeObserver === "undefined") {
   };
 }
 
+// Object-URL polyfills for the blob → image path (M7 QrDialog renders an <img>
+// sourced from `URL.createObjectURL(blob)` and revokes on unmount/refetch; the
+// download helper uses the same seam). jsdom implements neither. Additive + inert
+// (only defined when absent) — like the Radix polyfills above; tests that need to
+// count creates/revokes `vi.spyOn` these afterwards.
+let objectUrlSeq = 0;
+if (typeof URL.createObjectURL === "undefined") {
+  URL.createObjectURL = () => `blob:fsm-test/${(objectUrlSeq += 1)}`;
+}
+if (typeof URL.revokeObjectURL === "undefined") {
+  URL.revokeObjectURL = () => {};
+}
+
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
 afterEach(() => {
   cleanup();

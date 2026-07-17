@@ -5,7 +5,6 @@ import { ProtectedRoute } from "./ProtectedRoute";
 import { AdminRoute } from "./AdminRoute";
 import { AppShellLayout } from "./AppShellLayout";
 import { NotFound } from "./NotFound";
-import { StubPage } from "./StubPage";
 import { LoginPage } from "@/features/auth/pages/LoginPage";
 import { RegisterPage } from "@/features/auth/pages/RegisterPage";
 import { ChangePasswordPage } from "@/features/auth/pages/ChangePasswordPage";
@@ -20,6 +19,7 @@ import { ExpenseDetailPage } from "@/features/expenses/pages/ExpenseDetailPage";
 import { EventsPage } from "@/features/events/pages/EventsPage";
 import { EventDetailPage } from "@/features/events/pages/EventDetailPage";
 import { StatsPage } from "@/features/stats/pages/StatsPage";
+import { WalletPage } from "@/features/wallet/pages/WalletPage";
 import { AdminPage } from "@/features/admin/pages/AdminPage";
 
 export const router = createBrowserRouter([
@@ -68,7 +68,7 @@ export const router = createBrowserRouter([
               },
               {
                 path: "wallet",
-                element: <StubPage titleKey="common:nav.wallet" />,
+                element: <WalletPage />,
               },
               {
                 path: "settings",

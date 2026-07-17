@@ -1,0 +1,87 @@
+/* QrDialog — the VietQR image well + human-readable account block + destination
+   picker. Tokens only; light + dark come through the semantic tokens. The QR
+   image FRAME is a deliberate exception: it stays light in BOTH themes because a
+   QR must present dark modules on a light quiet-zone ground to scan — inverting
+   it in dark mode would break it. */
+
+.qrBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-4);
+  min-width: 0;
+}
+
+.destination {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-1);
+}
+
+/* The QR image well — a centered, fixed-aspect box. The aspect-ratio is set per
+   kind so the loading skeleton, the loaded image, and any placeholder occupy the
+   SAME footprint → zero layout shift as the state resolves. */
+.qrWell {
+  display: flex;
+  justify-content: center;
+}
+.qrFrame {
+  position: relative;
+  width: 100%;
+  max-width: 15rem; /* single VietQR — square */
+  background: #ffffff;
+  border: 1px solid var(--fs-color-border);
+  border-radius: var(--fs-radius-lg);
+  padding: var(--fs-space-3); /* quiet zone around the code */
+  overflow: hidden;
+}
+.qrFrame.expense {
+  aspect-ratio: 1 / 1;
+}
+/* The event composite QR is taller (a stacked settlement sheet). */
+.qrFrame.event {
+  aspect-ratio: 3 / 4;
+  max-width: 17rem;
+}
+.qrImage {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+/* Skeleton fills the exact frame footprint (over the light ground). */
+.qrSkeleton {
+  position: absolute;
+  inset: var(--fs-space-3);
+  border-radius: var(--fs-radius-sm);
+}
+
+/* The human-readable account block — the ACCESSIBLE channel paired with the
+   decorative QR image, and the source the "copy details" action copies. */
+.accountCard {
+  background-color: var(--fs-color-surface-sunken);
+  border: 1px solid var(--fs-color-border-subtle);
+  border-radius: var(--fs-radius-md);
+  padding: var(--fs-space-3) var(--fs-space-4);
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--fs-space-2) var(--fs-space-4);
+  align-items: baseline;
+}
+.accountTerm {
+  font-size: var(--fs-text-sm);
+  color: var(--fs-color-text-secondary);
+  white-space: nowrap;
+}
+.accountValue {
+  font-size: var(--fs-text-sm);
+  color: var(--fs-color-text);
+  font-weight: var(--fs-weight-medium);
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+/* Account numbers are codes → monospace + tabular so digits align. */
+.accountNumber {
+  font-family: var(--fs-font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}

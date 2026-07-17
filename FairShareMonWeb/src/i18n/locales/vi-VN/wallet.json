@@ -1,0 +1,108 @@
+{
+  "title": "Ví của tôi",
+  "subtitle": "Quản lý các tài khoản ngân hàng nhận tiền dùng để tạo mã QR chuyển khoản.",
+  "add": "Thêm tài khoản",
+  "tier": {
+    "free": "Free",
+    "premium": "Premium"
+  },
+  "table": {
+    "caption": "Tài khoản ngân hàng nhận tiền",
+    "bank": "Ngân hàng",
+    "accountNumber": "Số tài khoản",
+    "holder": "Chủ tài khoản",
+    "default": "Trạng thái",
+    "actions": "Hành động",
+    "bin": "BIN {{bin}}",
+    "reveal": "Hiện số tài khoản {{bank}}",
+    "hide": "Ẩn số tài khoản {{bank}}"
+  },
+  "badge": {
+    "default": "Mặc định"
+  },
+  "actions": {
+    "edit": "Sửa",
+    "editNamed": "Sửa {{bank}}",
+    "delete": "Xóa",
+    "deleteNamed": "Xóa {{bank}}"
+  },
+  "setDefault": {
+    "action": "Đặt mặc định",
+    "actionNamed": "Đặt {{bank}} làm mặc định",
+    "toast": "Đã đặt tài khoản mặc định."
+  },
+  "empty": {
+    "title": "Ví trống",
+    "body": "Ví (tài khoản nhận tiền & mã QR) là tính năng Premium. Premium được cấp thủ công bởi quản trị viên — hãy liên hệ người vận hành để mở khóa.",
+    "premiumTitle": "Chưa có tài khoản nào",
+    "premiumBody": "Thêm tài khoản ngân hàng đầu tiên để bắt đầu tạo mã QR chuyển khoản."
+  },
+  "error": {
+    "title": "Không tải được ví",
+    "retry": "Thử lại"
+  },
+  "form": {
+    "createTitle": "Thêm tài khoản ngân hàng",
+    "editTitle": "Sửa tài khoản ngân hàng",
+    "bankNameLabel": "Tên ngân hàng",
+    "bankNamePlaceholder": "Ví dụ: Vietcombank",
+    "binLabel": "Mã ngân hàng (BIN)",
+    "binPlaceholder": "Ví dụ: 970436",
+    "binHint": "Mã NAPAS gồm đúng 6 chữ số.",
+    "accountNumberLabel": "Số tài khoản",
+    "accountNumberPlaceholder": "Ví dụ: 0071001234567",
+    "accountNumberHint": "Chỉ gồm chữ số, 6–19 ký tự.",
+    "holderLabel": "Chủ tài khoản",
+    "holderPlaceholder": "Ví dụ: NGUYEN VAN MINH",
+    "submitCreate": "Thêm",
+    "submitEdit": "Lưu",
+    "cancel": "Hủy"
+  },
+  "delete": {
+    "title": "Xóa tài khoản {{bank}}?",
+    "body": "Tài khoản ngân hàng này sẽ bị xóa khỏi ví của bạn.",
+    "bodyDefault": "Đây là tài khoản mặc định. Sau khi xóa, tài khoản được thêm gần nhất còn lại sẽ trở thành mặc định; nếu đây là tài khoản cuối cùng, ví sẽ trống.",
+    "confirm": "Xóa tài khoản",
+    "cancel": "Hủy"
+  },
+  "toast": {
+    "created": "Đã thêm tài khoản ngân hàng.",
+    "updated": "Đã cập nhật tài khoản ngân hàng.",
+    "deleted": "Đã xóa tài khoản ngân hàng."
+  },
+  "premium": {
+    "title": "Quản lý phương thức nhận tiền là tính năng Premium",
+    "info": "Bạn vẫn xem được các tài khoản đã lưu, nhưng thêm, sửa, đặt mặc định hay xóa cần tài khoản Premium. Premium được cấp thủ công bởi quản trị viên.",
+    "gateTitle": "Tính năng Premium",
+    "gateBody": "Tạo mã QR chuyển khoản chỉ dành cho tài khoản Premium. Premium được cấp thủ công bởi quản trị viên — hãy liên hệ người vận hành để mở khóa."
+  },
+  "qr": {
+    "expenseTitle": "Mã QR chuyển khoản",
+    "eventTitle": "Mã QR quyết toán",
+    "showExpense": "Xem mã QR",
+    "showEvent": "Xem mã QR quyết toán",
+    "close": "Đóng",
+    "destinationLabel": "Tài khoản nhận tiền",
+    "imageAltExpense": "Mã QR VietQR để chuyển khoản cho phiếu chi tiêu này. Thông tin tài khoản ở ngay bên dưới.",
+    "imageAltEvent": "Mã QR VietQR tổng hợp để quyết toán công nợ của đợt. Thông tin tài khoản ở ngay bên dưới.",
+    "bank": "Ngân hàng",
+    "accountNumber": "Số tài khoản",
+    "holder": "Chủ tài khoản",
+    "amount": "Số tiền",
+    "download": "Tải ảnh QR",
+    "downloadNameExpense": "ma-qr-phieu.png",
+    "downloadNameEvent": "ma-qr-quyet-toan.png",
+    "copyDetails": "Sao chép thông tin",
+    "copied": "Đã sao chép",
+    "noAccountTitle": "Chưa có tài khoản nhận tiền",
+    "noAccountBody": "Thêm một tài khoản ngân hàng vào ví để tạo mã QR chuyển khoản.",
+    "addAccount": "Thêm tài khoản",
+    "noDebtTitle": "Không còn ai nợ trong đợt này",
+    "noDebtBody": "Mọi phần gánh đã được đánh dấu đã trả, nên không cần mã QR quyết toán.",
+    "notClosedTitle": "Đợt chưa được chốt",
+    "notClosedBody": "Chỉ có thể tạo mã QR quyết toán sau khi chốt đợt. Hãy chốt đợt rồi thử lại.",
+    "errorTitle": "Không tạo được mã QR",
+    "errorBody": "Đã xảy ra lỗi khi tạo mã QR. Vui lòng thử lại.",
+    "retry": "Thử lại"
+  }
+}

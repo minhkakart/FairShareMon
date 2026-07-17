@@ -1,0 +1,108 @@
+{
+  "title": "My wallet",
+  "subtitle": "Manage the receiving bank accounts used to generate transfer QR codes.",
+  "add": "Add account",
+  "tier": {
+    "free": "Free",
+    "premium": "Premium"
+  },
+  "table": {
+    "caption": "Receiving bank accounts",
+    "bank": "Bank",
+    "accountNumber": "Account number",
+    "holder": "Account holder",
+    "default": "Status",
+    "actions": "Actions",
+    "bin": "BIN {{bin}}",
+    "reveal": "Show {{bank}} account number",
+    "hide": "Hide {{bank}} account number"
+  },
+  "badge": {
+    "default": "Default"
+  },
+  "actions": {
+    "edit": "Edit",
+    "editNamed": "Edit {{bank}}",
+    "delete": "Delete",
+    "deleteNamed": "Delete {{bank}}"
+  },
+  "setDefault": {
+    "action": "Set default",
+    "actionNamed": "Set {{bank}} as default",
+    "toast": "Default account updated."
+  },
+  "empty": {
+    "title": "Empty wallet",
+    "body": "The wallet (receiving accounts & QR codes) is a Premium feature. Premium is granted manually by an administrator — contact your operator to unlock it.",
+    "premiumTitle": "No accounts yet",
+    "premiumBody": "Add your first bank account to start generating transfer QR codes."
+  },
+  "error": {
+    "title": "Couldn't load the wallet",
+    "retry": "Try again"
+  },
+  "form": {
+    "createTitle": "Add bank account",
+    "editTitle": "Edit bank account",
+    "bankNameLabel": "Bank name",
+    "bankNamePlaceholder": "e.g. Vietcombank",
+    "binLabel": "Bank code (BIN)",
+    "binPlaceholder": "e.g. 970436",
+    "binHint": "The NAPAS code — exactly 6 digits.",
+    "accountNumberLabel": "Account number",
+    "accountNumberPlaceholder": "e.g. 0071001234567",
+    "accountNumberHint": "Digits only, 6–19 characters.",
+    "holderLabel": "Account holder",
+    "holderPlaceholder": "e.g. NGUYEN VAN MINH",
+    "submitCreate": "Add",
+    "submitEdit": "Save",
+    "cancel": "Cancel"
+  },
+  "delete": {
+    "title": "Delete account {{bank}}?",
+    "body": "This bank account will be removed from your wallet.",
+    "bodyDefault": "This is the default account. After deletion, the most-recently-added remaining account becomes the default; if this is the last one, the wallet will be empty.",
+    "confirm": "Delete account",
+    "cancel": "Cancel"
+  },
+  "toast": {
+    "created": "Bank account added.",
+    "updated": "Bank account updated.",
+    "deleted": "Bank account deleted."
+  },
+  "premium": {
+    "title": "Managing payment methods is a Premium feature",
+    "info": "You can still view your saved accounts, but adding, editing, setting a default, or deleting requires Premium. Premium is granted manually by an administrator.",
+    "gateTitle": "Premium feature",
+    "gateBody": "Generating transfer QR codes is available on Premium only. Premium is granted manually by an administrator — contact your operator to unlock it."
+  },
+  "qr": {
+    "expenseTitle": "Transfer QR code",
+    "eventTitle": "Settlement QR code",
+    "showExpense": "Show QR",
+    "showEvent": "Show settlement QR",
+    "close": "Close",
+    "destinationLabel": "Receiving account",
+    "imageAltExpense": "VietQR code for transferring the amount of this expense. The account details are right below.",
+    "imageAltEvent": "Composite VietQR code for settling the event's debts. The account details are right below.",
+    "bank": "Bank",
+    "accountNumber": "Account number",
+    "holder": "Account holder",
+    "amount": "Amount",
+    "download": "Download QR image",
+    "downloadNameExpense": "expense-qr.png",
+    "downloadNameEvent": "settlement-qr.png",
+    "copyDetails": "Copy details",
+    "copied": "Copied",
+    "noAccountTitle": "No receiving account yet",
+    "noAccountBody": "Add a bank account to your wallet to generate a transfer QR code.",
+    "addAccount": "Add account",
+    "noDebtTitle": "Nobody owes anything in this event",
+    "noDebtBody": "Every share has been marked settled, so no settlement QR code is needed.",
+    "notClosedTitle": "The event isn't closed yet",
+    "notClosedBody": "A settlement QR code can only be generated after the event is closed. Close the event and try again.",
+    "errorTitle": "Couldn't generate the QR code",
+    "errorBody": "Something went wrong generating the QR code. Please try again.",
+    "retry": "Try again"
+  }
+}

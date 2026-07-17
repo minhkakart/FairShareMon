@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { Route, Routes } from "react-router-dom";
 import { http, HttpResponse } from "msw";
 import { server } from "@/test/msw/server";
@@ -267,5 +268,54 @@ describe("ExpenseDetailPage closed-event guard (R4)", () => {
     ).toBeEnabled();
     // …and export stays available.
     expect(screen.getByRole("button", { name: "Xuất CSV" })).toBeEnabled();
+  });
+});
+
+describe("ExpenseDetailPage QR action (M7-MOD)", () => {
+  it("ExpenseDetailPage_ShowQrButton_IsPresentAndEnabled", async () => {
+    server.use(http.get(`*/api/v1/expenses/${UUID}`, () => ok(makeExpense())));
+    renderDetail();
+    await screen.findByRole("heading", { level: 1, name: "Thuê xe" });
+
+    expect(screen.getByRole("button", { name: "Xem mã QR" })).toBeEnabled();
+  });
+
+  it("ExpenseDetailPage_ShowQrEnabledOnClosedEvent_QrIsAReadAllowedWrite", async () => {
+    server.use(
+      http.get(`*/api/v1/expenses/${UUID}`, () =>
+        ok(
+          makeExpense({
+            eventUuid: "ev-1",
+            eventName: "Đà Lạt",
+            eventIsClosed: true,
+          }),
+        ),
+      ),
+    );
+    renderDetail();
+    await screen.findByRole("heading", { level: 1, name: "Thuê xe" });
+
+    // Edit/Delete are disabled on a closed event, but QR (a read) stays enabled.
+    expect(screen.getByRole("button", { name: "Sửa" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Xem mã QR" })).toBeEnabled();
+  });
+
+  it("ExpenseDetailPage_ClickShowQr_OpensTheQrDialog", async () => {
+    server.use(http.get(`*/api/v1/expenses/${UUID}`, () => ok(makeExpense())));
+    const user = userEvent.setup();
+    renderDetail();
+    await screen.findByRole("heading", { level: 1, name: "Thuê xe" });
+
+    await user.click(screen.getByRole("button", { name: "Xem mã QR" }));
+
+    // The shared QrDialog opens with the expense QR title (Free session → the
+    // dialog handles the gate internally; here we only prove the wiring).
+    const dialog = await screen.findByRole("dialog");
+    expect(
+      within(dialog).getByRole("heading", { name: "Mã QR chuyển khoản" }),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByRole("dialog")).toBeInTheDocument(),
+    );
   });
 });

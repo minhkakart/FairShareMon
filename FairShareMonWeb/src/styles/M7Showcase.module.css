@@ -1,0 +1,296 @@
+/* M7 showcase styles — Wallet (bank accounts) & QR. Two net-new surfaces:
+   the QrDialog composite (a QR image + account-details channel + download/copy +
+   optional destination picker, with loading / error / Premium-gate states) and
+   the wallet-list treatment (masked account number + reveal, default marker,
+   Free read-only vs Premium-managed composition). Tokens only; light + dark come
+   free through the semantic tokens. The QR image FRAME is a deliberate exception:
+   it stays light in both themes because a QR code must present dark modules on a
+   light quiet-zone ground to scan — inverting it in dark mode would break it. */
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-4);
+}
+.sectionTitle {
+  font-size: var(--fs-text-xl);
+  padding-bottom: var(--fs-space-2);
+  border-bottom: 1px solid var(--fs-color-border-subtle);
+}
+.subhead {
+  margin-top: var(--fs-space-2);
+  font-size: var(--fs-text-md);
+  font-weight: var(--fs-weight-semibold);
+  color: var(--fs-color-text);
+}
+.note {
+  font-size: var(--fs-text-sm);
+  color: var(--fs-color-text-secondary);
+  line-height: var(--fs-leading-normal);
+  max-width: 60rem;
+}
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* =============================================================================
+ * 1. QrDialog — state gallery (inline previews mimicking the dialog panel)
+ * ========================================================================== */
+/* A grid of dialog-body previews so every state is reviewable at a glance in
+   light AND dark, without opening the real modal one at a time. Each preview
+   mimics DialogContent's surface + a title row; the live openable dialog below
+   proves the real Radix composition. */
+.previewGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
+  gap: var(--fs-space-5);
+  align-items: start;
+}
+.previewCaption {
+  font-size: var(--fs-text-xs);
+  font-weight: var(--fs-weight-semibold);
+  letter-spacing: var(--fs-tracking-wide);
+  text-transform: uppercase;
+  color: var(--fs-color-text-secondary);
+  margin-bottom: var(--fs-space-2);
+}
+/* The faux dialog panel — matches DialogContent (surface-raised, xl radius,
+   shadow) so the QR body reads exactly as it will inside the modal. */
+.dialogPreview {
+  background-color: var(--fs-color-surface-raised);
+  border: 1px solid var(--fs-color-border);
+  border-radius: var(--fs-radius-xl);
+  box-shadow: var(--fs-shadow-md);
+  padding: var(--fs-space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-4);
+}
+.previewTitle {
+  font-size: var(--fs-text-lg);
+  font-weight: var(--fs-weight-semibold);
+  color: var(--fs-color-text);
+  line-height: var(--fs-leading-snug);
+  text-wrap: balance;
+}
+
+/* ── QR body ──────────────────────────────────────────────────────────────── */
+.qrBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-4);
+  min-width: 0;
+}
+
+/* The QR image well — a centered, fixed-aspect box. The aspect-ratio is set per
+   kind so the loading skeleton, the loaded image, and any placeholder occupy the
+   SAME footprint → zero layout shift as the state resolves. */
+.qrWell {
+  display: flex;
+  justify-content: center;
+}
+.qrFrame {
+  position: relative;
+  width: 100%;
+  max-width: 15rem; /* single VietQR — square */
+  /* The quiet-zone ground. Intentionally light in BOTH themes: a QR needs dark
+     modules on a light ground to scan. A thin border keeps it defined on the
+     already-light dark-mode panel. */
+  background: #ffffff;
+  border: 1px solid var(--fs-color-border);
+  border-radius: var(--fs-radius-lg);
+  padding: var(--fs-space-3); /* quiet zone around the code */
+  overflow: hidden;
+}
+.qrFrame.expense {
+  aspect-ratio: 1 / 1;
+}
+/* The event composite QR is taller (a stacked settlement sheet) — a portrait
+   box, wider max so the extra rows stay legible. */
+.qrFrame.event {
+  aspect-ratio: 3 / 4;
+  max-width: 17rem;
+}
+.qrImage {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+/* Skeleton fills the exact frame footprint (over the light ground). */
+.qrSkeleton {
+  position: absolute;
+  inset: var(--fs-space-3);
+  border-radius: var(--fs-radius-sm);
+}
+/* Loading demo stand-in (a faux QR module grid) — replaced by <img> at runtime. */
+.qrDemo {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+/* The human-readable account block — the ACCESSIBLE channel paired with the
+   decorative-plus QR image, and the source the "copy details" action copies. */
+.accountCard {
+  background-color: var(--fs-color-surface-sunken);
+  border: 1px solid var(--fs-color-border-subtle);
+  border-radius: var(--fs-radius-md);
+  padding: var(--fs-space-3) var(--fs-space-4);
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--fs-space-2) var(--fs-space-4);
+  align-items: baseline;
+}
+.accountTerm {
+  font-size: var(--fs-text-sm);
+  color: var(--fs-color-text-secondary);
+  white-space: nowrap;
+}
+.accountValue {
+  font-size: var(--fs-text-sm);
+  color: var(--fs-color-text);
+  font-weight: var(--fs-weight-medium);
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+/* Account / BIN numbers are codes → monospace + tabular so digits align and the
+   value is unmistakably a number, not prose. */
+.accountNumber {
+  font-family: var(--fs-font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+.destination {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-1);
+}
+
+/* Footer action row — Download (primary) + Copy details (secondary). Wraps on
+   narrow panels; the dialog's own Close sits in the same row in the live modal. */
+.qrFooter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--fs-space-3);
+  justify-content: flex-end;
+}
+
+/* =============================================================================
+ * 2. Wallet list — masked number + reveal, default marker, Free/Premium split
+ * ========================================================================== */
+/* The masked-number cell: a fixed-min-width mono value beside a reveal toggle,
+   so toggling masked ↔ full does not jump the toggle button around. */
+.acctCell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fs-space-2);
+}
+.acctNumber {
+  font-family: var(--fs-font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  color: var(--fs-color-text);
+  min-width: 7.5rem;
+}
+/* Reveal toggle — a small square icon button. aria-pressed carries the state;
+   the eye / eye-off glyph swaps so the affordance is not color-dependent. */
+.revealBtn {
+  appearance: none;
+  cursor: pointer;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: 1px solid var(--fs-color-border);
+  border-radius: var(--fs-radius-sm);
+  background-color: var(--fs-color-surface);
+  color: var(--fs-color-text-secondary);
+  transition:
+    background-color var(--fs-duration-fast) var(--fs-ease-standard),
+    color var(--fs-duration-fast) var(--fs-ease-standard),
+    border-color var(--fs-duration-fast) var(--fs-ease-standard);
+}
+.revealBtn:hover {
+  background-color: var(--fs-color-surface-hover);
+  color: var(--fs-color-text);
+}
+.revealBtn:focus-visible {
+  outline: 2px solid var(--fs-color-focus);
+  outline-offset: 2px;
+}
+.revealBtn[aria-pressed="true"] {
+  border-color: var(--fs-color-primary);
+  color: var(--fs-color-primary);
+  background-color: var(--fs-color-primary-subtle);
+}
+.revealIcon {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Bank cell — the primary label; holder name below on the same cell is handled
+   by its own column. Long bank/holder names wrap rather than scroll. */
+.bankCell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+.bankName {
+  font-weight: var(--fs-weight-medium);
+  color: var(--fs-color-text);
+  overflow-wrap: anywhere;
+}
+.bankBin {
+  font-family: var(--fs-font-mono);
+  font-size: var(--fs-text-xs);
+  color: var(--fs-color-text-secondary);
+}
+.holderCell {
+  overflow-wrap: anywhere;
+}
+
+/* Set-default affordance — a ghost button with an outline-star glyph + label
+   (mirrors the categories set-default pattern). Hidden on the current default. */
+.setDefaultBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fs-space-1);
+}
+.setDefaultIcon {
+  display: inline-flex;
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Free read-only wallet: an info banner above the list; the whole table below is
+   view-only (no action column). Composition wrapper keeps the banner + table on
+   one vertical rhythm. */
+.walletStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-4);
+}
+
+/* Two-up demo layout for the QR previews of both kinds. */
+.twoUp {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
+  gap: var(--fs-space-5);
+  align-items: start;
+}
