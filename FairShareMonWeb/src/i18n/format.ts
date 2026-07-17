@@ -20,6 +20,14 @@ export function formatMoneyVnd(value: string | number): string {
 }
 
 /**
+ * Locale-grouped integer count (expense counts, etc.). Never money — VND money
+ * always goes through `formatMoneyVnd`/`<Money>`.
+ */
+export function formatCount(value: number, locale?: string): string {
+  return new Intl.NumberFormat(locale ?? getActiveLocale()).format(value);
+}
+
+/**
  * Datetimes arrive offset-aware ISO-8601 and are presented in the VIEWER's
  * timezone (the browser default). Formatting follows the active UI locale.
  */

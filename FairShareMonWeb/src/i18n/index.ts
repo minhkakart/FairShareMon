@@ -13,6 +13,7 @@ import viCategories from "./locales/vi-VN/categories.json";
 import viTags from "./locales/vi-VN/tags.json";
 import viExpenses from "./locales/vi-VN/expenses.json";
 import viEvents from "./locales/vi-VN/events.json";
+import viStats from "./locales/vi-VN/stats.json";
 import enCommon from "./locales/en-US/common.json";
 import enAuth from "./locales/en-US/auth.json";
 import enErrors from "./locales/en-US/errors.json";
@@ -23,6 +24,7 @@ import enCategories from "./locales/en-US/categories.json";
 import enTags from "./locales/en-US/tags.json";
 import enExpenses from "./locales/en-US/expenses.json";
 import enEvents from "./locales/en-US/events.json";
+import enStats from "./locales/en-US/stats.json";
 
 export const SUPPORTED_LOCALES = ["vi-VN", "en-US"] as const;
 export const DEFAULT_LOCALE: Locale = "vi-VN";
@@ -41,6 +43,7 @@ export const resources = {
     tags: viTags,
     expenses: viExpenses,
     events: viEvents,
+    stats: viStats,
   },
   "en-US": {
     common: enCommon,
@@ -53,6 +56,7 @@ export const resources = {
     tags: enTags,
     expenses: enExpenses,
     events: enEvents,
+    stats: enStats,
   },
 } as const;
 
@@ -67,6 +71,7 @@ export const NAMESPACES = [
   "tags",
   "expenses",
   "events",
+  "stats",
 ] as const;
 
 function isLocale(value: string | null): value is Locale {

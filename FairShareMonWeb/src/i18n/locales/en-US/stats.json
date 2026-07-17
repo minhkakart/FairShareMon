@@ -1,0 +1,46 @@
+{
+  "page": {
+    "title": "Statistics",
+    "subtitle": "See total spending and a per-category breakdown over a time range."
+  },
+  "range": {
+    "label": "Time range",
+    "preset": {
+      "thisMonth": "This month",
+      "last30Days": "Last 30 days",
+      "thisYear": "This year",
+      "allTime": "All time",
+      "custom": "Custom"
+    },
+    "from": "From",
+    "to": "To",
+    "invalid": "Invalid time range — please adjust it."
+  },
+  "kpi": {
+    "totalSpending": "Total spending",
+    "expenseCount": "Expense count",
+    "expenseCountHint": "Includes both loose and event expenses",
+    "errorTitle": "Couldn't load the overview"
+  },
+  "byCategory": {
+    "title": "Spending by category",
+    "chartLabel": "Spending by category: {{categories}} categories, led by {{top}}. See the data table below for details.",
+    "chartLabelCompact": "Spending by category: top {{categories}} categories, led by {{top}}.",
+    "empty": "No spending in this range",
+    "emptyBody": "Pick a different time range or add expenses to see the category breakdown.",
+    "error": "Couldn't load the category breakdown",
+    "deleted": "(deleted)",
+    "table": {
+      "caption": "Spending by category",
+      "category": "Category",
+      "total": "Total",
+      "count": "Expenses",
+      "share": "Share",
+      "totalRow": "Total spending"
+    }
+  },
+  "states": {
+    "loadError": "Couldn't load the data.",
+    "retry": "Retry"
+  }
+}

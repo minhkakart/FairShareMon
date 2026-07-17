@@ -19,6 +19,7 @@ import { ExpenseCreatePage } from "@/features/expenses/pages/ExpenseCreatePage";
 import { ExpenseDetailPage } from "@/features/expenses/pages/ExpenseDetailPage";
 import { EventsPage } from "@/features/events/pages/EventsPage";
 import { EventDetailPage } from "@/features/events/pages/EventDetailPage";
+import { StatsPage } from "@/features/stats/pages/StatsPage";
 import { AdminPage } from "@/features/admin/pages/AdminPage";
 
 export const router = createBrowserRouter([
@@ -63,7 +64,7 @@ export const router = createBrowserRouter([
               },
               {
                 path: "stats",
-                element: <StubPage titleKey="common:nav.stats" />,
+                element: <StatsPage />,
               },
               {
                 path: "wallet",

@@ -50,5 +50,8 @@
     "startRequired": "Vui lòng chọn ngày bắt đầu.",
     "endRequired": "Vui lòng chọn ngày kết thúc.",
     "rangeInvalid": "Ngày kết thúc phải sau hoặc bằng ngày bắt đầu."
+  },
+  "stats": {
+    "rangeInvalid": "“Đến ngày” phải sau hoặc bằng “Từ ngày”."
   }
 }

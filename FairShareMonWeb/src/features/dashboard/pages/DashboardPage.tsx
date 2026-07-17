@@ -1,14 +1,19 @@
 import { Link } from "react-router-dom";
 import { useT } from "@/i18n/useT";
-import { Button, Card, CardBody, PageHeader, Stack } from "@/components/ui";
+import { Card, CardBody, PageHeader, Stack } from "@/components/ui";
 import { useCurrentUser } from "@/features/auth/hooks/useAuth";
 import { useNavEntries } from "@/routes/navConfig";
+import { DashboardOverview } from "../components/DashboardOverview";
+import { DashboardCategoryBreakdown } from "../components/DashboardCategoryBreakdown";
+import { RecentActivityCard } from "../components/RecentActivityCard";
+import styles from "../components/dashboard.module.css";
 
 /**
- * Minimal home (M1): a welcome greeting + quick-link cards into each visible
- * area (role-filtered via `useNavEntries`, so the admin tile shows only for
- * admins). No charts and no data fetching beyond the session `user` — the
- * data-rich dashboard is deferred to M6.
+ * Rich home (M6): a welcome greeting, a this-month KPI row, a two-column region
+ * (compact category breakdown + recent expenses & quick actions), and the
+ * existing role-filtered quick-link cards (via `useNavEntries`, so the admin tile
+ * shows only for admins). All new data comes through the shared stats + expense
+ * hooks — no new API surface.
  */
 export function DashboardPage() {
   const { t } = useT();
@@ -28,51 +33,35 @@ export function DashboardPage() {
         }
         description={t("common:home.subtitle")}
       />
-      <div
-        style={{
-          display: "grid",
-          gap: "var(--fs-space-4)",
-          gridTemplateColumns:
-            "repeat(auto-fill, minmax(min(100%, 16rem), 1fr))",
-        }}
-      >
-        {quickLinks.map((entry) => (
-          <Card key={entry.to}>
-            <CardBody>
-              <Stack gap="3">
-                <div>
-                  <h2
-                    style={{
-                      margin: 0,
-                      fontSize: "var(--fs-text-lg)",
-                      fontWeight: "var(--fs-weight-semibold)",
-                    }}
-                  >
-                    {t(entry.labelKey)}
-                  </h2>
-                  {entry.descriptionKey ? (
-                    <p
-                      style={{
-                        margin: "var(--fs-space-1) 0 0",
-                        color: "var(--fs-color-text-muted)",
-                      }}
-                    >
-                      {t(entry.descriptionKey)}
-                    </p>
-                  ) : null}
-                </div>
-                <div>
-                  <Button asChild variant="ghost" size="sm">
-                    <Link to={entry.to} aria-label={t(entry.labelKey)}>
-                      {t("common:home.open")}
-                    </Link>
-                  </Button>
-                </div>
-              </Stack>
-            </CardBody>
-          </Card>
-        ))}
+
+      <DashboardOverview />
+
+      <div className={styles.homeGrid}>
+        <DashboardCategoryBreakdown />
+        <RecentActivityCard />
       </div>
+
+      <section>
+        <h2 className={styles.quickAccessTitle}>{t("common:home.quickAccess")}</h2>
+        <div className={styles.quickLinks}>
+          {quickLinks.map((entry) => (
+            <Card key={entry.to}>
+              <CardBody>
+                <Link className={styles.quickLink} to={entry.to}>
+                  <span className={styles.quickLinkTitle}>
+                    {t(entry.labelKey)}
+                  </span>
+                  {entry.descriptionKey ? (
+                    <span className={styles.quickLinkDesc}>
+                      {t(entry.descriptionKey)}
+                    </span>
+                  ) : null}
+                </Link>
+              </CardBody>
+            </Card>
+          ))}
+        </div>
+      </section>
     </Stack>
   );
 }

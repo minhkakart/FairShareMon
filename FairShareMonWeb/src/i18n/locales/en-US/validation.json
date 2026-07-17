@@ -50,5 +50,8 @@
     "startRequired": "Please choose a start date.",
     "endRequired": "Please choose an end date.",
     "rangeInvalid": "The end date must be on or after the start date."
+  },
+  "stats": {
+    "rangeInvalid": "“To” must be on or after “From”."
   }
 }

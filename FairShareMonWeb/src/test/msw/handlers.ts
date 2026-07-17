@@ -1778,4 +1778,93 @@ export const handlers = [
     list.splice(idx, 1);
     return ok({ message: "Đã xóa đợt chi tiêu." });
   }),
+
+  // --- Stats (M6) ---------------------------------------------------------
+  http.get("*/api/v1/stats/overview", ({ request }) => {
+    const username = usernameFromAuthHeader(
+      request.headers.get("Authorization"),
+    );
+    if (!username) {
+      return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
+    }
+    const url = new URL(request.url);
+    const from = url.searchParams.get("from");
+    const to = url.searchParams.get("to");
+    if (from && to && from > to) {
+      return fail(1001, "Khoảng thời gian không hợp lệ.", 400);
+    }
+    let list = getExpenses(username).slice();
+    if (from) list = list.filter((e) => e.expenseTime >= from);
+    if (to) list = list.filter((e) => e.expenseTime <= to);
+    const totalSpending = list.reduce((sum, e) => sum + expenseTotal(e), 0);
+    return ok({
+      from: from ?? null,
+      to: to ?? null,
+      totalSpending,
+      expenseCount: list.length,
+    });
+  }),
+
+  http.get("*/api/v1/stats/by-category", ({ request }) => {
+    const username = usernameFromAuthHeader(
+      request.headers.get("Authorization"),
+    );
+    if (!username) {
+      return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
+    }
+    const url = new URL(request.url);
+    const from = url.searchParams.get("from");
+    const to = url.searchParams.get("to");
+    const eventUuid = url.searchParams.get("eventUuid");
+    // Time-range XOR event.
+    if (eventUuid && (from || to)) {
+      return fail(1001, "Không dùng đồng thời đợt và khoảng thời gian.", 400);
+    }
+    if (from && to && from > to) {
+      return fail(1001, "Khoảng thời gian không hợp lệ.", 400);
+    }
+    let list = getExpenses(username).slice();
+    if (eventUuid) {
+      const ev = eventByUuid(username, eventUuid);
+      if (!ev) return fail(9000, "Không tìm thấy đợt chi tiêu.", 404);
+      list = list.filter((e) => e.eventUuid === eventUuid);
+    } else {
+      if (from) list = list.filter((e) => e.expenseTime >= from);
+      if (to) list = list.filter((e) => e.expenseTime <= to);
+    }
+    // Group by category (deleted-with-history categories are included).
+    const groups = new Map<string, { total: number; count: number }>();
+    for (const e of list) {
+      const g = groups.get(e.categoryUuid) ?? { total: 0, count: 0 };
+      g.total += expenseTotal(e);
+      g.count += 1;
+      groups.set(e.categoryUuid, g);
+    }
+    const rows = [...groups.entries()]
+      .map(([uuid, g]) => {
+        const c = categoryByUuid(username, uuid);
+        return {
+          categoryUuid: uuid,
+          categoryName: c?.name ?? "(không rõ)",
+          color: c?.color ?? "#6B7280",
+          icon: c?.icon ?? null,
+          isDeleted: c?.isDeleted ?? false,
+          total: g.total,
+          expenseCount: g.count,
+        };
+      })
+      // total DESC → count DESC → name (vi collation), matching the backend.
+      .sort(
+        (a, b) =>
+          b.total - a.total ||
+          b.expenseCount - a.expenseCount ||
+          a.categoryName.localeCompare(b.categoryName, "vi"),
+      );
+    return ok({
+      eventUuid: eventUuid ?? null,
+      from: eventUuid ? null : (from ?? null),
+      to: eventUuid ? null : (to ?? null),
+      rows,
+    });
+  }),
 ];

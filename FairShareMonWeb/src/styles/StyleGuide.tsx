@@ -45,6 +45,7 @@ import {
 import type { Locale, ThemePreference } from "../components/ui";
 import { M4Showcase } from "./M4Showcase";
 import { M5Showcase } from "./M5Showcase";
+import { M6Showcase } from "./M6Showcase";
 import styles from "./StyleGuide.module.css";
 
 /**
@@ -570,6 +571,9 @@ export function StyleGuide() {
 
         {/* M5 — EVENTS: balance table, close confirm, status badge, assign picker */}
         <M5Showcase />
+
+        {/* M6 — STATS & HOME: KPI tiles, category bar chart, range control, home */}
+        <M6Showcase />
 
         <Section title="Bố cục xác thực (auth)">
           <div className={styles.authPreview}>

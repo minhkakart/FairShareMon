@@ -1,0 +1,139 @@
+/* Rich home composition styles (M6). Ported from the ui-designer's M6 showcase
+   (home section). Tokens only; light + dark come free. Feature-local. */
+
+.cardHeadRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--fs-space-3);
+  margin-bottom: var(--fs-space-3);
+}
+.cardTitle {
+  font-size: var(--fs-text-lg);
+  font-weight: var(--fs-weight-semibold);
+  color: var(--fs-color-text);
+}
+.viewAll {
+  flex: none;
+  font-size: var(--fs-text-sm);
+  font-weight: var(--fs-weight-medium);
+  color: var(--fs-color-link);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.viewAll:hover {
+  text-decoration: underline;
+}
+.viewAll:focus-visible {
+  outline: 2px solid var(--fs-color-focus);
+  outline-offset: 2px;
+  border-radius: var(--fs-radius-sm);
+}
+
+/* The two-column region: compact breakdown beside recent activity; collapses to
+   one column on narrow viewports. */
+.homeGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: var(--fs-space-5);
+}
+@media (max-width: 60rem) {
+  .homeGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Recent-expenses list — each row links into the expense detail. */
+.recentList {
+  display: flex;
+  flex-direction: column;
+}
+.recentRow {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: var(--fs-space-3);
+  padding: var(--fs-space-3) 0;
+  text-decoration: none;
+  color: inherit;
+}
+.recentRow + .recentRow {
+  border-top: 1px solid var(--fs-color-border-subtle);
+}
+.recentRow:hover .recentName {
+  text-decoration: underline;
+}
+.recentRow:focus-visible {
+  outline: 2px solid var(--fs-color-focus);
+  outline-offset: 2px;
+  border-radius: var(--fs-radius-sm);
+}
+.recentMain {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+.recentName {
+  font-weight: var(--fs-weight-medium);
+  color: var(--fs-color-text);
+  overflow-wrap: anywhere;
+}
+.recentMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fs-space-2);
+  flex-wrap: wrap;
+  font-size: var(--fs-text-sm);
+  color: var(--fs-color-text-secondary);
+}
+.recentDate {
+  font-variant-numeric: tabular-nums;
+}
+.recentAmount {
+  justify-self: end;
+  flex: none;
+}
+
+/* Quick-action buttons row. */
+.quickActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--fs-space-3);
+  margin-top: var(--fs-space-4);
+}
+
+/* Existing role-filtered quick-link cards (the M1 links kept below). */
+.quickAccessTitle {
+  font-size: var(--fs-text-md);
+  font-weight: var(--fs-weight-semibold);
+  color: var(--fs-color-text);
+  margin: 0 0 var(--fs-space-3);
+}
+.quickLinks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: var(--fs-space-4);
+}
+.quickLink {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-1);
+  text-decoration: none;
+  color: inherit;
+  height: 100%;
+}
+.quickLink:focus-visible {
+  outline: 2px solid var(--fs-color-focus);
+  outline-offset: 2px;
+  border-radius: var(--fs-radius-sm);
+}
+.quickLinkTitle {
+  font-weight: var(--fs-weight-semibold);
+  color: var(--fs-color-text);
+}
+.quickLinkDesc {
+  font-size: var(--fs-text-sm);
+  color: var(--fs-color-text-secondary);
+  line-height: var(--fs-leading-normal);
+}

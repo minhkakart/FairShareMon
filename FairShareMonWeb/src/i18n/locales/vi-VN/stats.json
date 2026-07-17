@@ -1,0 +1,46 @@
+{
+  "page": {
+    "title": "Thống kê",
+    "subtitle": "Xem tổng chi tiêu và phân tích theo danh mục theo khoảng thời gian."
+  },
+  "range": {
+    "label": "Khoảng thời gian",
+    "preset": {
+      "thisMonth": "Tháng này",
+      "last30Days": "30 ngày qua",
+      "thisYear": "Năm nay",
+      "allTime": "Tất cả",
+      "custom": "Tùy chỉnh"
+    },
+    "from": "Từ ngày",
+    "to": "Đến ngày",
+    "invalid": "Khoảng thời gian không hợp lệ — hãy chọn lại."
+  },
+  "kpi": {
+    "totalSpending": "Tổng chi tiêu",
+    "expenseCount": "Số phiếu chi tiêu",
+    "expenseCountHint": "Gồm cả phiếu lẻ và phiếu trong đợt",
+    "errorTitle": "Không tải được số liệu tổng quan"
+  },
+  "byCategory": {
+    "title": "Chi tiêu theo danh mục",
+    "chartLabel": "Chi tiêu theo danh mục: {{categories}} danh mục, dẫn đầu là {{top}}. Xem bảng số bên dưới để biết chi tiết.",
+    "chartLabelCompact": "Chi tiêu theo danh mục: {{categories}} danh mục hàng đầu, dẫn đầu là {{top}}.",
+    "empty": "Chưa có chi tiêu trong khoảng này",
+    "emptyBody": "Chọn khoảng thời gian khác hoặc thêm phiếu chi tiêu để thấy phân tích theo danh mục.",
+    "error": "Không tải được thống kê theo danh mục",
+    "deleted": "(đã xóa)",
+    "table": {
+      "caption": "Chi tiêu theo danh mục",
+      "category": "Danh mục",
+      "total": "Tổng",
+      "count": "Số phiếu",
+      "share": "Tỷ trọng",
+      "totalRow": "Tổng chi tiêu"
+    }
+  },
+  "states": {
+    "loadError": "Không tải được dữ liệu.",
+    "retry": "Thử lại"
+  }
+}

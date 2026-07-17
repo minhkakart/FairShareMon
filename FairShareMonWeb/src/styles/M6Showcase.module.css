@@ -1,0 +1,387 @@
+/* M6 showcase styles — the Stats & Home dashboard surfaces (KPI stat tiles,
+   the hand-rolled horizontal category bar chart, the date-range control, and the
+   rich-home composition). Tokens only; light + dark come free through the
+   semantic + --fs-viz-* tokens. Charts follow the dataviz skill: the bar fills
+   are the ONLY thing wearing --fs-viz-cat-*; every label/value/axis wears TEXT
+   tokens, and the relief rule is satisfied by direct value labels + a table. */
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-4);
+}
+
+.sectionTitle {
+  font-size: var(--fs-text-xl);
+  padding-bottom: var(--fs-space-2);
+  border-bottom: 1px solid var(--fs-color-border-subtle);
+}
+
+.subhead {
+  margin-top: var(--fs-space-2);
+  font-size: var(--fs-text-md);
+  font-weight: var(--fs-weight-semibold);
+  color: var(--fs-color-text);
+}
+
+.note {
+  font-size: var(--fs-text-sm);
+  color: var(--fs-color-text-secondary);
+  line-height: var(--fs-leading-normal);
+  max-width: 60rem;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* =============================================================================
+ * 1. KPI stat tile + overview row
+ * ========================================================================== */
+/* Responsive KPI row — tiles wrap and stretch. auto-fit + minmax keeps two
+   tiles side-by-side on wide, stacked on narrow, with no breakpoint math. */
+.kpiRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13.5rem, 1fr));
+  gap: var(--fs-space-4);
+}
+
+/* A single stat tile: small label, big value, optional sub-label. Built on
+   Card; the value is the loud thing. */
+.statTile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-1);
+  min-width: 0;
+}
+.statLabel {
+  font-size: var(--fs-text-sm);
+  font-weight: var(--fs-weight-medium);
+  color: var(--fs-color-text-secondary);
+  line-height: var(--fs-leading-snug);
+  overflow-wrap: anywhere;
+}
+/* The value line. Money brings its own sizing; the count value uses this. Digits
+   are tabular so a range-driven value never reflows column width as it updates. */
+.statValue {
+  font-size: var(--fs-text-3xl);
+  font-weight: var(--fs-weight-semibold);
+  line-height: var(--fs-leading-tight);
+  color: var(--fs-color-text);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--fs-tracking-tight);
+  overflow-wrap: anywhere;
+}
+.statHint {
+  font-size: var(--fs-text-xs);
+  color: var(--fs-color-text-muted);
+  line-height: var(--fs-leading-snug);
+}
+/* Skeleton value slot keeps the tile height stable while loading. */
+.statValueSkeleton {
+  height: 2.25rem;
+  display: flex;
+  align-items: center;
+}
+
+/* =============================================================================
+ * 2. Category horizontal bar chart
+ * ========================================================================== */
+.chart {
+  display: flex;
+  flex-direction: column;
+  /* Row gap IS the 2px+ surface gap between adjacent bars (dataviz mark spec):
+     neighbours read distinct because of the gap, not a stroke. */
+  gap: var(--fs-space-4);
+}
+
+/* One ranked category = a header line (identity + value) above its bar. Stacking
+   the label above the bar (rather than at the tip) tolerates long Vietnamese
+   names and keeps the value legible regardless of bar length. */
+.barRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-2);
+  min-width: 0;
+}
+.barHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--fs-space-3);
+  min-width: 0;
+}
+.barLabel {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fs-space-2);
+  flex-wrap: wrap;
+}
+/* The value + share cluster — text tokens, never the bar color; tabular so the
+   column of figures aligns down the chart. */
+.barValue {
+  flex: none;
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--fs-space-2);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.barShare {
+  font-size: var(--fs-text-sm);
+  color: var(--fs-color-text-secondary);
+  min-width: 2.75rem;
+  text-align: right;
+}
+
+/* The bar track + fill. Track is the recessive one-step-off-surface plane; the
+   fill is the only element that carries a --fs-viz-cat-* color. */
+.barTrack {
+  position: relative;
+  height: 0.75rem; /* 12px — inside the ≤24px cap */
+  border-radius: var(--fs-radius-pill);
+  background-color: var(--fs-viz-grid);
+  overflow: hidden;
+}
+.barFill {
+  height: 100%;
+  /* square at the baseline (left), 4px rounded data-end (right) */
+  border-radius: 0 var(--fs-radius-sm) var(--fs-radius-sm) 0;
+  background-color: var(--bar-color, var(--fs-viz-cat-1));
+  min-width: 2px; /* a non-zero category is always visible */
+  transition: width var(--fs-duration-slow) var(--fs-ease-decelerate);
+}
+/* Deleted category (§4.7) still appears in history — muted name treatment; the
+   bar keeps its slot color but the identity reads "(đã xóa)". */
+.barDeletedTag {
+  font-size: var(--fs-text-sm);
+  font-style: italic;
+  color: var(--fs-color-text-secondary);
+  white-space: nowrap;
+}
+
+/* Paired accessible table (spec of how the chart + table pair). Reuses the
+   Table primitive; shown here so the pairing is reviewable. */
+.shareCell {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .barFill {
+    transition: none;
+  }
+}
+
+/* =============================================================================
+ * 3. Date-range control
+ * ========================================================================== */
+.rangeControl {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-3);
+  padding: var(--fs-space-4);
+  border: 1px solid var(--fs-color-border-subtle);
+  border-radius: var(--fs-radius-lg);
+  background-color: var(--fs-color-surface);
+}
+.rangeLabel {
+  font-size: var(--fs-text-sm);
+  font-weight: var(--fs-weight-medium);
+  color: var(--fs-color-text-secondary);
+}
+/* Segmented preset chips — a wrapping row of pill buttons. */
+.presetChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--fs-space-2);
+}
+.chip {
+  appearance: none;
+  cursor: pointer;
+  padding: var(--fs-space-2) var(--fs-space-4);
+  border: 1px solid var(--fs-color-border);
+  border-radius: var(--fs-radius-pill);
+  background-color: var(--fs-color-surface);
+  color: var(--fs-color-text-secondary);
+  font-size: var(--fs-text-sm);
+  font-weight: var(--fs-weight-medium);
+  font-family: inherit;
+  line-height: var(--fs-leading-snug);
+  transition:
+    background-color var(--fs-duration-fast) var(--fs-ease-standard),
+    border-color var(--fs-duration-fast) var(--fs-ease-standard),
+    color var(--fs-duration-fast) var(--fs-ease-standard);
+}
+.chip:hover {
+  background-color: var(--fs-color-surface-hover);
+  color: var(--fs-color-text);
+}
+.chip:focus-visible {
+  outline: 2px solid var(--fs-color-focus);
+  outline-offset: 2px;
+}
+/* Active preset — the pressed state is carried by fill + weight + border, not
+   color alone (aria-pressed is the programmatic cue). */
+.chip[aria-pressed="true"] {
+  background-color: var(--fs-color-primary-subtle);
+  border-color: var(--fs-color-primary);
+  color: var(--fs-color-primary);
+  font-weight: var(--fs-weight-semibold);
+}
+/* Custom two-date row — the date fields reveal only in custom mode. */
+.customRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--fs-space-4);
+  align-items: flex-start;
+}
+.customField {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+.rangeInvalid {
+  font-size: var(--fs-text-sm);
+  color: var(--fs-color-danger-text);
+}
+
+/* =============================================================================
+ * 4. Home dashboard composition
+ * ========================================================================== */
+.home {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-6);
+}
+/* The two-column region: a compact breakdown beside recent activity; collapses
+   to one column on narrow viewports. */
+.homeGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: var(--fs-space-5);
+}
+@media (max-width: 60rem) {
+  .homeGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+/* A card header with a trailing "Xem tất cả" link. */
+.cardHeadRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--fs-space-3);
+  margin-bottom: var(--fs-space-3);
+}
+.cardTitle {
+  font-size: var(--fs-text-lg);
+  font-weight: var(--fs-weight-semibold);
+  color: var(--fs-color-text);
+}
+.viewAll {
+  flex: none;
+  font-size: var(--fs-text-sm);
+  font-weight: var(--fs-weight-medium);
+  color: var(--fs-color-link);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.viewAll:hover {
+  text-decoration: underline;
+}
+
+/* Recent-expenses list — each row links into the expense detail. */
+.recentList {
+  display: flex;
+  flex-direction: column;
+}
+.recentRow {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: var(--fs-space-3);
+  padding: var(--fs-space-3) 0;
+  text-decoration: none;
+  color: inherit;
+}
+.recentRow + .recentRow {
+  border-top: 1px solid var(--fs-color-border-subtle);
+}
+.recentRow:hover .recentName {
+  text-decoration: underline;
+}
+.recentRow:focus-visible {
+  outline: 2px solid var(--fs-color-focus);
+  outline-offset: 2px;
+  border-radius: var(--fs-radius-sm);
+}
+.recentMain {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+.recentName {
+  font-weight: var(--fs-weight-medium);
+  color: var(--fs-color-text);
+  overflow-wrap: anywhere;
+}
+.recentMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fs-space-2);
+  flex-wrap: wrap;
+  font-size: var(--fs-text-sm);
+  color: var(--fs-color-text-secondary);
+}
+.recentDate {
+  font-variant-numeric: tabular-nums;
+}
+.recentAmount {
+  justify-self: end;
+  flex: none;
+}
+
+/* Quick-action buttons row. */
+.quickActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--fs-space-3);
+}
+
+/* Compact breakdown inside the home card — same bar rows, tighter. */
+.compactChart {
+  gap: var(--fs-space-3);
+}
+
+/* Existing role-filtered quick-link cards (the M1 links kept below). */
+.quickLinks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: var(--fs-space-4);
+}
+.quickLink {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-1);
+  text-decoration: none;
+  color: inherit;
+  height: 100%;
+}
+.quickLinkTitle {
+  font-weight: var(--fs-weight-semibold);
+  color: var(--fs-color-text);
+}
+.quickLinkDesc {
+  font-size: var(--fs-text-sm);
+  color: var(--fs-color-text-secondary);
+  line-height: var(--fs-leading-normal);
+}

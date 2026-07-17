@@ -201,26 +201,59 @@ The `Toast` layer is presentational. The implementer owns the queue:
 
 Expose a `useToast()` that pushes items (mutation failures, "đã lưu", etc.).
 
-## Data-viz (reserved — no chart components yet)
+## Data-viz (M6 — first charts; `--fs-viz-*` palette)
 
 `--fs-viz-*` tokens are the validated categorical (8-slot, fixed order),
 sequential (blue ramp), diverging (blue↔red, gray midpoint), and chart-chrome
-palette for the future **Stats** and **Admin** dashboards. Validated with the
+palette for the **Stats** and **Admin** dashboards. Validated with the
 `dataviz` skill against the app's chart surfaces (light `#ffffff` / dark
-`#151d1b`), both modes:
+`#151d1b`), both modes (re-run 2026-07-17):
 
 - Categorical: worst adjacent CVD ΔE **9.1 light / 8.4 dark**; normal-vision
   floor **19.6 / 19.3**. Assign slots `--fs-viz-cat-1..8` **in order, never
-  cycled**; a 9th series folds to "Other"/facets/small-multiples.
-- **Relief rule (light):** slots 3/4/5 (magenta/yellow/aqua) sit < 3:1 on white —
-  charts that use them **must** ship direct labels or a table view.
+  cycled**; a 9th series folds to "Other"/a muted neutral/small-multiples.
+- **Relief rule (light):** slots 3/4/5 (magenta/yellow/aqua) sit < 3:1 on white
+  (measured `#e87ba4` 2.69 · `#eda100` 2.17 · `#1baf7a` 2.82) — charts that use
+  them **must** ship direct value labels or a table view.
 - Balance charts (polarity) use the diverging tokens; balance **numbers** in
   tables/tiles use `<Money variant="balance">` (sign + color).
 
-When charts are built, follow the `dataviz` skill: pick the form, apply the mark
-specs (thin marks, 2px surface gaps, ≥8px markers), add a hover layer, keep a
-legend for ≥2 series with selective direct labels, and re-run the validator if
-any hue changes.
+**M6 chart specs live in `src/styles/M6Showcase.tsx`** (reviewable in light +
+dark via `StyleGuide.tsx`). Per OQ5a these are **feature-local** patterns the
+web-implementer rebuilds under `src/features/stats/components/` — they are NOT
+extracted to `components/ui/charts` until M8 (Admin) gives a second consumer. The
+four M6 surfaces:
+
+- **StatTile / OverviewKpiRow** — label + big value (`Money` for currency, a
+  formatted number for a count) + optional sub-label. Tabular numerics so a
+  range-driven value never reflows. No computed "average" tile (R3: no float math
+  on money). Loading → skeleton tiles; zero range → `0` tiles (valid, not empty).
+- **CategoryBarChart** — hand-rolled ranked **horizontal bar** (longest first, API
+  order verbatim). The bar **fill** is the only element wearing `--fs-viz-cat-*`
+  (slots `1..8` by rank, 9th+ → `--fs-viz-ink-muted`); every label/value/axis
+  wears text tokens. **Bar-length normalization = `total / maxTotal`** (the
+  longest bar = 100%); the **% share = `total / overview.totalSpending`** (the
+  authoritative same-range denominator) — both are display-only ratios off the
+  API's integer totals, **no money value is ever client-computed**. Each bar
+  carries a direct label (`CategoryMarker` + name + `Money` + %) → relief-rule
+  compliant + color-independent. The chart region is `role="img"` with an
+  `aria-label` summary; bars are `aria-hidden`. **It pairs with an always-present
+  accessible `CategoryStatsTable`** (`<caption>` + Danh mục / Tổng / Số phiếu /
+  Tỷ trọng; footer echoes `overview.totalSpending`, never a client sum) — the
+  table is the data channel for assistive tech. Deleted categories (§4.7) keep
+  their slot with an `(đã xóa)` treatment. `prefers-reduced-motion` disables the
+  bar-grow transition.
+- **StatsRangeControl** — preset chips (`role="group"`, active chip carries
+  `aria-pressed`, state not by color alone) + a Custom two-date mode with an
+  inline invalid-range (`from > to`) message.
+- **Home composition** — this-month KPI row + a compact top-5 breakdown + a
+  recent-expenses card (rows link to detail) + quick actions + the M1 quick links,
+  on a responsive grid.
+
+When editing any chart, follow the `dataviz` skill: pick the form, apply the mark
+specs (thin marks ≤24px, 4px rounded data-end, ≥2px surface gaps), keep labels in
+text tokens, and **re-run `scripts/validate_palette.js` if any `--fs-viz-*` hue
+changes**.
 
 ## App shell & page layout
 
