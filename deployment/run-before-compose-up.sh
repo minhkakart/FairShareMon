@@ -12,4 +12,8 @@ docker network inspect wsl-net >/dev/null 2>&1 || docker network create wsl-net
 # static error pages, and the DB/redis/fail2ban data dirs.
 mkdir -p data/blocked data/nginx/logs data/nginx/html data/mariadb data/redis data/fail2ban
 
+# Pre-create the nginx log files so fail2ban's jails have a file to tail from the first boot
+# (fail2ban may start before nginx first opens them).
+touch data/nginx/logs/access.log data/nginx/logs/error.log
+
 echo "Prerequisites ready. Now run:  docker compose up -d --build"
