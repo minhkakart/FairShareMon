@@ -1,0 +1,93 @@
+/* Pagination — the shared paged-list control. First used by the M8 admin user
+   list; reusable by any future paged surface. Tokens only; light + dark free. */
+
+.pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--fs-space-3);
+}
+
+/* The page-number + prev/next control group. */
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--fs-space-1);
+}
+
+/* A page / prev / next button. Square-ish tap target ≥ 2.25rem. */
+.pageButton {
+  appearance: none;
+  cursor: pointer;
+  min-width: 2.25rem;
+  height: 2.25rem;
+  padding: 0 var(--fs-space-3);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--fs-space-1);
+  border: 1px solid var(--fs-color-border);
+  border-radius: var(--fs-radius-md);
+  background-color: var(--fs-color-surface);
+  color: var(--fs-color-text-secondary);
+  font-family: inherit;
+  font-size: var(--fs-text-sm);
+  font-weight: var(--fs-weight-medium);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  transition:
+    background-color var(--fs-duration-fast) var(--fs-ease-standard),
+    border-color var(--fs-duration-fast) var(--fs-ease-standard),
+    color var(--fs-duration-fast) var(--fs-ease-standard);
+}
+.pageButton:hover:not(:disabled) {
+  background-color: var(--fs-color-surface-hover);
+  color: var(--fs-color-text);
+}
+.pageButton:focus-visible {
+  outline: 2px solid var(--fs-color-focus);
+  outline-offset: 2px;
+}
+.pageButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* The current page — filled + border + weight carry it (not color alone; the
+   button also sets aria-current="page"). */
+.current {
+  background-color: var(--fs-color-primary-subtle);
+  border-color: var(--fs-color-primary);
+  color: var(--fs-color-primary);
+  font-weight: var(--fs-weight-semibold);
+}
+.current:hover:not(:disabled) {
+  background-color: var(--fs-color-primary-subtle-hover);
+  color: var(--fs-color-primary);
+}
+
+/* Prev/next arrow glyph. */
+.arrow {
+  width: 1em;
+  height: 1em;
+  flex: none;
+}
+
+/* The gap glyph between windowed page numbers. */
+.ellipsis {
+  min-width: 1.5rem;
+  text-align: center;
+  color: var(--fs-color-text-muted);
+  font-size: var(--fs-text-sm);
+  user-select: none;
+}
+
+/* "Trang X / Y" summary. A polite live region so page changes are announced. */
+.info {
+  font-size: var(--fs-text-sm);
+  color: var(--fs-color-text-secondary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}

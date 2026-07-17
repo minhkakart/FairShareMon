@@ -111,6 +111,25 @@ export type { ToastProps, ToastTone } from "./Toast/Toast";
 export { AppShell, NavItem, AuthLayout } from "./AppShell/AppShell";
 export type { AppShellProps } from "./AppShell/AppShell";
 
+export { Pagination } from "./Pagination/Pagination";
+export type { PaginationProps } from "./Pagination/Pagination";
+
+/* Shared chart primitives (dataviz) — used by Stats (M6) + Admin (M8). */
+export {
+  KpiTile,
+  KpiValue,
+  KpiRow,
+  RankedBarChart,
+  TimeSeriesBarChart,
+} from "./charts";
+export type {
+  KpiTileProps,
+  RankedBarChartProps,
+  RankedBarItem,
+  TimeSeriesBarChartProps,
+  TimeSeriesBarItem,
+} from "./charts";
+
 export { ThemeToggle } from "./Controls/ThemeToggle";
 export type { ThemeToggleProps, ThemePreference } from "./Controls/ThemeToggle";
 export { LanguageToggle } from "./Controls/LanguageToggle";

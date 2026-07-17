@@ -47,6 +47,7 @@ import { M4Showcase } from "./M4Showcase";
 import { M5Showcase } from "./M5Showcase";
 import { M6Showcase } from "./M6Showcase";
 import { M7Showcase } from "./M7Showcase";
+import { M8Showcase } from "./M8Showcase";
 import styles from "./StyleGuide.module.css";
 
 /**
@@ -578,6 +579,10 @@ export function StyleGuide() {
 
         {/* M7 — WALLET & QR: QrDialog composite + wallet list (mask/reveal, gate) */}
         <M7Showcase />
+
+        {/* M8 — ADMIN: shared charts (KpiTile/RankedBarChart/TimeSeriesBarChart),
+            tabbed console, dashboards, user admin + Pagination, action dialogs */}
+        <M8Showcase />
 
         <Section title="Bố cục xác thực (auth)">
           <div className={styles.authPreview}>

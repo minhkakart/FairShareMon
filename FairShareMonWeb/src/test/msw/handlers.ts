@@ -806,6 +806,245 @@ function issueTokens(username: string) {
   };
 }
 
+// --- Admin store (mock backend, M8) ---------------------------------------
+// Account metadata + tier-grant records ONLY — deliberately NO ledger fields, so
+// the R10 privacy test is meaningful (asserts no ledger key ever appears).
+interface AdminGrantRecord {
+  uuid: string;
+  tier: "FREE" | "PREMIUM";
+  action: "GRANT" | "REVOKE";
+  amount: number;
+  currency: string;
+  reference: string | null;
+  note: string | null;
+  grantedByUsername: string;
+  createdAt: string;
+}
+interface AdminUserRecord {
+  uuid: string;
+  username: string;
+  tier: "FREE" | "PREMIUM";
+  role: "USER" | "ADMIN";
+  status: "ACTIVE" | "DISABLED";
+  createdAt: string;
+  grants: AdminGrantRecord[];
+}
+
+function seedAdminUsers(): AdminUserRecord[] {
+  const day = (m: number, d: number) =>
+    `2026-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}T09:00:00.000Z`;
+  const records: AdminUserRecord[] = [
+    {
+      uuid: "uuid-admin",
+      username: "admin",
+      tier: "PREMIUM",
+      role: "ADMIN",
+      status: "ACTIVE",
+      createdAt: day(1, 5),
+      grants: [],
+    },
+    {
+      uuid: "uuid-pham-admin",
+      username: "pham.admin",
+      tier: "PREMIUM",
+      role: "ADMIN",
+      status: "ACTIVE",
+      createdAt: day(1, 8),
+      grants: [
+        {
+          uuid: `tg-${rand()}`,
+          tier: "PREMIUM",
+          action: "GRANT",
+          amount: 500000,
+          currency: "VND",
+          reference: "MB-20260305-1190",
+          note: "Cấp nội bộ",
+          grantedByUsername: "admin",
+          createdAt: day(3, 5),
+        },
+      ],
+    },
+    {
+      uuid: "uuid-nguyen-a",
+      username: "nguyen.van.a",
+      tier: "PREMIUM",
+      role: "USER",
+      status: "ACTIVE",
+      createdAt: day(2, 2),
+      grants: [
+        {
+          uuid: `tg-${rand()}`,
+          tier: "PREMIUM",
+          action: "GRANT",
+          amount: 200000,
+          currency: "VND",
+          reference: "VCB-20260716-8842",
+          note: "Gia hạn 1 năm",
+          grantedByUsername: "admin",
+          createdAt: day(7, 16),
+        },
+        {
+          uuid: `tg-${rand()}`,
+          tier: "PREMIUM",
+          action: "GRANT",
+          amount: 200000,
+          currency: "VND",
+          reference: "VCB-20260115-1001",
+          note: null,
+          grantedByUsername: "admin",
+          createdAt: day(1, 15),
+        },
+      ],
+    },
+    {
+      uuid: "uuid-le-b",
+      username: "le.thi.b",
+      tier: "FREE",
+      role: "USER",
+      status: "ACTIVE",
+      createdAt: day(3, 11),
+      grants: [],
+    },
+    {
+      uuid: "uuid-tran-d",
+      username: "tran.d",
+      tier: "FREE",
+      role: "USER",
+      status: "DISABLED",
+      createdAt: day(5, 20),
+      grants: [],
+    },
+  ];
+  // Filler users so the list pages (25 total > pageSize 20).
+  for (let i = 1; i <= 20; i += 1) {
+    const month = (i % 6) + 1;
+    const isPremium = i % 3 === 0;
+    records.push({
+      uuid: `uuid-user-${i}`,
+      username: `user.${String(i).padStart(3, "0")}`,
+      tier: isPremium ? "PREMIUM" : "FREE",
+      role: "USER",
+      status: "ACTIVE",
+      createdAt: day(month, (i % 27) + 1),
+      grants: isPremium
+        ? [
+            {
+              uuid: `tg-${rand()}`,
+              tier: "PREMIUM",
+              action: "GRANT",
+              amount: 200000,
+              currency: "VND",
+              reference: `TCB-2026${String(month).padStart(2, "0")}-${1000 + i}`,
+              note: null,
+              grantedByUsername: "admin",
+              createdAt: day(month, (i % 27) + 1),
+            },
+          ]
+        : [],
+    });
+  }
+  return records;
+}
+
+let adminUsers: AdminUserRecord[] | null = null;
+function getAdminUsers(): AdminUserRecord[] {
+  if (!adminUsers) adminUsers = seedAdminUsers();
+  return adminUsers;
+}
+
+/**
+ * Test-only: reset the admin user/grant store back to its deterministic seed.
+ * The store is a module-level singleton mutated by the admin action handlers
+ * (grant/revoke/disable/enable/role), so specs that drive those against the
+ * committed handlers call this in `beforeEach` for per-test isolation. Additive
+ * and inert for the browser-mock path (which never calls it).
+ */
+export function resetAdminStore(): void {
+  adminUsers = null;
+}
+
+type Gate =
+  | { ok: true; username: string; uuid: string }
+  | { ok: false; response: ReturnType<typeof fail> };
+
+/** ADMIN-only gate: 401 (no token) / 500 (degraded) / 403 1004 (non-admin). */
+function adminGate(request: Request): Gate {
+  const username = usernameFromAuthHeader(request.headers.get("Authorization"));
+  if (!username) {
+    return {
+      ok: false,
+      response: fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401),
+    };
+  }
+  const profile = profiles.get(username);
+  if (!profile) {
+    return { ok: false, response: fail(1000, "Đã xảy ra lỗi máy chủ.", 500) };
+  }
+  if (profile.role !== "ADMIN") {
+    return {
+      ok: false,
+      response: fail(1004, "Bạn không có quyền truy cập khu vực quản trị.", 403),
+    };
+  }
+  return { ok: true, username, uuid: profile.uuid };
+}
+
+function adminUserRow(u: AdminUserRecord) {
+  const grantRows = u.grants.filter((g) => g.action === "GRANT");
+  const lastGrant = grantRows.reduce<string | null>(
+    (acc, g) => (acc === null || g.createdAt > acc ? g.createdAt : acc),
+    null,
+  );
+  return {
+    uuid: u.uuid,
+    username: u.username,
+    tier: u.tier,
+    role: u.role,
+    status: u.status,
+    createdAt: u.createdAt,
+    grantCount: grantRows.length,
+    lastGrantAt: lastGrant,
+  };
+}
+
+function grantRowResponse(g: AdminGrantRecord) {
+  return {
+    uuid: g.uuid,
+    tier: g.tier,
+    action: g.action,
+    amount: g.amount,
+    currency: g.currency,
+    reference: g.reference,
+    note: g.note,
+    grantedByUsername: g.grantedByUsername,
+    createdAt: g.createdAt,
+  };
+}
+
+function inRange(iso: string, from: string | null, to: string | null): boolean {
+  if (from && iso < from) return false;
+  if (to && iso > to) return false;
+  return true;
+}
+
+/** Guard destructive actions the way the backend does: self → 14001; admin → 14002. */
+function ensureDestructiveAllowed(
+  actingUuid: string,
+  target: AdminUserRecord,
+): ReturnType<typeof fail> | null {
+  if (target.uuid === actingUuid) {
+    return fail(14001, "Không thể thực hiện hành động này với chính bạn.", 400);
+  }
+  if (target.role === "ADMIN") {
+    return fail(
+      14002,
+      "Không thể thực hiện hành động này với một quản trị viên khác.",
+      400,
+    );
+  }
+  return null;
+}
+
 export const handlers = [
   http.post("*/api/v1/auth/register", async ({ request }) => {
     const body = (await request.json()) as RegisterRequest;
@@ -2155,5 +2394,264 @@ export const handlers = [
       return fail(12000, "Không tìm thấy tài khoản ngân hàng.", 404);
     }
     return pngResponse(`event-qr-${ev.uuid}.png`);
+  }),
+
+  // --- Admin (M8) — account metadata + tier-grant/revenue ONLY (R10) -------
+  http.get("*/api/v1/admin/dashboard", ({ request }) => {
+    const gate = adminGate(request);
+    if (!gate.ok) return gate.response;
+    const url = new URL(request.url);
+    const from = url.searchParams.get("from");
+    const to = url.searchParams.get("to");
+    const bucket = url.searchParams.get("bucket") === "day" ? "day" : "month";
+    const bucketKey = (iso: string) =>
+      bucket === "day" ? iso.slice(0, 10) : iso.slice(0, 7);
+
+    const users = getAdminUsers();
+    const countBy = (pick: (u: AdminUserRecord) => string) => {
+      const map = new Map<string, number>();
+      for (const u of users) map.set(pick(u), (map.get(pick(u)) ?? 0) + 1);
+      return [...map.entries()].map(([key, count]) => ({ key, count }));
+    };
+
+    const signupMap = new Map<string, number>();
+    for (const u of users) {
+      if (!inRange(u.createdAt, from, to)) continue;
+      const key = bucketKey(u.createdAt);
+      signupMap.set(key, (signupMap.get(key) ?? 0) + 1);
+    }
+    const signups = [...signupMap.entries()]
+      .sort((a, b) => (a[0] < b[0] ? -1 : 1))
+      .map(([periodLabel, count]) => ({ periodLabel, count }));
+
+    return ok({
+      from,
+      to,
+      totalUsers: users.length,
+      tierDistribution: countBy((u) => u.tier),
+      roleDistribution: countBy((u) => u.role),
+      statusDistribution: countBy((u) => u.status),
+      signups,
+    });
+  }),
+
+  http.get("*/api/v1/admin/revenue", ({ request }) => {
+    const gate = adminGate(request);
+    if (!gate.ok) return gate.response;
+    const url = new URL(request.url);
+    const from = url.searchParams.get("from");
+    const to = url.searchParams.get("to");
+    const bucket = url.searchParams.get("bucket") === "day" ? "day" : "month";
+    const bucketKey = (iso: string) =>
+      bucket === "day" ? iso.slice(0, 10) : iso.slice(0, 7);
+
+    const grants = getAdminUsers()
+      .flatMap((u) => u.grants)
+      .filter((g) => g.action === "GRANT" && inRange(g.createdAt, from, to));
+
+    const bucketMap = new Map<string, { total: number; grantCount: number }>();
+    for (const g of grants) {
+      const key = bucketKey(g.createdAt);
+      const cur = bucketMap.get(key) ?? { total: 0, grantCount: 0 };
+      cur.total += g.amount;
+      cur.grantCount += 1;
+      bucketMap.set(key, cur);
+    }
+    const buckets = [...bucketMap.entries()]
+      .sort((a, b) => (a[0] < b[0] ? -1 : 1))
+      .map(([periodLabel, v]) => ({ periodLabel, ...v }));
+
+    const references = grants
+      .filter((g) => g.reference)
+      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+      .map((g) => g.reference as string);
+
+    return ok({
+      from,
+      to,
+      bucket,
+      buckets,
+      totalRevenue: grants.reduce((sum, g) => sum + g.amount, 0),
+      grantCount: grants.length,
+      references,
+    });
+  }),
+
+  http.get("*/api/v1/admin/users", ({ request }) => {
+    const gate = adminGate(request);
+    if (!gate.ok) return gate.response;
+    const url = new URL(request.url);
+    const tier = url.searchParams.get("tier");
+    const status = url.searchParams.get("status");
+    const role = url.searchParams.get("role");
+    const search = (url.searchParams.get("search") ?? "").toLowerCase();
+    const page = Math.max(1, Number(url.searchParams.get("page")) || 1);
+    const pageSize = Math.min(
+      100,
+      Math.max(1, Number(url.searchParams.get("pageSize")) || 20),
+    );
+    const sort = url.searchParams.get("sort") ?? "createdAt";
+    const direction = url.searchParams.get("direction") === "asc" ? "asc" : "desc";
+
+    let list = getAdminUsers().slice();
+    if (tier) list = list.filter((u) => u.tier === tier);
+    if (status) list = list.filter((u) => u.status === status);
+    if (role) list = list.filter((u) => u.role === role);
+    if (search) list = list.filter((u) => u.username.toLowerCase().includes(search));
+
+    list.sort((a, b) => {
+      let cmp = 0;
+      if (sort === "username") cmp = a.username.localeCompare(b.username, "vi");
+      else if (sort === "tier") cmp = a.tier.localeCompare(b.tier);
+      else if (sort === "status") cmp = a.status.localeCompare(b.status);
+      else cmp = a.createdAt < b.createdAt ? -1 : a.createdAt > b.createdAt ? 1 : 0;
+      return direction === "asc" ? cmp : -cmp;
+    });
+
+    const totalCount = list.length;
+    const start = (page - 1) * pageSize;
+    const items = list.slice(start, start + pageSize).map(adminUserRow);
+    return ok({
+      items,
+      page,
+      pageSize,
+      totalCount,
+      totalPages: Math.ceil(totalCount / pageSize),
+    });
+  }),
+
+  http.get("*/api/v1/admin/users/:uuid", ({ request, params }) => {
+    const gate = adminGate(request);
+    if (!gate.ok) return gate.response;
+    const user = getAdminUsers().find((u) => u.uuid === params.uuid);
+    if (!user) return fail(14000, "Không tìm thấy người dùng.", 404);
+    return ok({
+      uuid: user.uuid,
+      username: user.username,
+      tier: user.tier,
+      role: user.role,
+      status: user.status,
+      createdAt: user.createdAt,
+      grants: [...user.grants]
+        .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+        .map(grantRowResponse),
+    });
+  }),
+
+  http.post("*/api/v1/admin/users/:uuid/tier/grant", async ({ request, params }) => {
+    const gate = adminGate(request);
+    if (!gate.ok) return gate.response;
+    const user = getAdminUsers().find((u) => u.uuid === params.uuid);
+    if (!user) return fail(14000, "Không tìm thấy người dùng.", 404);
+    const body = (await request.json()) as {
+      amount?: number;
+      currency?: string;
+      reference?: string;
+      note?: string;
+    };
+    if (typeof body.amount !== "number" || body.amount < 0) {
+      return fail(1001, "Dữ liệu không hợp lệ.", 400, {
+        amount: ["Số tiền không được âm."],
+      });
+    }
+    const grant: AdminGrantRecord = {
+      uuid: `tg-${rand()}`,
+      tier: "PREMIUM",
+      action: "GRANT",
+      amount: body.amount,
+      currency: body.currency || "VND",
+      reference: body.reference || null,
+      note: body.note || null,
+      grantedByUsername: gate.username,
+      createdAt: new Date().toISOString(),
+    };
+    user.grants.push(grant);
+    user.tier = "PREMIUM";
+    return ok(grantRowResponse(grant));
+  }),
+
+  http.post("*/api/v1/admin/users/:uuid/tier/revoke", async ({ request, params }) => {
+    const gate = adminGate(request);
+    if (!gate.ok) return gate.response;
+    const user = getAdminUsers().find((u) => u.uuid === params.uuid);
+    if (!user) return fail(14000, "Không tìm thấy người dùng.", 404);
+    const body = (await request.json()) as { note?: string };
+    const grant: AdminGrantRecord = {
+      uuid: `tg-${rand()}`,
+      tier: "FREE",
+      action: "REVOKE",
+      amount: 0,
+      currency: "VND",
+      reference: null,
+      note: body.note || null,
+      grantedByUsername: gate.username,
+      createdAt: new Date().toISOString(),
+    };
+    user.grants.push(grant);
+    user.tier = "FREE";
+    return ok(grantRowResponse(grant));
+  }),
+
+  http.post("*/api/v1/admin/users/:uuid/disable", ({ request, params }) => {
+    const gate = adminGate(request);
+    if (!gate.ok) return gate.response;
+    const user = getAdminUsers().find((u) => u.uuid === params.uuid);
+    if (!user) return fail(14000, "Không tìm thấy người dùng.", 404);
+    const guard = ensureDestructiveAllowed(gate.uuid, user);
+    if (guard) return guard;
+    user.status = "DISABLED";
+    return ok({ message: "Đã khóa tài khoản." });
+  }),
+
+  http.post("*/api/v1/admin/users/:uuid/enable", ({ request, params }) => {
+    const gate = adminGate(request);
+    if (!gate.ok) return gate.response;
+    const user = getAdminUsers().find((u) => u.uuid === params.uuid);
+    if (!user) return fail(14000, "Không tìm thấy người dùng.", 404);
+    user.status = "ACTIVE";
+    return ok({ message: "Đã mở khóa tài khoản." });
+  }),
+
+  http.post("*/api/v1/admin/users/:uuid/revoke-tokens", ({ request, params }) => {
+    const gate = adminGate(request);
+    if (!gate.ok) return gate.response;
+    const user = getAdminUsers().find((u) => u.uuid === params.uuid);
+    if (!user) return fail(14000, "Không tìm thấy người dùng.", 404);
+    const guard = ensureDestructiveAllowed(gate.uuid, user);
+    if (guard) return guard;
+    return ok({ message: "Đã thu hồi toàn bộ phiên." });
+  }),
+
+  http.post("*/api/v1/admin/users/:uuid/reset-password", async ({ request, params }) => {
+    const gate = adminGate(request);
+    if (!gate.ok) return gate.response;
+    const user = getAdminUsers().find((u) => u.uuid === params.uuid);
+    if (!user) return fail(14000, "Không tìm thấy người dùng.", 404);
+    const guard = ensureDestructiveAllowed(gate.uuid, user);
+    if (guard) return guard;
+    const body = (await request.json()) as { newPassword?: string };
+    const newPassword = body.newPassword ?? "";
+    if (newPassword.length < 8) {
+      return fail(1001, "Dữ liệu không hợp lệ.", 400, {
+        newPassword: ["Mật khẩu tối thiểu 8 ký tự."],
+      });
+    }
+    return ok({ username: user.username, password: newPassword });
+  }),
+
+  http.post("*/api/v1/admin/users/:uuid/role", async ({ request, params }) => {
+    const gate = adminGate(request);
+    if (!gate.ok) return gate.response;
+    const user = getAdminUsers().find((u) => u.uuid === params.uuid);
+    if (!user) return fail(14000, "Không tìm thấy người dùng.", 404);
+    const body = (await request.json()) as { role?: "USER" | "ADMIN" };
+    const role = body.role === "ADMIN" ? "ADMIN" : "USER";
+    // Demotion is destructive: guard self / another admin (14001/14002).
+    if (role === "USER") {
+      const guard = ensureDestructiveAllowed(gate.uuid, user);
+      if (guard) return guard;
+    }
+    user.role = role;
+    return ok({ message: "Đã cập nhật vai trò." });
   }),
 ];

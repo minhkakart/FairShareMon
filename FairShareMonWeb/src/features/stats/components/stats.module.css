@@ -1,11 +1,10 @@
-/* Stats feature styles — KPI stat tiles, the hand-rolled horizontal category
-   bar chart, and the date-range control. Ported verbatim from the ui-designer's
-   M6 showcase spec (src/styles/M6Showcase.module.css); feature-local per OQ5a
-   (a shared components/ui/charts extraction is an M8 concern). Tokens only; light
-   + dark come free through the semantic + --fs-viz-* tokens. Per the dataviz
-   skill: the bar fills are the ONLY thing wearing --fs-viz-cat-*; every
-   label/value/axis wears TEXT tokens, and the relief rule is satisfied by direct
-   value labels + the paired table. */
+/* Stats feature styles — the date-range control + the residual label/skeleton
+   classes still used by the M6 category breakdown after the M8 chart extraction.
+   The KPI tiles and the horizontal bar chart now live in the SHARED
+   components/ui/charts primitives (KpiTile / RankedBarChart) on charts.module.css;
+   the now-dead .statTile/.kpiRow/.bar{Value,Share,Track,Fill}/.compactChart rules
+   were dropped in M8. Tokens only; light + dark come free through the semantic +
+   --fs-viz-* tokens. */
 
 /* Section wrapper (Stats page + home) with a titled heading. */
 .sectionTitle {
@@ -16,59 +15,14 @@
 }
 
 /* =============================================================================
- * 1. KPI stat tile + overview row
+ * Category breakdown — residual bits (the bars themselves are RankedBarChart)
  * ========================================================================== */
-.kpiRow {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(13.5rem, 1fr));
-  gap: var(--fs-space-4);
-}
-
-.statTile {
-  display: flex;
-  flex-direction: column;
-  gap: var(--fs-space-1);
-  min-width: 0;
-}
-.statLabel {
-  font-size: var(--fs-text-sm);
-  font-weight: var(--fs-weight-medium);
-  color: var(--fs-color-text-secondary);
-  line-height: var(--fs-leading-snug);
-  overflow-wrap: anywhere;
-}
-.statValue {
-  font-size: var(--fs-text-3xl);
-  font-weight: var(--fs-weight-semibold);
-  line-height: var(--fs-leading-tight);
-  color: var(--fs-color-text);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: var(--fs-tracking-tight);
-  overflow-wrap: anywhere;
-}
-.statHint {
-  font-size: var(--fs-text-xs);
-  color: var(--fs-color-text-muted);
-  line-height: var(--fs-leading-snug);
-}
-.statValueSkeleton {
-  height: 2.25rem;
-  display: flex;
-  align-items: center;
-}
-
-/* =============================================================================
- * 2. Category horizontal bar chart
- * ========================================================================== */
+/* The loading skeleton stand-in for the ranked bar list (real bars render via the
+   shared RankedBarChart). */
 .chart {
   display: flex;
   flex-direction: column;
-  /* Row gap IS the ≥2px surface gap between adjacent bars (dataviz mark spec). */
   gap: var(--fs-space-4);
-}
-/* Compact variant inside the home card — same bars, tighter. */
-.compactChart {
-  gap: var(--fs-space-3);
 }
 
 .barRow {
@@ -84,42 +38,15 @@
   gap: var(--fs-space-3);
   min-width: 0;
 }
+
+/* The identity label slot passed into RankedBarChart + the paired table's row
+   header: a category marker + name, with an italic "(đã xóa)" tag when deleted. */
 .barLabel {
   min-width: 0;
   display: inline-flex;
   align-items: center;
   gap: var(--fs-space-2);
   flex-wrap: wrap;
-}
-.barValue {
-  flex: none;
-  display: inline-flex;
-  align-items: baseline;
-  gap: var(--fs-space-2);
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-}
-.barShare {
-  font-size: var(--fs-text-sm);
-  color: var(--fs-color-text-secondary);
-  min-width: 2.75rem;
-  text-align: right;
-}
-
-.barTrack {
-  position: relative;
-  height: 0.75rem; /* 12px — inside the ≤24px cap */
-  border-radius: var(--fs-radius-pill);
-  background-color: var(--fs-viz-grid);
-  overflow: hidden;
-}
-.barFill {
-  height: 100%;
-  /* square at the baseline (left), 4px rounded data-end (right) */
-  border-radius: 0 var(--fs-radius-sm) var(--fs-radius-sm) 0;
-  background-color: var(--bar-color, var(--fs-viz-cat-1));
-  min-width: 2px; /* a non-zero category is always visible */
-  transition: width var(--fs-duration-slow) var(--fs-ease-decelerate);
 }
 .barDeletedTag {
   font-size: var(--fs-text-sm);
@@ -133,14 +60,8 @@
   font-variant-numeric: tabular-nums;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .barFill {
-    transition: none;
-  }
-}
-
 /* =============================================================================
- * 3. Date-range control
+ * Date-range control
  * ========================================================================== */
 .rangeControl {
   display: flex;

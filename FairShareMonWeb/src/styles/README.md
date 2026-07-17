@@ -300,6 +300,99 @@ Alert, Badge, TierBadge, Money, Skeleton); no new tokens, no new dependency.
   `403 13003` on any mutation is caught reactively and rendered as the same
   `UpgradePrompt` (the server is authoritative).
 
+## Shared chart primitives (M8 — `components/ui/charts`)
+
+The M6 stats dataviz layer was **extracted and generalized** into
+`src/components/ui/charts/` so Stats (M6) and Admin (M8) share **one** chart
+system on the `--fs-viz-*` palette (the roadmap Future Improvement / M6 OQ5a
+deferral — "M8 is the trigger"). Re-exported from `@/components/ui`. All are
+presentational + theme-aware; the caller supplies API-computed ratios/values
+(**no money math in a chart**, R3) and pairs each chart with an accessible data
+table (the chart region is `role="img"`). Reviewable in `src/styles/M8Showcase.tsx`.
+
+- **`KpiTile` / `KpiValue` / `KpiRow`** (from M6 `StatTile`). `KpiTile` = label +
+  big value + optional hint + `loading` skeleton on `Card`. Pass `<Money size="xl">`
+  for currency (it brings its own size) or wrap a count in `<KpiValue>` for the big
+  tabular display. `KpiRow` is the responsive auto-fit grid. A zero is valid data
+  (`0`), never an empty state.
+- **`RankedBarChart`** (from M6 `CategoryBarChart`, generalized). A ranked
+  horizontal-bar list; `items: RankedBarItem[]` where `label` is a **slot**
+  (category charts pass `<CategoryMarker>`, admin passes text/`<Badge>`/`<TierBadge>`),
+  `value` is a node (`<Money>` or a count), `ratio` is the caller-computed
+  `total/maxTotal` in 0..1, `meta` an optional share/%, and `color` an optional
+  fixed fill override (default = `--fs-viz-cat-1..8` by rank, 9th+ →
+  `--fs-viz-ink-muted`). Relief rule satisfied by the direct label + value on every
+  row + the paired table; `role="img"` + summarizing `ariaLabel`, bars `aria-hidden`.
+- **`TimeSeriesBarChart`** (net-new). Vertical columns over ordered time buckets
+  (`items: TimeSeriesBarItem[]` — `periodLabel`, caller-computed `ratio`, `value`
+  cap node, `title` hover text). **One measure over time → one hue**: the column
+  fill is a single sequential step (`--fs-viz-seq-500`, ≥ 3:1 on both surfaces —
+  5.39 light / 5.75 dark) so it needs no legend; `showValues` toggles cap labels
+  (default on for months; set false for dense day buckets). Paired with a table;
+  `role="img"` + `ariaLabel`, columns `aria-hidden`; `prefers-reduced-motion`
+  disables the grow.
+
+**Not extracted (feature-local per the plan):** `RoleBadge` / `StatusBadge` (thin
+`Badge` wrappers — ADMIN = info + shield, DISABLED = danger + ban, ACTIVE = success
++ check; icon + text, never color alone), and the M6 `CategoryStatsTable` /
+`StatsRangeControl` (compositions, not primitives). The M6 feature still owns its
+`OverviewKpiRow` / `CategoryBreakdown` compositions — they should re-point to the
+shared `KpiTile` / `RankedBarChart` (see the M8 plan's refactor note).
+
+## Pagination (M8 — `components/ui/Pagination`)
+
+The first paged surface (admin user list) adds a shared, controlled
+`<Pagination page pageCount onPageChange />` primitive (reusable by any future
+list). Prev/next + windowed numbered pages (first/last + `siblingCount` around the
+current, with `…` gaps) + a `role="status"` "Trang X / Y" summary. Accessible: a
+`<nav aria-label>` landmark, native `<button>`s (full keyboard), the current page
+carries `aria-current="page"` **and** a filled/bordered/weighted treatment (state
+not color-alone), prev disabled on page 1 / next on the last page. Copy is injected
+(`prevLabel` / `nextLabel` / `pageLabel` / `pageInfo`) so i18n owns the strings.
+Renders nothing for a single page.
+
+## Admin console (M8)
+
+Two net-new admin surfaces — see `src/styles/M8Showcase.tsx` (light + dark via
+`StyleGuide.tsx`). Feature-local compositions the web-implementer rebuilds under
+`src/features/admin/`; they reuse existing primitives + the shared charts +
+`Pagination`; no new tokens, no new dependency. **Privacy boundary R10: every
+admin surface shows only account metadata + tier-grant/revenue data — nothing that
+implies a user's ledger.**
+
+- **Tabbed `AdminLayout`** — a distinct, framed high-privilege **console shell**
+  (an "Quản trị" eyebrow + shield glyph + title over a tab sub-nav: Bảng chỉ số ·
+  Doanh thu · Người dùng), visually separate from the member `AppShell` so an
+  operator always knows they are in the privileged area. In the app each tab is a
+  router `NavLink` carrying `aria-current="page"`.
+- **Metrics + revenue dashboards** — a `KpiRow` of `KpiTile`s (revenue via
+  `<Money>`, verbatim, never client-summed) + `RankedBarChart` distributions
+  (tier/role/status, each with a `Badge`/`TierBadge` in the label slot) + a
+  `TimeSeriesBarChart` (signups / revenue buckets), **each paired with a table**.
+- **User admin** — a wrapping filter bar (tier/status/role `Select` + username
+  `TextField`), a sortable `Table` (sort direction carried by a glyph + `aria-sort`,
+  not color), the shared `Pagination`, and a user-detail (`DescriptionList`
+  metadata + a grant-history `Table`). A `14000` miss → an admin-local
+  `EmptyState` not-found (the admin scope may confirm a user exists).
+- **Sensitive-action dialogs — three severity tiers.**
+  1. **Routine** (enable) — ordinary `DialogContent`.
+  2. **Danger** (disable / revoke-tokens / role demote) — `DialogContent tone="danger"`
+     + a `variant="danger"` button + a consequence `Alert`; **guarded** for the
+     self (14001) / other-admin (14002) case: the action button renders disabled
+     wrapped in a tooltip element, while grant/revoke/promote stay enabled (the
+     client still branches on 14001/14002 if the server rejects).
+  3. **One-time secret** (reset-password reveal, OQ3a — highest severity). Phase 1:
+     a read-only **client-generated strong temp password** (`generateTempPassword`,
+     12–16 chars, ≥1 of each class, `crypto.getRandomValues`) with a **Regenerate**
+     action. Phase 2: an emphasized, framed **secret panel** (warning-surface well)
+     showing the value ONCE — mono, `user-select:all` — with **copy-to-clipboard**
+     (label swaps to "Đã sao chép" + a `role="status"` live-region confirm) and a
+     **"copy now — closing destroys this"** warning (icon + text). The value lives
+     **only in component state** (the dialog body is gated on `open`, so closing
+     unmounts and clears it); it is never in a query cache, persisted, or logged.
+     `showClose={false}` forces the deliberate "Tôi đã sao chép — Đóng".
+  Also the **tier grant/revoke** dialog (money input + reference/note).
+
 ## App shell & page layout
 
 - **Responsive nav (`AppShell`):** mobile-first. Below **64rem** the inline nav

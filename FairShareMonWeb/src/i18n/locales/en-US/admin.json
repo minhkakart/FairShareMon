@@ -1,0 +1,276 @@
+{
+  "console": {
+    "eyebrow": "Admin",
+    "title": "Control panel",
+    "description": "System metrics, Premium revenue, and user management. Only accounts with the Administrator role can access this area.",
+    "navLabel": "Admin area"
+  },
+  "nav": {
+    "dashboard": "Metrics",
+    "revenue": "Revenue",
+    "users": "Users"
+  },
+  "range": {
+    "label": "Date range",
+    "preset": {
+      "thisMonth": "This month",
+      "last30Days": "Last 30 days",
+      "thisYear": "This year",
+      "allTime": "All time",
+      "custom": "Custom"
+    },
+    "from": "From",
+    "to": "To",
+    "invalid": "Invalid date range — please pick again.",
+    "bucketLabel": "Group by",
+    "bucket": {
+      "month": "Month",
+      "day": "Day"
+    }
+  },
+  "dashboard": {
+    "title": "Metrics",
+    "subtitle": "Figures based on account metadata only. No ledger data of any kind.",
+    "kpi": {
+      "totalUsers": "Total users",
+      "totalUsersHint": "All accounts (every tier, every status)",
+      "activeUsers": "Active"
+    },
+    "distributions": {
+      "tier": "By tier",
+      "role": "By role",
+      "status": "By status",
+      "tierChartLabel": "User distribution by tier. See the table below for details.",
+      "roleChartLabel": "User distribution by role. See the table below for details.",
+      "statusChartLabel": "User distribution by status. See the table below for details.",
+      "group": "Group",
+      "count": "Count",
+      "share": "Share",
+      "total": "Total"
+    },
+    "signups": {
+      "title": "Signups over time",
+      "chartLabel": "Signup count per period. See the table below for details.",
+      "tableCaption": "Signups by period",
+      "period": "Period",
+      "count": "Signups",
+      "empty": "No signups in this range yet."
+    },
+    "states": {
+      "error": "Couldn't load the metrics",
+      "retry": "Try again"
+    }
+  },
+  "revenue": {
+    "title": "Revenue",
+    "subtitle": "Sum of Premium GRANTs. Revokes do not count toward revenue.",
+    "kpi": {
+      "total": "Total revenue",
+      "totalHint": "Sum of Premium GRANTs — computed by the server, shown verbatim",
+      "grantCount": "Grants"
+    },
+    "chart": {
+      "title": "Revenue over time",
+      "chartLabel": "Premium revenue per period. See the table below for details.",
+      "tableCaption": "Revenue by period",
+      "period": "Period",
+      "revenue": "Revenue",
+      "grantCount": "Grants",
+      "total": "Total"
+    },
+    "references": {
+      "title": "Payment references (most recent)",
+      "empty": "No references in this range yet."
+    },
+    "states": {
+      "error": "Couldn't load the revenue report",
+      "retry": "Try again"
+    }
+  },
+  "users": {
+    "title": "Users",
+    "subtitle": "Shows account metadata + Premium-grant figures only. No ledger data.",
+    "filters": {
+      "tier": "Tier",
+      "status": "Status",
+      "role": "Role",
+      "allTier": "All tiers",
+      "allStatus": "All statuses",
+      "allRole": "All roles",
+      "search": "Search by username",
+      "searchPlaceholder": "e.g. nguyen.van.a"
+    },
+    "columns": {
+      "username": "Username",
+      "tier": "Tier",
+      "role": "Role",
+      "status": "Status",
+      "createdAt": "Created",
+      "grantCount": "Grants",
+      "lastGrantAt": "Last grant",
+      "actions": "Actions"
+    },
+    "sortAscLabel": "Sort by {{column}} ascending",
+    "sortDescLabel": "Sort by {{column}} descending",
+    "view": "View",
+    "viewLabel": "View {{name}}",
+    "caption": "User list",
+    "none": "—",
+    "states": {
+      "empty": "No users found",
+      "emptyBody": "Try changing the filters or search term.",
+      "error": "Couldn't load the user list",
+      "retry": "Try again"
+    },
+    "pagination": {
+      "label": "User pagination",
+      "prev": "Previous page",
+      "next": "Next page",
+      "info": "Page {{page}} / {{pageCount}}",
+      "page": "Page {{page}}"
+    }
+  },
+  "tierBadge": {
+    "free": "Free",
+    "premium": "Premium"
+  },
+  "roleBadge": {
+    "admin": "Administrator",
+    "user": "User"
+  },
+  "statusBadge": {
+    "active": "Active",
+    "disabled": "Disabled"
+  },
+  "grantAction": {
+    "grant": "Grant",
+    "revoke": "Revoke"
+  },
+  "detail": {
+    "back": "Back to list",
+    "metadata": {
+      "title": "Account information",
+      "username": "Username",
+      "uuid": "User ID",
+      "tier": "Tier",
+      "role": "Role",
+      "status": "Status",
+      "createdAt": "Joined"
+    },
+    "grantHistory": {
+      "title": "Premium grant/revoke history",
+      "caption": "Premium grant/revoke history for {{name}}",
+      "action": "Action",
+      "tier": "Tier",
+      "amount": "Amount",
+      "reference": "Reference",
+      "note": "Note",
+      "grantedBy": "Performed by",
+      "createdAt": "When",
+      "empty": "No grants or revokes yet."
+    },
+    "actionsTitle": "Admin actions",
+    "notFound": {
+      "title": "User not found",
+      "body": "This user doesn't exist or has been removed. Check the link or go back to the list.",
+      "back": "Back to list"
+    },
+    "states": {
+      "error": "Couldn't load the user detail",
+      "retry": "Try again"
+    }
+  },
+  "actions": {
+    "grant": {
+      "button": "Grant Premium",
+      "title": "Grant Premium",
+      "body": "Record a Premium grant (the amount counts toward revenue).",
+      "amountLabel": "Amount (VND)",
+      "amountHint": "Enter 0 for a free grant.",
+      "referenceLabel": "Reference (optional)",
+      "referencePlaceholder": "VCB-20260716-8842",
+      "noteLabel": "Note (optional)",
+      "notePlaceholder": "1-year renewal",
+      "submit": "Grant Premium",
+      "toast": "Granted Premium to {{name}}."
+    },
+    "revoke": {
+      "button": "Revoke Premium",
+      "title": "Revoke Premium?",
+      "body": "The account returns to the Free tier. Revokes do NOT count toward revenue.",
+      "noteLabel": "Note (optional)",
+      "notePlaceholder": "Reason for revoking",
+      "submit": "Revoke",
+      "toast": "Revoked Premium from {{name}}."
+    },
+    "disable": {
+      "button": "Disable account",
+      "title": "Disable this account?",
+      "body": "The user will be signed out of every device and unable to sign in until re-enabled.",
+      "warning": "Disabling revokes all sessions and blocks sign-in. The user's data is not deleted.",
+      "warningTitle": "Consequences",
+      "submit": "Disable account",
+      "toast": "Disabled {{name}}'s account."
+    },
+    "enable": {
+      "button": "Enable",
+      "title": "Enable account?",
+      "body": "The user will be able to sign in again. No data is affected.",
+      "submit": "Enable",
+      "toast": "Enabled {{name}}'s account."
+    },
+    "revokeTokens": {
+      "button": "Sign out all devices",
+      "title": "Sign out of all devices?",
+      "body": "All of the user's current sessions are revoked immediately. They can still sign in again.",
+      "submit": "Revoke sessions",
+      "toast": "Revoked all sessions for {{name}}."
+    },
+    "promote": {
+      "button": "Promote to Administrator",
+      "title": "Promote to Administrator?",
+      "body": "This account will gain full admin rights, including access to this area.",
+      "submit": "Promote",
+      "toast": "Promoted {{name}} to Administrator."
+    },
+    "demote": {
+      "button": "Demote to User",
+      "title": "Demote to User?",
+      "body": "This account loses admin rights and can no longer access this area.",
+      "warning": "The last Administrator cannot be demoted. The server decides — its error message shows verbatim if it refuses.",
+      "warningTitle": "Admin note",
+      "submit": "Demote",
+      "toast": "Demoted {{name}} to User."
+    },
+    "cancel": "Cancel",
+    "guard": {
+      "self": "You can't perform this action on your own account.",
+      "admin": "You can't perform this action on another Administrator."
+    }
+  },
+  "resetPassword": {
+    "button": "Reset password",
+    "title": "Reset password",
+    "body": "Generate a strong temp password for the user. It shows ONCE after you confirm — be ready to copy and hand it over out of band.",
+    "generatedLabel": "Temp password (auto-generated)",
+    "generatedHint": "12–16 chars, all classes. You can regenerate or edit before confirming.",
+    "regenerate": "Regenerate",
+    "submit": "Reset password",
+    "revealTitle": "Temp password — shown only once",
+    "revealBody": "Copy it now. When you close this dialog the value disappears and cannot be viewed again.",
+    "secretLabel": "Temp password for {{name}}",
+    "copy": "Copy",
+    "copied": "Copied",
+    "copiedLive": "Temp password copied to the clipboard.",
+    "copiedNote": "Copied to the clipboard",
+    "warning": "Copy it now — closing the dialog destroys this value. Never store or log it anywhere.",
+    "close": "I've copied it — Close"
+  },
+  "validation": {
+    "amountRequired": "Please enter an amount.",
+    "amountNegative": "The amount can't be negative.",
+    "currencyTooLong": "Currency is at most 3 characters.",
+    "referenceTooLong": "Reference is at most 255 characters.",
+    "noteTooLong": "Note is at most 500 characters."
+  }
+}

@@ -6,8 +6,14 @@ import "@testing-library/jest-dom/vitest";
 process.env.TZ = "Asia/Ho_Chi_Minh";
 
 import { afterAll, afterEach, beforeAll } from "vitest";
-import { cleanup } from "@testing-library/react";
+import { cleanup, configure } from "@testing-library/react";
 import { server } from "./msw/server";
+
+// Raise the async-util timeout above the 1000ms default so `findBy*`/`waitFor`
+// tolerate CPU saturation when the full suite runs in parallel (network-bound
+// admin/dashboard specs settle a real client → MSW → React Query round-trip).
+// Keeps the suite deterministic under load without per-assertion timeout tuning.
+configure({ asyncUtilTimeout: 5000 });
 
 // jsdom polyfills for Radix primitives (Select / Popper) — these DOM APIs are not
 // implemented by jsdom, and without them Radix Select cannot open in tests. All

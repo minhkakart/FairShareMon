@@ -20,7 +20,11 @@ import { EventsPage } from "@/features/events/pages/EventsPage";
 import { EventDetailPage } from "@/features/events/pages/EventDetailPage";
 import { StatsPage } from "@/features/stats/pages/StatsPage";
 import { WalletPage } from "@/features/wallet/pages/WalletPage";
-import { AdminPage } from "@/features/admin/pages/AdminPage";
+import { AdminLayout } from "@/features/admin/pages/AdminLayout";
+import { AdminDashboardPage } from "@/features/admin/pages/AdminDashboardPage";
+import { AdminRevenuePage } from "@/features/admin/pages/AdminRevenuePage";
+import { AdminUsersPage } from "@/features/admin/pages/AdminUsersPage";
+import { AdminUserDetailPage } from "@/features/admin/pages/AdminUserDetailPage";
 
 export const router = createBrowserRouter([
   {
@@ -81,10 +85,25 @@ export const router = createBrowserRouter([
                 ],
               },
               // Admin area — gated on role == ADMIN (from /auth/me; see AdminRoute).
+              // A tabbed AdminLayout over the metrics / revenue / users surfaces.
               {
                 path: "admin",
                 element: <AdminRoute />,
-                children: [{ index: true, element: <AdminPage /> }],
+                children: [
+                  {
+                    element: <AdminLayout />,
+                    children: [
+                      {
+                        index: true,
+                        element: <Navigate to="/admin/dashboard" replace />,
+                      },
+                      { path: "dashboard", element: <AdminDashboardPage /> },
+                      { path: "revenue", element: <AdminRevenuePage /> },
+                      { path: "users", element: <AdminUsersPage /> },
+                      { path: "users/:uuid", element: <AdminUserDetailPage /> },
+                    ],
+                  },
+                ],
               },
             ],
           },

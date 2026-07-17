@@ -1,0 +1,207 @@
+/* =============================================================================
+ * Shared chart primitives — components/ui/charts
+ * =============================================================================
+ * Extracted from the M6 stats dataviz layer (StatTile / CategoryBarChart) and
+ * generalized so Stats (M6) and Admin (M8) share ONE chart system. Ported
+ * verbatim in spirit from src/styles/M6Showcase.module.css; tokens only, so
+ * light + dark come free through the semantic + --fs-viz-* tokens.
+ *
+ * dataviz rules honored here:
+ *   - The bar/column FILL is the only element that wears a --fs-viz-* color;
+ *     every label / value / axis / caption wears TEXT tokens.
+ *   - Ranked bars use --fs-viz-cat-* by rank (relief rule → the caller ships a
+ *     direct label + value on every row + a paired table).
+ *   - Time-series columns use a SINGLE sequential hue (--fs-viz-seq-500, one
+ *     series → one hue); it clears 3:1 on both surfaces (5.39 light / 5.75 dark)
+ *     and is still paired with an accessible table.
+ *   - Marks: bar ≤ 12px (inside the 24px cap), square at the baseline + 4px
+ *     rounded data-end, ≥ 2px surface gap between marks, recessive track/grid.
+ *   - prefers-reduced-motion neutralizes the grow transitions.
+ * ========================================================================== */
+
+/* =============================================================================
+ * 1. KPI tile + responsive KPI row
+ * ========================================================================== */
+.kpiRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13.5rem, 1fr));
+  gap: var(--fs-space-4);
+}
+
+.kpiTile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-1);
+  min-width: 0;
+}
+.kpiLabel {
+  font-size: var(--fs-text-sm);
+  font-weight: var(--fs-weight-medium);
+  color: var(--fs-color-text-secondary);
+  line-height: var(--fs-leading-snug);
+  overflow-wrap: anywhere;
+}
+/* The big value line. `<Money>` brings its own sizing; a count value uses
+   KpiValue. Digits are tabular so a range-driven value never reflows width. */
+.kpiValue {
+  font-size: var(--fs-text-3xl);
+  font-weight: var(--fs-weight-semibold);
+  line-height: var(--fs-leading-tight);
+  color: var(--fs-color-text);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--fs-tracking-tight);
+  overflow-wrap: anywhere;
+}
+.kpiHint {
+  font-size: var(--fs-text-xs);
+  color: var(--fs-color-text-muted);
+  line-height: var(--fs-leading-snug);
+}
+/* Skeleton slot keeps the tile height stable while the source query is pending. */
+.kpiValueSkeleton {
+  height: 2.25rem;
+  display: flex;
+  align-items: center;
+}
+
+/* =============================================================================
+ * 2. Ranked horizontal bar chart
+ * ========================================================================== */
+.rankedChart {
+  display: flex;
+  flex-direction: column;
+  /* Row gap IS the ≥2px surface gap between adjacent bars (dataviz mark spec):
+     neighbours read distinct because of the gap, not a stroke. */
+  gap: var(--fs-space-4);
+}
+.rankedCompact {
+  gap: var(--fs-space-3);
+}
+
+/* One ranked row = a header line (identity slot + value) above its bar. Stacking
+   the label above the bar (not at the tip) tolerates long Vietnamese labels and
+   keeps the value legible regardless of bar length. */
+.barRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-2);
+  min-width: 0;
+}
+.barHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--fs-space-3);
+  min-width: 0;
+}
+/* The identity slot (a CategoryMarker, a text label, a Badge…). */
+.barLabel {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fs-space-2);
+  flex-wrap: wrap;
+}
+/* Value + secondary (share/%) cluster — text tokens, never the bar color;
+   tabular so the column of figures aligns down the chart. */
+.barValue {
+  flex: none;
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--fs-space-2);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.barMeta {
+  font-size: var(--fs-text-sm);
+  color: var(--fs-color-text-secondary);
+  min-width: 2.75rem;
+  text-align: right;
+}
+
+/* Track is the recessive one-step-off-surface plane; the fill is the only
+   element that carries a --fs-viz-* color. */
+.barTrack {
+  position: relative;
+  height: 0.75rem; /* 12px — inside the ≤24px cap */
+  border-radius: var(--fs-radius-pill);
+  background-color: var(--fs-viz-grid);
+  overflow: hidden;
+}
+.barFill {
+  height: 100%;
+  /* square at the baseline (left), 4px rounded data-end (right) */
+  border-radius: 0 var(--fs-radius-sm) var(--fs-radius-sm) 0;
+  background-color: var(--bar-color, var(--fs-viz-cat-1));
+  min-width: 2px; /* a non-zero row is always visible */
+  transition: width var(--fs-duration-slow) var(--fs-ease-decelerate);
+}
+
+/* =============================================================================
+ * 3. Time-series column chart (net-new)
+ * ========================================================================== */
+.tsChart {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-2);
+}
+/* The plot band — columns grow up from a single baseline. Padding-top gives a
+   full-height column's cap label room so it never clips. */
+.tsPlot {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--fs-space-2);
+  height: 12rem;
+  padding-top: var(--fs-space-5);
+  border-bottom: 1px solid var(--fs-viz-axis);
+}
+.tsCol {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+}
+/* The value on the cap — text token, tabular, sits directly above the column. */
+.tsCap {
+  font-size: var(--fs-text-xs);
+  color: var(--fs-color-text-secondary);
+  font-variant-numeric: tabular-nums;
+  margin-bottom: var(--fs-space-1);
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tsBar {
+  width: 100%;
+  max-width: 2.75rem;
+  background-color: var(--fs-viz-seq-500);
+  /* square at the baseline (bottom), 4px rounded data-end (top) */
+  border-radius: var(--fs-radius-sm) var(--fs-radius-sm) 0 0;
+  min-height: 2px; /* a non-zero bucket is always visible */
+  transition: height var(--fs-duration-slow) var(--fs-ease-decelerate);
+}
+/* Axis label row aligned 1:1 with the columns. */
+.tsAxis {
+  display: flex;
+  gap: var(--fs-space-2);
+}
+.tsAxisLabel {
+  flex: 1 1 0;
+  min-width: 0;
+  text-align: center;
+  font-size: var(--fs-text-xs);
+  color: var(--fs-color-text-muted);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .barFill,
+  .tsBar {
+    transition: none;
+  }
+}

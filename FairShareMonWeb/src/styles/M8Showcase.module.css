@@ -1,0 +1,333 @@
+/* M8 showcase styles — the Admin suite surfaces (tabbed console shell, metrics +
+   revenue dashboards on the shared chart primitives, the user-admin table +
+   filter bar + pagination, the user detail, and the three severity tiers of
+   sensitive-action dialogs incl. the one-time reset-password reveal). Tokens
+   only; light + dark come free through the semantic + --fs-viz-* tokens. The
+   charts themselves are the SHARED components/ui/charts primitives — this file
+   only styles the admin-specific compositions around them. */
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-4);
+}
+.sectionTitle {
+  font-size: var(--fs-text-xl);
+  padding-bottom: var(--fs-space-2);
+  border-bottom: 1px solid var(--fs-color-border-subtle);
+}
+.subhead {
+  margin-top: var(--fs-space-2);
+  font-size: var(--fs-text-md);
+  font-weight: var(--fs-weight-semibold);
+  color: var(--fs-color-text);
+}
+.note {
+  font-size: var(--fs-text-sm);
+  color: var(--fs-color-text-secondary);
+  line-height: var(--fs-leading-normal);
+  max-width: 60rem;
+}
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* =============================================================================
+ * 1. Tabbed admin console shell (AdminLayout)
+ * ========================================================================== */
+/* A high-privilege console shell: a titled header over a tab sub-nav, visually
+   distinct from the member-facing AppShell (a heavier framed region + an admin
+   eyebrow) so an operator always knows they are in the privileged area. */
+.console {
+  border: 1px solid var(--fs-color-border);
+  border-radius: var(--fs-radius-xl);
+  overflow: hidden;
+  background-color: var(--fs-color-surface);
+}
+.consoleHeader {
+  padding: var(--fs-space-5) var(--fs-space-5) 0;
+  background-color: var(--fs-color-surface-sunken);
+  border-bottom: 1px solid var(--fs-color-border);
+}
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fs-space-2);
+  font-size: var(--fs-text-xs);
+  font-weight: var(--fs-weight-semibold);
+  letter-spacing: var(--fs-tracking-wide);
+  text-transform: uppercase;
+  color: var(--fs-color-primary);
+}
+.eyebrowIcon {
+  width: 1em;
+  height: 1em;
+}
+.consoleTitle {
+  margin: var(--fs-space-2) 0 0;
+  font-size: var(--fs-text-2xl);
+  font-weight: var(--fs-weight-semibold);
+  color: var(--fs-color-text);
+}
+.consoleDesc {
+  margin: var(--fs-space-1) 0 var(--fs-space-4);
+  font-size: var(--fs-text-sm);
+  color: var(--fs-color-text-secondary);
+  max-width: 48rem;
+}
+
+/* Tab sub-nav — a horizontal, scrollable row of tabs sitting on the header rule.
+   Each tab is a router link in the app; the active tab carries aria-current. */
+.tabs {
+  display: flex;
+  gap: var(--fs-space-1);
+  overflow-x: auto;
+}
+.tab {
+  appearance: none;
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-family: inherit;
+  font-size: var(--fs-text-sm);
+  font-weight: var(--fs-weight-medium);
+  color: var(--fs-color-text-secondary);
+  padding: var(--fs-space-3) var(--fs-space-4);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px; /* overlap the header rule */
+  white-space: nowrap;
+  text-decoration: none;
+  transition:
+    color var(--fs-duration-fast) var(--fs-ease-standard),
+    border-color var(--fs-duration-fast) var(--fs-ease-standard);
+}
+.tab:hover {
+  color: var(--fs-color-text);
+}
+.tab:focus-visible {
+  outline: 2px solid var(--fs-color-focus);
+  outline-offset: -2px;
+  border-radius: var(--fs-radius-sm);
+}
+.tabActive {
+  color: var(--fs-color-primary);
+  border-bottom-color: var(--fs-color-primary);
+  font-weight: var(--fs-weight-semibold);
+}
+.consoleBody {
+  padding: var(--fs-space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-5);
+}
+
+/* =============================================================================
+ * 2. Dashboards — distribution panels + chart/table pairing
+ * ========================================================================== */
+/* A distribution panel: a titled card holding a RankedBarChart above (or beside)
+   its paired table. On wide viewports the three distribution panels sit in a
+   responsive grid. */
+.dashGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+  gap: var(--fs-space-4);
+}
+.panelTitle {
+  font-size: var(--fs-text-lg);
+  font-weight: var(--fs-weight-semibold);
+  color: var(--fs-color-text);
+  margin: 0 0 var(--fs-space-4);
+}
+.panelStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-4);
+}
+
+/* A references list (revenue) — newest-first payment reference strings. */
+.refList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.refItem {
+  display: flex;
+  gap: var(--fs-space-3);
+  padding: var(--fs-space-2) 0;
+  border-bottom: 1px solid var(--fs-color-border-subtle);
+  font-size: var(--fs-text-sm);
+}
+.refItem:last-child {
+  border-bottom: none;
+}
+.refText {
+  font-family: var(--fs-font-mono);
+  color: var(--fs-color-text);
+  overflow-wrap: anywhere;
+}
+
+/* =============================================================================
+ * 3. User administration — filter bar + table + pagination + detail
+ * ========================================================================== */
+/* Filter bar: a wrapping row of tier/status/role Selects + a username search
+   field. URL-synced by the feature; presentational spacing here. */
+.filterBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--fs-space-3);
+  align-items: flex-end;
+}
+.filterField {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+.filterSearch {
+  flex: 2 1 16rem;
+  min-width: 0;
+}
+
+/* The list surface — table then a pagination row below it. */
+.listStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-4);
+}
+
+/* A sortable column header — a button in the <th> that toggles asc/desc, showing
+   a direction glyph. The glyph + aria-sort carry direction (not color alone). */
+.sortButton {
+  appearance: none;
+  cursor: pointer;
+  border: none;
+  background: none;
+  font: inherit;
+  font-weight: var(--fs-weight-semibold);
+  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fs-space-1);
+  padding: 0;
+}
+.sortButton:focus-visible {
+  outline: 2px solid var(--fs-color-focus);
+  outline-offset: 2px;
+  border-radius: var(--fs-radius-sm);
+}
+.sortIcon {
+  width: 0.85em;
+  height: 0.85em;
+  color: var(--fs-color-text-muted);
+}
+.sortIconActive {
+  color: var(--fs-color-primary);
+}
+
+/* Mono cells (uuid, account-like codes) — tabular so the reveal toggle etc. don't
+   shift columns. */
+.mono {
+  font-family: var(--fs-font-mono);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+/* The user-detail action bar — a wrapping row of the sensitive-action buttons. */
+.actionBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--fs-space-3);
+}
+
+/* =============================================================================
+ * 4. Sensitive-action dialogs — the reset-password one-time reveal
+ * ========================================================================== */
+.dialogStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-4);
+}
+
+/* The generated temp-password field row (pre-submit): a read-only mono value +
+   a Regenerate action. */
+.genRow {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--fs-space-2);
+}
+.genField {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* The one-time reveal panel (post-submit) — the highest-severity surface. A
+   framed, emphasized well that makes it visually clear the secret lives ONLY in
+   this open dialog. */
+.secretPanel {
+  border: 1px solid var(--fs-color-warning-border);
+  background-color: var(--fs-color-warning-surface);
+  border-radius: var(--fs-radius-lg);
+  padding: var(--fs-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-3);
+}
+.secretLabel {
+  font-size: var(--fs-text-sm);
+  font-weight: var(--fs-weight-medium);
+  color: var(--fs-color-text-secondary);
+}
+/* The secret value + copy control on one row. The value is mono + selectable. */
+.secretRow {
+  display: flex;
+  align-items: center;
+  gap: var(--fs-space-2);
+  flex-wrap: wrap;
+}
+.secretValue {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: var(--fs-font-mono);
+  font-size: var(--fs-text-lg);
+  font-weight: var(--fs-weight-semibold);
+  color: var(--fs-color-text);
+  background-color: var(--fs-color-surface);
+  border: 1px solid var(--fs-color-border);
+  border-radius: var(--fs-radius-md);
+  padding: var(--fs-space-3);
+  user-select: all;
+  overflow-wrap: anywhere;
+}
+/* The "copy now — closing destroys this" warning line: icon + text (never color
+   alone). */
+.secretWarning {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--fs-space-2);
+  font-size: var(--fs-text-sm);
+  color: var(--fs-color-warning-text);
+}
+.secretWarningIcon {
+  width: 1.1em;
+  height: 1.1em;
+  flex: none;
+  margin-top: 0.1em;
+}
+/* The visually-hidden live region that confirms the copy for screen readers;
+   sighted users get the button label swap + a brief inline confirm. */
+.copiedNote {
+  font-size: var(--fs-text-sm);
+  color: var(--fs-color-success-text);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fs-space-1);
+}

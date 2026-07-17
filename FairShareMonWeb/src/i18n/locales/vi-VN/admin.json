@@ -1,0 +1,276 @@
+{
+  "console": {
+    "eyebrow": "Quản trị",
+    "title": "Bảng điều khiển",
+    "description": "Chỉ số hệ thống, doanh thu Premium và quản lý người dùng. Chỉ tài khoản có vai trò Quản trị viên mới truy cập được.",
+    "navLabel": "Khu vực quản trị"
+  },
+  "nav": {
+    "dashboard": "Bảng chỉ số",
+    "revenue": "Doanh thu",
+    "users": "Người dùng"
+  },
+  "range": {
+    "label": "Khoảng thời gian",
+    "preset": {
+      "thisMonth": "Tháng này",
+      "last30Days": "30 ngày qua",
+      "thisYear": "Năm nay",
+      "allTime": "Tất cả",
+      "custom": "Tùy chỉnh"
+    },
+    "from": "Từ ngày",
+    "to": "Đến ngày",
+    "invalid": "Khoảng thời gian không hợp lệ — hãy chọn lại.",
+    "bucketLabel": "Chia theo",
+    "bucket": {
+      "month": "Tháng",
+      "day": "Ngày"
+    }
+  },
+  "dashboard": {
+    "title": "Bảng chỉ số",
+    "subtitle": "Số liệu dựa trên metadata tài khoản. Không có bất kỳ dữ liệu sổ chi tiêu nào.",
+    "kpi": {
+      "totalUsers": "Tổng người dùng",
+      "totalUsersHint": "Tất cả tài khoản (mọi hạng, mọi trạng thái)",
+      "activeUsers": "Đang hoạt động"
+    },
+    "distributions": {
+      "tier": "Theo hạng tài khoản",
+      "role": "Theo vai trò",
+      "status": "Theo trạng thái",
+      "tierChartLabel": "Phân bố người dùng theo hạng tài khoản. Xem bảng bên dưới để biết chi tiết.",
+      "roleChartLabel": "Phân bố người dùng theo vai trò. Xem bảng bên dưới để biết chi tiết.",
+      "statusChartLabel": "Phân bố người dùng theo trạng thái. Xem bảng bên dưới để biết chi tiết.",
+      "group": "Nhóm",
+      "count": "Số lượng",
+      "share": "Tỷ trọng",
+      "total": "Tổng"
+    },
+    "signups": {
+      "title": "Đăng ký theo thời gian",
+      "chartLabel": "Số lượt đăng ký theo từng kỳ. Xem bảng bên dưới để biết chi tiết.",
+      "tableCaption": "Đăng ký theo kỳ",
+      "period": "Kỳ",
+      "count": "Số lượt đăng ký",
+      "empty": "Chưa có lượt đăng ký nào trong khoảng này."
+    },
+    "states": {
+      "error": "Không tải được bảng chỉ số",
+      "retry": "Thử lại"
+    }
+  },
+  "revenue": {
+    "title": "Doanh thu",
+    "subtitle": "Tổng các lượt CẤP Premium (dòng GRANT). Lượt thu hồi không tính vào doanh thu.",
+    "kpi": {
+      "total": "Tổng doanh thu",
+      "totalHint": "Tổng các lượt CẤP Premium — giá trị do máy chủ tính, hiển thị nguyên văn",
+      "grantCount": "Số lượt cấp"
+    },
+    "chart": {
+      "title": "Doanh thu theo thời gian",
+      "chartLabel": "Doanh thu Premium theo từng kỳ. Xem bảng bên dưới để biết chi tiết.",
+      "tableCaption": "Doanh thu theo kỳ",
+      "period": "Kỳ",
+      "revenue": "Doanh thu",
+      "grantCount": "Số lượt cấp",
+      "total": "Tổng"
+    },
+    "references": {
+      "title": "Mã tham chiếu thanh toán (mới nhất)",
+      "empty": "Chưa có mã tham chiếu nào trong khoảng này."
+    },
+    "states": {
+      "error": "Không tải được bảng doanh thu",
+      "retry": "Thử lại"
+    }
+  },
+  "users": {
+    "title": "Người dùng",
+    "subtitle": "Chỉ hiển thị metadata tài khoản + số liệu cấp Premium. Không có dữ liệu sổ chi tiêu.",
+    "filters": {
+      "tier": "Hạng",
+      "status": "Trạng thái",
+      "role": "Vai trò",
+      "allTier": "Tất cả hạng",
+      "allStatus": "Tất cả trạng thái",
+      "allRole": "Tất cả vai trò",
+      "search": "Tìm theo tên đăng nhập",
+      "searchPlaceholder": "vd: nguyen.van.a"
+    },
+    "columns": {
+      "username": "Tên đăng nhập",
+      "tier": "Hạng",
+      "role": "Vai trò",
+      "status": "Trạng thái",
+      "createdAt": "Ngày tạo",
+      "grantCount": "Số lượt cấp",
+      "lastGrantAt": "Cấp gần nhất",
+      "actions": "Thao tác"
+    },
+    "sortAscLabel": "Sắp xếp tăng dần theo {{column}}",
+    "sortDescLabel": "Sắp xếp giảm dần theo {{column}}",
+    "view": "Xem",
+    "viewLabel": "Xem {{name}}",
+    "caption": "Danh sách người dùng",
+    "none": "—",
+    "states": {
+      "empty": "Không tìm thấy người dùng nào",
+      "emptyBody": "Thử đổi bộ lọc hoặc từ khóa tìm kiếm.",
+      "error": "Không tải được danh sách người dùng",
+      "retry": "Thử lại"
+    },
+    "pagination": {
+      "label": "Phân trang người dùng",
+      "prev": "Trang trước",
+      "next": "Trang sau",
+      "info": "Trang {{page}} / {{pageCount}}",
+      "page": "Trang {{page}}"
+    }
+  },
+  "tierBadge": {
+    "free": "Free",
+    "premium": "Premium"
+  },
+  "roleBadge": {
+    "admin": "Quản trị viên",
+    "user": "Người dùng"
+  },
+  "statusBadge": {
+    "active": "Hoạt động",
+    "disabled": "Đã khóa"
+  },
+  "grantAction": {
+    "grant": "Cấp",
+    "revoke": "Thu hồi"
+  },
+  "detail": {
+    "back": "Về danh sách",
+    "metadata": {
+      "title": "Thông tin tài khoản",
+      "username": "Tên đăng nhập",
+      "uuid": "Mã người dùng",
+      "tier": "Hạng",
+      "role": "Vai trò",
+      "status": "Trạng thái",
+      "createdAt": "Tham gia từ"
+    },
+    "grantHistory": {
+      "title": "Lịch sử cấp/thu hồi Premium",
+      "caption": "Lịch sử cấp/thu hồi Premium của {{name}}",
+      "action": "Hành động",
+      "tier": "Hạng",
+      "amount": "Số tiền",
+      "reference": "Tham chiếu",
+      "note": "Ghi chú",
+      "grantedBy": "Người thực hiện",
+      "createdAt": "Thời điểm",
+      "empty": "Chưa có lượt cấp/thu hồi nào."
+    },
+    "actionsTitle": "Thao tác quản trị",
+    "notFound": {
+      "title": "Không tìm thấy người dùng",
+      "body": "Người dùng này không tồn tại hoặc đã bị xóa. Kiểm tra lại đường dẫn hoặc quay về danh sách.",
+      "back": "Về danh sách"
+    },
+    "states": {
+      "error": "Không tải được chi tiết người dùng",
+      "retry": "Thử lại"
+    }
+  },
+  "actions": {
+    "grant": {
+      "button": "Cấp Premium",
+      "title": "Cấp Premium",
+      "body": "Ghi nhận một lượt cấp Premium (số tiền được tính vào doanh thu).",
+      "amountLabel": "Số tiền (VND)",
+      "amountHint": "Nhập 0 cho lượt cấp miễn phí.",
+      "referenceLabel": "Mã tham chiếu (tùy chọn)",
+      "referencePlaceholder": "VCB-20260716-8842",
+      "noteLabel": "Ghi chú (tùy chọn)",
+      "notePlaceholder": "Gia hạn 1 năm",
+      "submit": "Cấp Premium",
+      "toast": "Đã cấp Premium cho {{name}}."
+    },
+    "revoke": {
+      "button": "Thu hồi Premium",
+      "title": "Thu hồi Premium?",
+      "body": "Tài khoản trở về hạng Free. Lượt thu hồi KHÔNG tính vào doanh thu.",
+      "noteLabel": "Ghi chú (tùy chọn)",
+      "notePlaceholder": "Lý do thu hồi",
+      "submit": "Thu hồi",
+      "toast": "Đã thu hồi Premium của {{name}}."
+    },
+    "disable": {
+      "button": "Khóa tài khoản",
+      "title": "Khóa tài khoản này?",
+      "body": "Người dùng sẽ bị đăng xuất khỏi mọi thiết bị và không đăng nhập được cho tới khi được mở khóa.",
+      "warning": "Khóa sẽ thu hồi toàn bộ phiên đăng nhập và chặn đăng nhập. Dữ liệu của người dùng không bị xóa.",
+      "warningTitle": "Hậu quả",
+      "submit": "Khóa tài khoản",
+      "toast": "Đã khóa tài khoản {{name}}."
+    },
+    "enable": {
+      "button": "Mở khóa",
+      "title": "Mở khóa tài khoản?",
+      "body": "Người dùng sẽ đăng nhập lại được. Không ảnh hưởng dữ liệu.",
+      "submit": "Mở khóa",
+      "toast": "Đã mở khóa tài khoản {{name}}."
+    },
+    "revokeTokens": {
+      "button": "Đăng xuất mọi thiết bị",
+      "title": "Đăng xuất khỏi mọi thiết bị?",
+      "body": "Mọi phiên đăng nhập hiện tại của người dùng sẽ bị thu hồi ngay. Họ vẫn đăng nhập lại được.",
+      "submit": "Thu hồi phiên",
+      "toast": "Đã thu hồi toàn bộ phiên của {{name}}."
+    },
+    "promote": {
+      "button": "Thăng làm Quản trị viên",
+      "title": "Thăng làm Quản trị viên?",
+      "body": "Tài khoản này sẽ có toàn quyền quản trị, gồm truy cập khu vực này.",
+      "submit": "Thăng vai trò",
+      "toast": "Đã thăng {{name}} làm Quản trị viên."
+    },
+    "demote": {
+      "button": "Hạ về Người dùng",
+      "title": "Hạ về Người dùng?",
+      "body": "Tài khoản này sẽ mất quyền quản trị và không truy cập được khu vực này nữa.",
+      "warning": "Không thể hạ vai trò của Quản trị viên cuối cùng. Máy chủ là bên quyết định — thông báo lỗi sẽ hiển thị nguyên văn nếu bị từ chối.",
+      "warningTitle": "Lưu ý quản trị",
+      "submit": "Hạ vai trò",
+      "toast": "Đã hạ {{name}} về Người dùng."
+    },
+    "cancel": "Hủy",
+    "guard": {
+      "self": "Không thể thực hiện hành động này với tài khoản của chính bạn.",
+      "admin": "Không thể thực hiện hành động này với một Quản trị viên khác."
+    }
+  },
+  "resetPassword": {
+    "button": "Đặt lại mật khẩu",
+    "title": "Đặt lại mật khẩu",
+    "body": "Tạo mật khẩu tạm mạnh cho người dùng. Mật khẩu sẽ hiển thị MỘT LẦN sau khi xác nhận — hãy chuẩn bị sao chép và bàn giao ngoài luồng.",
+    "generatedLabel": "Mật khẩu tạm (tạo tự động)",
+    "generatedHint": "12–16 ký tự, đủ loại. Có thể tạo lại hoặc chỉnh trước khi xác nhận.",
+    "regenerate": "Tạo lại",
+    "submit": "Đặt lại mật khẩu",
+    "revealTitle": "Mật khẩu tạm — chỉ hiển thị một lần",
+    "revealBody": "Sao chép ngay bây giờ. Khi đóng hộp thoại, giá trị này sẽ biến mất và không thể xem lại.",
+    "secretLabel": "Mật khẩu tạm cho {{name}}",
+    "copy": "Sao chép",
+    "copied": "Đã sao chép",
+    "copiedLive": "Đã sao chép mật khẩu tạm vào bộ nhớ tạm.",
+    "copiedNote": "Đã sao chép vào bộ nhớ tạm",
+    "warning": "Sao chép ngay — đóng hộp thoại sẽ hủy giá trị này. Không được lưu hay ghi log ở bất kỳ đâu.",
+    "close": "Tôi đã sao chép — Đóng"
+  },
+  "validation": {
+    "amountRequired": "Vui lòng nhập số tiền.",
+    "amountNegative": "Số tiền không được âm.",
+    "currencyTooLong": "Đơn vị tiền tệ tối đa 3 ký tự.",
+    "referenceTooLong": "Mã tham chiếu tối đa 255 ký tự.",
+    "noteTooLong": "Ghi chú tối đa 500 ký tự."
+  }
+}
