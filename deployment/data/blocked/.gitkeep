@@ -1,0 +1,1 @@
+# Shared deny-list dir: fail2ban writes banned.conf here; nginx includes it. Keep the dir present.

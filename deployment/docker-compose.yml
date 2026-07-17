@@ -1,0 +1,124 @@
+﻿services:
+  nginx:
+    image: nginx:stable-alpine
+    # Custom entrypoint reloads nginx when fail2ban updates the deny-list (no Docker socket).
+    entrypoint: ["/bin/sh", "/etc/nginx/reload-on-ban.sh"]
+    expose:
+      - "80"
+    volumes:
+      - ./config/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./config/nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./config/nginx/reload-on-ban.sh:/etc/nginx/reload-on-ban.sh:ro
+      # fail2ban deny-list (real client IPs), included by nginx.conf.
+      - ./data/blocked:/etc/nginx/blocked:ro
+      # Persist data
+      - ./data/nginx/html:/usr/share/nginx/html:ro
+      - ./data/nginx/logs:/var/log/nginx
+    networks:
+      - wsl-net
+    restart: unless-stopped
+    depends_on:
+      - api
+      - web
+  fail2ban:
+    image: crazymax/fail2ban:latest
+    # Bans via the nginx deny-list (a shared file), not iptables — so no host
+    # networking and no NET_ADMIN/NET_RAW are needed (least privilege).
+    volumes:
+      - ./data/fail2ban:/data
+      - ./data/nginx/logs:/var/log/nginx:ro
+      # Shared deny-list this container writes and nginx reads.
+      - ./data/blocked:/blocked:rw
+    networks:
+      - wsl-net
+    restart: unless-stopped
+    depends_on:
+      - nginx
+  mariadb:
+    # Pinned to match the MariaDbServerVersion(11, 7, 2) in Program.cs / the design-time factory
+    # (avoids the floating `11` tag resolving to a version Pomelo generates mismatched SQL for).
+    image: mariadb:11.7
+    expose:
+      - "3306"
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
+    healthcheck:
+      test: ["CMD", "mariadb-admin", "ping", "-h", "localhost", "-p${MARIADB_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    volumes:
+      - ./data/mariadb:/var/lib/mysql
+      # Runs once on an empty datadir to create the `fairsharemon` database (utf8mb4).
+      - ./config/mariadb/init_database.sql:/docker-entrypoint-initdb.d/init_database.sql:ro
+    networks:
+      - wsl-net
+    restart: unless-stopped
+  redis:
+    image: redis:7.4-alpine
+    expose:
+      - "6379"
+    # Persistence/eviction live in redis.conf; the password is passed here to keep the secret
+    # out of the committed conf file.
+    command: >
+      redis-server /usr/local/etc/redis/redis.conf
+      --requirepass ${REDIS_PASSWORD}
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "--no-auth-warning", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    volumes:
+      - ./data/redis:/data
+      - ./config/redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    networks:
+      - wsl-net
+    restart: unless-stopped
+  api:
+    build:
+      context: ../FairShareMonApi
+      dockerfile: FairShareMonApi/Dockerfile
+    expose:
+      - "8080"
+    environment:
+      # The gitignored appsettings.*.local.json is excluded from the image, so the API is configured
+      # entirely via env vars here (Program.cs makes env vars win). Hosts are the compose service names.
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+      ConnectionStrings__Default: "Server=mariadb;Port=3306;Database=fairsharemon;User=root;Password=${MARIADB_ROOT_PASSWORD}"
+      Redis__Configuration: "redis:6379,password=${REDIS_PASSWORD}"
+      # Production CORS allows only configured origins — must include the public web origin.
+      App__AllowedOrigins__0: ${ASPNETCORE_WEB_URL}
+      # Seeded admin (leave ADMIN_PASSWORD empty in .env to skip seeding).
+      Admin__Username: ${ADMIN_USERNAME}
+      Admin__Password: ${ADMIN_PASSWORD}
+    # No persistent data resource yet — re-enable (with the top-level volume) when the app
+    # writes files it needs to keep (e.g. uploads / file logs).
+    # volumes:
+    #   - api-data:/app/data
+    networks:
+      - wsl-net
+    restart: unless-stopped
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  web:
+    build:
+      context: ../FairShareMonWeb
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+    expose:
+      - "5173"
+    networks:
+      - wsl-net
+    restart: unless-stopped
+networks:
+  wsl-net:
+    external: true
+# No named volumes yet — reserved for a future api data resource (see the api service).
+# volumes:
+#   api-data:

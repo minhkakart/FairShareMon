@@ -1,0 +1,5 @@
+# Runtime state — never commit (config under data/fail2ban and data/nginx/html IS tracked).
+data/mariadb/
+data/redis/
+data/nginx/logs/
+data/blocked/banned.conf

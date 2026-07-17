@@ -1,0 +1,165 @@
+================================================================================
+FairShareMon — Production Deployment Guide
+================================================================================
+
+This deploys the full stack with Docker Compose:
+
+    [ upstream: TLS + tunnel/proxy ]      (you provide — e.g. Cloudflare Tunnel
+              |                            or a host reverse proxy; terminates
+              v                            HTTPS and forwards Host + X-Forwarded-*)
+        nginx (:80)  ── reverse proxy + rate limiting ──┐
+          |  fairsharemon.minhkakart.com  -> web:5173   │
+          |  fairsharemon-api...          -> api:8080   │
+        fail2ban  ── tails nginx logs, bans via nginx deny-list
+          api (:8080, .NET 8)  -> mariadb:3306, redis:6379
+          web (:5173, static SPA)
+
+All containers talk over the external Docker network `wsl-net`. nginx is NOT
+published to the host; your upstream reaches it on that network over port 80 and
+must terminate TLS and pass the real client IP in X-Forwarded-For.
+
+--------------------------------------------------------------------------------
+0. PREREQUISITES
+--------------------------------------------------------------------------------
+- A Linux / WSL2 host with Docker Engine + Docker Compose v2 (`docker compose`).
+- An upstream that terminates HTTPS for the two subdomains and forwards to the
+  nginx container on the `wsl-net` network, port 80, preserving the Host header
+  and setting X-Forwarded-For / X-Forwarded-Proto (Cloudflare Tunnel, a host
+  nginx, Traefik, etc.). nginx reads the real client IP from X-Forwarded-For.
+- Two DNS records at your provider:
+      fairsharemon.minhkakart.com        -> the upstream/tunnel
+      fairsharemon-api.minhkakart.com    -> the upstream/tunnel
+
+--------------------------------------------------------------------------------
+1. GET THE CODE
+--------------------------------------------------------------------------------
+    git clone <repo-url> FairShareMon
+    cd FairShareMon/deployment
+
+--------------------------------------------------------------------------------
+2. CONFIGURE SECRETS  (deployment/.env)
+--------------------------------------------------------------------------------
+Create .env from the template and fill it in. .env is gitignored — never commit it.
+
+    cp .env.example .env
+    #  edit .env:
+    #    MARIADB_ROOT_PASSWORD   = a strong password
+    #    REDIS_PASSWORD          = a strong password
+    #    ADMIN_USERNAME          = your admin login   (optional)
+    #    ADMIN_PASSWORD          = a strong password  (empty -> no admin seeded)
+    #    ASPNETCORE_WEB_URL      = https://fairsharemon.minhkakart.com   (API CORS origin)
+    #    VITE_API_BASE_URL       = https://fairsharemon-api.minhkakart.com (baked into the web build)
+
+These map into the containers as:
+    ConnectionStrings__Default -> Server=mariadb;...;Password=${MARIADB_ROOT_PASSWORD}
+    Redis__Configuration       -> redis:6379,password=${REDIS_PASSWORD}
+    App__AllowedOrigins__0     -> ${ASPNETCORE_WEB_URL}
+    Admin__Username/Password    -> ${ADMIN_USERNAME}/${ADMIN_PASSWORD}
+    web build arg              -> VITE_API_BASE_URL   (change it => rebuild the web image)
+
+--------------------------------------------------------------------------------
+3. CONFIRM THE DOMAINS IN NGINX
+--------------------------------------------------------------------------------
+If your domains differ from the defaults, edit the `server_name` lines:
+    config/nginx/conf.d/web.conf   -> fairsharemon.minhkakart.com
+    config/nginx/conf.d/api.conf   -> fairsharemon-api.minhkakart.com
+(Optional) tighten the trusted-proxy range in config/nginx/nginx.conf
+(`set_real_ip_from`) to your upstream's actual subnet.
+
+--------------------------------------------------------------------------------
+4. CREATE THE NETWORK AND DATA DIRECTORIES
+--------------------------------------------------------------------------------
+Either run the helper:
+
+    ./run-before-compose-up.sh
+
+...or run the equivalent commands manually:
+
+    docker network inspect wsl-net >/dev/null 2>&1 || docker network create wsl-net
+    mkdir -p data/blocked data/nginx/logs data/nginx/html \
+             data/mariadb data/redis data/fail2ban
+
+(On Linux/WSL, ensure the containers can write to ./data — they run as their
+image users; `chmod`/`chown` the data dirs if you hit permission errors.)
+
+--------------------------------------------------------------------------------
+5. POINT YOUR UPSTREAM AT NGINX
+--------------------------------------------------------------------------------
+Configure the tunnel/host-proxy to forward both hostnames to the nginx container
+on `wsl-net`, port 80, preserving Host and adding X-Forwarded-For/-Proto. Example
+Cloudflare Tunnel ingress:
+    - hostname: fairsharemon.minhkakart.com      service: http://nginx:80
+    - hostname: fairsharemon-api.minhkakart.com  service: http://nginx:80
+(Run cloudflared on the `wsl-net` network so `nginx` resolves.)
+
+--------------------------------------------------------------------------------
+6. BUILD AND BRING UP THE STACK
+--------------------------------------------------------------------------------
+Validate the compose file, then build the images and start everything:
+
+    docker compose config          # sanity-check the merged config + .env
+    docker compose up -d --build
+
+MariaDB creates the `fairsharemon` database on first boot (config/mariadb/
+init_database.sql). The api waits for MariaDB + Redis to be healthy before it
+starts.
+
+================================================================================
+AFTER THE FIRST BRING-UP
+================================================================================
+
+A) APPLY THE DATABASE SCHEMA (required on first deploy)
+   The init script creates the empty database; the tables come from EF Core
+   migrations. Generate an idempotent schema script (needs the .NET 8 SDK +
+   `dotnet-ef`; the design-time factory lets this run offline) and apply it to
+   the running MariaDB:
+
+       dotnet tool install --global dotnet-ef        # once, if not installed
+       cd ../FairShareMonApi
+       dotnet ef migrations script --idempotent \
+           --project FairShareMonApi/FairShareMonApi.csproj \
+           -o schema.sql
+       cd ../deployment
+       docker compose exec -T mariadb \
+           mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" fairsharemon < ../FairShareMonApi/schema.sql
+
+   Re-run this same command after any future release that adds migrations
+   (idempotent = safe to re-apply).
+
+B) VERIFY
+       docker compose ps                         # all services Up / healthy
+       docker compose exec nginx nginx -t        # nginx config OK
+       # API health through nginx (simulating the upstream):
+       curl -H 'Host: fairsharemon-api.minhkakart.com' \
+            -H 'X-Forwarded-For: 203.0.113.9' \
+            http://<host-or-nginx-ip>/api/v1/health     # -> 200
+       # Real client IP is logged (not the proxy):
+       tail -f data/nginx/logs/access.log
+       # fail2ban jails are active:
+       docker compose exec fail2ban fail2ban-client status
+   Then browse https://fairsharemon.minhkakart.com and register/login.
+
+================================================================================
+OPERATIONS
+================================================================================
+Logs:        docker compose logs -f api        (or nginx / web / mariadb / redis)
+             data/nginx/logs/access.log        (fail2ban source)
+fail2ban:    docker compose exec fail2ban fail2ban-client status fsm-auth-login
+             ...unban:  fail2ban-client set fsm-auth-login unbanip <ip>
+             live bans: data/blocked/banned.conf  (nginx auto-reloads ~10s)
+Redeploy:    git pull && docker compose up -d --build   (then re-run schema step
+             if the release added migrations)
+Restart one: docker compose restart nginx
+Tune limits: edit the zones in config/nginx/nginx.conf and the thresholds in
+             data/fail2ban/jail.d/fairsharemon.conf, then `docker compose up -d`.
+Backups:     back up data/mariadb (or use mysqldump), plus your .env.
+
+================================================================================
+NOTES
+================================================================================
+- Enforcement lives at nginx: rate-limits return 429 and fail2ban bans real IPs
+  via an nginx deny-list (iptables can't see real IPs behind the tunnel).
+- Balanced limits: API ~10 r/s, login/refresh ~20 r/min, register ~5/hour;
+  bans last 1h. Adjust in the two files noted above.
+- Secrets come only from .env (gitignored) / container env. The gitignored
+  appsettings.*.local.json is deliberately excluded from the API image.
