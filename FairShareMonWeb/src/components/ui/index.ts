@@ -23,6 +23,7 @@ export {
   Table,
   TableHead,
   TableBody,
+  TableFoot,
   TableRow,
   TableHeaderCell,
   TableCell,
@@ -102,7 +103,7 @@ export {
   DialogContent,
   DialogFooter,
 } from "./Dialog/Dialog";
-export type { DialogContentProps } from "./Dialog/Dialog";
+export type { DialogContentProps, DialogTone } from "./Dialog/Dialog";
 
 export { Toast, ToastProvider, ToastViewport } from "./Toast/Toast";
 export type { ToastProps, ToastTone } from "./Toast/Toast";

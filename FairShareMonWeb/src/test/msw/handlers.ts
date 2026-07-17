@@ -473,6 +473,14 @@ function shareResponse(username: string, s: ShareRecord) {
 function expenseTotal(e: ExpenseRecord): number {
   return e.shares.reduce((sum, s) => sum + s.amount, 0);
 }
+function eventLinkage(username: string, eventUuid: string | null) {
+  if (!eventUuid) return { eventName: null, eventIsClosed: null };
+  const ev = getEvents(username).find((x) => x.uuid === eventUuid);
+  return {
+    eventName: ev?.name ?? null,
+    eventIsClosed: ev?.isClosed ?? null,
+  };
+}
 function expenseResponse(username: string, e: ExpenseRecord) {
   return {
     uuid: e.uuid,
@@ -492,8 +500,7 @@ function expenseResponse(username: string, e: ExpenseRecord) {
       .filter((tg): tg is TagRecord => Boolean(tg))
       .map(tagResponse),
     eventUuid: e.eventUuid,
-    eventName: null,
-    eventIsClosed: null,
+    ...eventLinkage(username, e.eventUuid),
     createdAt: e.createdAt,
   };
 }
@@ -514,9 +521,129 @@ function expenseSummary(username: string, e: ExpenseRecord) {
       .filter((n): n is string => Boolean(n)),
     shareCount: e.shares.length,
     eventUuid: e.eventUuid,
-    eventName: null,
-    eventIsClosed: null,
+    ...eventLinkage(username, e.eventUuid),
     createdAt: e.createdAt,
+  };
+}
+
+// --- Events store (mock backend) ------------------------------------------
+interface EventRecord {
+  uuid: string;
+  name: string;
+  description: string | null;
+  /** Whole-day bounds (00:00:00.000Z .. 23:59:59.999Z), mirroring the backend. */
+  startDate: string;
+  endDate: string;
+  isClosed: boolean;
+  closedAt: string | null;
+  createdAt: string;
+}
+
+/** Free-tier open-event cap enforced by this mock so 13001 is demonstrable. */
+const FREE_OPEN_EVENT_LIMIT = 3;
+
+const eventsByUser = new Map<string, EventRecord[]>();
+
+function getEvents(username: string): EventRecord[] {
+  let list = eventsByUser.get(username);
+  if (!list) {
+    list = [];
+    eventsByUser.set(username, list);
+  }
+  return list;
+}
+
+function eventByUuid(username: string, uuid: string): EventRecord | undefined {
+  return getEvents(username).find((e) => e.uuid === uuid);
+}
+
+/** Count of expenses assigned to the event. */
+function eventExpenseCount(username: string, uuid: string): number {
+  return getExpenses(username).filter((e) => e.eventUuid === uuid).length;
+}
+
+/** Normalize an incoming noon-anchored ISO to whole-day UTC bounds. */
+function dayBounds(iso: string): { start: string; end: string } {
+  const day = iso.slice(0, 10);
+  return { start: `${day}T00:00:00.000Z`, end: `${day}T23:59:59.999Z` };
+}
+
+function eventSummaryResponse(username: string, ev: EventRecord) {
+  return {
+    uuid: ev.uuid,
+    name: ev.name,
+    startDate: ev.startDate,
+    endDate: ev.endDate,
+    isClosed: ev.isClosed,
+    closedAt: ev.closedAt,
+    expenseCount: eventExpenseCount(username, ev.uuid),
+    createdAt: ev.createdAt,
+  };
+}
+
+function eventResponse(username: string, ev: EventRecord) {
+  return {
+    uuid: ev.uuid,
+    name: ev.name,
+    description: ev.description,
+    startDate: ev.startDate,
+    endDate: ev.endDate,
+    isClosed: ev.isClosed,
+    closedAt: ev.closedAt,
+    expenseCount: eventExpenseCount(username, ev.uuid),
+    createdAt: ev.createdAt,
+  };
+}
+
+/** The §3.7 debt-balance: advanced (paid) − owed (borne) per participating member. */
+function computeBalance(username: string, ev: EventRecord) {
+  const expenses = getExpenses(username).filter((e) => e.eventUuid === ev.uuid);
+  const advanced = new Map<string, number>();
+  const owed = new Map<string, number>();
+  const seen = new Set<string>();
+  const add = (map: Map<string, number>, uuid: string, amt: number) =>
+    map.set(uuid, (map.get(uuid) ?? 0) + amt);
+
+  for (const e of expenses) {
+    add(advanced, e.payerMemberUuid, expenseTotal(e));
+    seen.add(e.payerMemberUuid);
+    for (const s of e.shares) {
+      add(owed, s.memberUuid, s.amount);
+      seen.add(s.memberUuid);
+    }
+  }
+  // The owner-rep always participates (at 0đ if nothing else) — but only when
+  // the event actually has expenses (empty event → empty rows).
+  const ownerRep = getMembers(username).find((m) => m.isOwnerRepresentative);
+  if (ownerRep && expenses.length > 0) seen.add(ownerRep.uuid);
+
+  const rows = [...seen]
+    .map((uuid) => {
+      const m = memberByUuid(username, uuid);
+      const a = advanced.get(uuid) ?? 0;
+      const o = owed.get(uuid) ?? 0;
+      return {
+        memberUuid: uuid,
+        memberName: m?.name ?? "(không rõ)",
+        isOwnerRepresentative: m?.isOwnerRepresentative ?? false,
+        isDeleted: m?.isDeleted ?? false,
+        advanced: a,
+        owed: o,
+        balance: a - o,
+      };
+    })
+    .sort((x, y) => {
+      if (x.isOwnerRepresentative !== y.isOwnerRepresentative) {
+        return x.isOwnerRepresentative ? -1 : 1;
+      }
+      return x.memberName.localeCompare(y.memberName, "vi");
+    });
+
+  return {
+    eventUuid: ev.uuid,
+    eventName: ev.name,
+    isClosed: ev.isClosed,
+    rows,
   };
 }
 
@@ -969,6 +1096,7 @@ export const handlers = [
     const tagUuid = url.searchParams.get("tagUuid");
     const settled = url.searchParams.get("settled");
     const looseOnly = url.searchParams.get("looseOnly");
+    const eventUuid = url.searchParams.get("eventUuid");
 
     let list = getExpenses(username).slice();
     if (from) list = list.filter((e) => e.expenseTime >= from);
@@ -978,6 +1106,7 @@ export const handlers = [
     if (settled === "true") list = list.filter((e) => e.isSettled);
     if (settled === "false") list = list.filter((e) => !e.isSettled);
     if (looseOnly === "true") list = list.filter((e) => !e.eventUuid);
+    if (eventUuid) list = list.filter((e) => e.eventUuid === eventUuid);
     // expenseTime DESC.
     list.sort((a, b) => (a.expenseTime < b.expenseTime ? 1 : -1));
     return ok(list.map((e) => expenseSummary(username, e)));
@@ -1370,4 +1499,283 @@ export const handlers = [
       return ok({ message: "Đã xóa phần gánh." });
     },
   ),
+
+  // --- Expense ↔ event assign / remove (M5) -------------------------------
+  http.put("*/api/v1/expenses/:uuid/event", async ({ request, params }) => {
+    const username = usernameFromAuthHeader(
+      request.headers.get("Authorization"),
+    );
+    if (!username) {
+      return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
+    }
+    const expense = getExpenses(username).find((e) => e.uuid === params.uuid);
+    if (!expense) return fail(6000, "Không tìm thấy phiếu chi tiêu.", 404);
+    // Moving out of a closed source event is blocked (defensive).
+    if (expense.eventUuid) {
+      const source = eventByUuid(username, expense.eventUuid);
+      if (source?.isClosed) {
+        return fail(9001, "Đợt chi tiêu đã chốt.", 400);
+      }
+    }
+    const body = (await request.json()) as { eventUuid?: string };
+    const target = eventByUuid(username, body.eventUuid ?? "");
+    if (!target) return fail(9000, "Không tìm thấy đợt chi tiêu.", 404);
+    if (target.isClosed) return fail(9001, "Đợt chi tiêu đã chốt.", 400);
+    if (
+      expense.expenseTime < target.startDate ||
+      expense.expenseTime > target.endDate
+    ) {
+      return fail(
+        9002,
+        "Thời điểm chi của phiếu nằm ngoài khoảng thời gian của đợt.",
+        400,
+      );
+    }
+    expense.eventUuid = target.uuid;
+    return ok(expenseResponse(username, expense));
+  }),
+
+  http.delete("*/api/v1/expenses/:uuid/event", ({ request, params }) => {
+    const username = usernameFromAuthHeader(
+      request.headers.get("Authorization"),
+    );
+    if (!username) {
+      return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
+    }
+    const expense = getExpenses(username).find((e) => e.uuid === params.uuid);
+    if (!expense) return fail(6000, "Không tìm thấy phiếu chi tiêu.", 404);
+    if (!expense.eventUuid) return ok({ message: "Phiếu không thuộc đợt nào." });
+    const source = eventByUuid(username, expense.eventUuid);
+    if (source?.isClosed) return fail(9001, "Đợt chi tiêu đã chốt.", 400);
+    expense.eventUuid = null;
+    return ok({ message: "Đã gỡ phiếu khỏi đợt." });
+  }),
+
+  // --- Events -------------------------------------------------------------
+  http.get("*/api/v1/events", ({ request }) => {
+    const username = usernameFromAuthHeader(
+      request.headers.get("Authorization"),
+    );
+    if (!username) {
+      return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
+    }
+    const closed = new URL(request.url).searchParams.get("closed");
+    let list = getEvents(username).slice();
+    if (closed === "true") list = list.filter((e) => e.isClosed);
+    if (closed === "false") list = list.filter((e) => !e.isClosed);
+    // startDate DESC, then createdAt DESC.
+    list.sort((a, b) => {
+      if (a.startDate !== b.startDate) return a.startDate < b.startDate ? 1 : -1;
+      return a.createdAt < b.createdAt ? 1 : -1;
+    });
+    return ok(list.map((e) => eventSummaryResponse(username, e)));
+  }),
+
+  http.post("*/api/v1/events", async ({ request }) => {
+    const username = usernameFromAuthHeader(
+      request.headers.get("Authorization"),
+    );
+    if (!username) {
+      return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
+    }
+    const body = (await request.json()) as {
+      name?: unknown;
+      description?: unknown;
+      startDate?: unknown;
+      endDate?: unknown;
+    };
+    const name = typeof body.name === "string" ? body.name.trim() : "";
+    if (name.length === 0 || name.length > 200) {
+      return fail(1001, "Dữ liệu không hợp lệ.", 400, {
+        name: ["Tên đợt không được để trống."],
+      });
+    }
+    if (typeof body.startDate !== "string" || typeof body.endDate !== "string") {
+      return fail(1001, "Dữ liệu không hợp lệ.", 400, {
+        startDate: ["Vui lòng chọn ngày bắt đầu."],
+      });
+    }
+    const start = dayBounds(body.startDate);
+    const end = dayBounds(body.endDate);
+    if (end.end < start.start) {
+      return fail(1001, "Dữ liệu không hợp lệ.", 400, {
+        endDate: ["Ngày kết thúc phải sau hoặc bằng ngày bắt đầu."],
+      });
+    }
+    const list = getEvents(username);
+    const profile = profiles.get(username);
+    const isFree = (profile?.tier ?? "FREE").toUpperCase() === "FREE";
+    const openCount = list.filter((e) => !e.isClosed).length;
+    if (isFree && openCount >= FREE_OPEN_EVENT_LIMIT) {
+      return fail(
+        13001,
+        `Tài khoản Free chỉ có thể có tối đa ${FREE_OPEN_EVENT_LIMIT} đợt đang mở. Nâng cấp Premium để bỏ giới hạn.`,
+        400,
+      );
+    }
+    const record: EventRecord = {
+      uuid: `ev-${rand()}`,
+      name,
+      description:
+        typeof body.description === "string" && body.description
+          ? body.description
+          : null,
+      startDate: start.start,
+      endDate: end.end,
+      isClosed: false,
+      closedAt: null,
+      createdAt: new Date().toISOString(),
+    };
+    list.push(record);
+    return ok(eventResponse(username, record));
+  }),
+
+  http.get("*/api/v1/events/:uuid/balance", ({ request, params }) => {
+    const username = usernameFromAuthHeader(
+      request.headers.get("Authorization"),
+    );
+    if (!username) {
+      return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
+    }
+    const ev = eventByUuid(username, String(params.uuid));
+    if (!ev) return fail(9000, "Không tìm thấy đợt chi tiêu.", 404);
+    return ok(computeBalance(username, ev));
+  }),
+
+  http.get("*/api/v1/events/:uuid/export", ({ request, params }) => {
+    const username = usernameFromAuthHeader(
+      request.headers.get("Authorization"),
+    );
+    if (!username) {
+      return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
+    }
+    const format = new URL(request.url).searchParams.get("format") ?? "csv";
+    if (format !== "csv") {
+      return fail(1001, "Định dạng xuất không được hỗ trợ.", 400);
+    }
+    const ev = eventByUuid(username, String(params.uuid));
+    if (!ev) return fail(9000, "Không tìm thấy đợt chi tiêu.", 404);
+    const balance = computeBalance(username, ev);
+    const rows = [
+      ["Thành viên", "Đã ứng", "Phải gánh", "Cân bằng"],
+      ...balance.rows.map((r) => [
+        r.memberName,
+        String(r.advanced),
+        String(r.owed),
+        String(r.balance),
+      ]),
+    ];
+    const csv =
+      `﻿${ev.name}\r\n\r\n` +
+      rows.map((r) => r.join(",")).join("\r\n") +
+      "\r\n";
+    return new HttpResponse(csv, {
+      headers: {
+        "Content-Type": "text/csv; charset=utf-8",
+        "Content-Disposition": `attachment; filename="event-${ev.uuid}.csv"`,
+      },
+    });
+  }),
+
+  http.put("*/api/v1/events/:uuid/close", ({ request, params }) => {
+    const username = usernameFromAuthHeader(
+      request.headers.get("Authorization"),
+    );
+    if (!username) {
+      return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
+    }
+    const ev = eventByUuid(username, String(params.uuid));
+    if (!ev) return fail(9000, "Không tìm thấy đợt chi tiêu.", 404);
+    if (ev.isClosed) return fail(9001, "Đợt chi tiêu đã chốt.", 400);
+    ev.isClosed = true;
+    ev.closedAt = new Date().toISOString();
+    return ok({ message: "Đã chốt đợt chi tiêu." });
+  }),
+
+  http.get("*/api/v1/events/:uuid", ({ request, params }) => {
+    const username = usernameFromAuthHeader(
+      request.headers.get("Authorization"),
+    );
+    if (!username) {
+      return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
+    }
+    const ev = eventByUuid(username, String(params.uuid));
+    if (!ev) return fail(9000, "Không tìm thấy đợt chi tiêu.", 404);
+    return ok(eventResponse(username, ev));
+  }),
+
+  http.put("*/api/v1/events/:uuid", async ({ request, params }) => {
+    const username = usernameFromAuthHeader(
+      request.headers.get("Authorization"),
+    );
+    if (!username) {
+      return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
+    }
+    const ev = eventByUuid(username, String(params.uuid));
+    if (!ev) return fail(9000, "Không tìm thấy đợt chi tiêu.", 404);
+    if (ev.isClosed) return fail(9001, "Đợt chi tiêu đã chốt.", 400);
+    const body = (await request.json()) as {
+      name?: unknown;
+      description?: unknown;
+      startDate?: unknown;
+      endDate?: unknown;
+    };
+    const name = typeof body.name === "string" ? body.name.trim() : "";
+    if (name.length === 0 || name.length > 200) {
+      return fail(1001, "Dữ liệu không hợp lệ.", 400, {
+        name: ["Tên đợt không được để trống."],
+      });
+    }
+    if (typeof body.startDate !== "string" || typeof body.endDate !== "string") {
+      return fail(1001, "Dữ liệu không hợp lệ.", 400, {
+        startDate: ["Vui lòng chọn ngày bắt đầu."],
+      });
+    }
+    const start = dayBounds(body.startDate);
+    const end = dayBounds(body.endDate);
+    if (end.end < start.start) {
+      return fail(1001, "Dữ liệu không hợp lệ.", 400, {
+        endDate: ["Ngày kết thúc phải sau hoặc bằng ngày bắt đầu."],
+      });
+    }
+    // A range that would exclude an already-assigned expense → 9003.
+    const assigned = getExpenses(username).filter((e) => e.eventUuid === ev.uuid);
+    const excludes = assigned.some(
+      (e) => e.expenseTime < start.start || e.expenseTime > end.end,
+    );
+    if (excludes) {
+      return fail(
+        9003,
+        "Khoảng thời gian mới loại một phiếu đã gán ra ngoài đợt.",
+        400,
+      );
+    }
+    ev.name = name;
+    ev.description =
+      typeof body.description === "string" && body.description
+        ? body.description
+        : null;
+    ev.startDate = start.start;
+    ev.endDate = end.end;
+    return ok(eventResponse(username, ev));
+  }),
+
+  http.delete("*/api/v1/events/:uuid", ({ request, params }) => {
+    const username = usernameFromAuthHeader(
+      request.headers.get("Authorization"),
+    );
+    if (!username) {
+      return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
+    }
+    const list = getEvents(username);
+    const idx = list.findIndex((e) => e.uuid === params.uuid);
+    if (idx === -1) return fail(9000, "Không tìm thấy đợt chi tiêu.", 404);
+    if (list[idx].isClosed) return fail(9001, "Đợt chi tiêu đã chốt.", 400);
+    // Expenses become loose (SET NULL) — never deleted.
+    for (const e of getExpenses(username)) {
+      if (e.eventUuid === list[idx].uuid) e.eventUuid = null;
+    }
+    list.splice(idx, 1);
+    return ok({ message: "Đã xóa đợt chi tiêu." });
+  }),
 ];

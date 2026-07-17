@@ -415,6 +415,103 @@ describe("ExpensesPage settled toggle", () => {
   });
 });
 
+// ─── Event filter seam (M5 — completes the M4 OQ7 deferral) ──────────────────
+describe("ExpensesPage event filter", () => {
+  function eventSummary() {
+    return [
+      {
+        uuid: "ev-1",
+        name: "Đà Lạt",
+        startDate: "2026-07-12T00:00:00+07:00",
+        endDate: "2026-07-18T23:59:59+07:00",
+        isClosed: false,
+        closedAt: null,
+        expenseCount: 0,
+        createdAt: "2026-07-01T00:00:00+00:00",
+      },
+    ];
+  }
+
+  it("ExpensesPage_EventFilter_UpdatesUrlAndRefetchesWithEventUuid", async () => {
+    const urls: string[] = [];
+    server.use(
+      http.get("*/api/v1/events", () => ok(eventSummary())),
+      http.get("*/api/v1/expenses", ({ request }) => {
+        urls.push(request.url);
+        return ok([]);
+      }),
+    );
+    const user = userEvent.setup();
+    renderExpenses();
+    await waitFor(() => expect(urls.length).toBeGreaterThanOrEqual(1));
+
+    // The event Select (labelled "Đợt") lists the caller's events.
+    await user.click(screen.getByRole("combobox", { name: "Đợt" }));
+    await user.click(await screen.findByRole("option", { name: "Đà Lạt" }));
+
+    // The refetch carries eventUuid=ev-1…
+    await waitFor(() =>
+      expect(
+        urls.some((u) => new URL(u).searchParams.get("eventUuid") === "ev-1"),
+      ).toBe(true),
+    );
+    // …and the URL reflects ?event=ev-1.
+    expect(screen.getByTestId("loc-search").textContent).toContain("event=ev-1");
+  });
+
+  it("ExpensesPage_SelectEvent_ClearsLooseOnlyMutualExclusivity", async () => {
+    server.use(
+      http.get("*/api/v1/events", () => ok(eventSummary())),
+      http.get("*/api/v1/expenses", () => ok([])),
+    );
+    const user = userEvent.setup();
+    // Start with loose-only active.
+    renderExpenses("/expenses?loose=1");
+    expect(
+      await screen.findByRole("checkbox", { name: "Chỉ phiếu lẻ" }),
+    ).toBeChecked();
+
+    await user.click(screen.getByRole("combobox", { name: "Đợt" }));
+    await user.click(await screen.findByRole("option", { name: "Đà Lạt" }));
+
+    // Selecting an event clears loose-only (mutually exclusive) — URL has no loose.
+    await waitFor(() =>
+      expect(screen.getByTestId("loc-search").textContent).toContain(
+        "event=ev-1",
+      ),
+    );
+    expect(screen.getByTestId("loc-search").textContent).not.toContain("loose=1");
+    expect(
+      screen.getByRole("checkbox", { name: "Chỉ phiếu lẻ" }),
+    ).not.toBeChecked();
+  });
+
+  it("ExpensesPage_LooseOnly_ClearsSelectedEventMutualExclusivity", async () => {
+    server.use(
+      http.get("*/api/v1/events", () => ok(eventSummary())),
+      http.get("*/api/v1/expenses", () => ok([])),
+    );
+    const user = userEvent.setup();
+    // Start with an event selected.
+    renderExpenses("/expenses?event=ev-1");
+    await waitFor(() =>
+      expect(screen.getByTestId("loc-search").textContent).toContain(
+        "event=ev-1",
+      ),
+    );
+
+    await user.click(screen.getByRole("checkbox", { name: "Chỉ phiếu lẻ" }));
+
+    // Enabling loose-only clears the event selection.
+    await waitFor(() =>
+      expect(screen.getByTestId("loc-search").textContent).toContain("loose=1"),
+    );
+    expect(screen.getByTestId("loc-search").textContent).not.toContain(
+      "event=ev-1",
+    );
+  });
+});
+
 // ─── i18n ────────────────────────────────────────────────────────────────────
 describe("ExpensesPage i18n", () => {
   it("ExpensesPage_EnUsLocale_RendersEnglishChrome", async () => {

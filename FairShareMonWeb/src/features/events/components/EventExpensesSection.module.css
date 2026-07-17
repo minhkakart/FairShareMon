@@ -1,0 +1,25 @@
+.nameLink {
+  color: var(--fs-color-primary);
+  font-weight: var(--fs-weight-medium);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+.nameLink:hover {
+  text-decoration: underline;
+}
+.inlineWrap {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--fs-space-2);
+}
+.deletedTag {
+  font-size: var(--fs-text-sm);
+  font-style: italic;
+  color: var(--fs-color-text-secondary);
+  white-space: nowrap;
+}
+.muted {
+  font-size: var(--fs-text-sm);
+  color: var(--fs-color-text-secondary);
+}

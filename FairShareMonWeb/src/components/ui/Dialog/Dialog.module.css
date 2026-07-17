@@ -44,10 +44,37 @@
 }
 
 .title {
+  display: flex;
+  align-items: center;
+  gap: var(--fs-space-2);
   font-size: var(--fs-text-xl);
   font-weight: var(--fs-weight-semibold);
   color: var(--fs-color-text);
   margin: 0;
+}
+
+/* == Danger / irreversible severity treatment ============================= */
+/* A danger top accent marks a destructive or one-way action so it never reads
+   as a routine confirm. Meaning is carried by the copy + the severity glyph;
+   the accent bar only reinforces it. */
+.content.danger {
+  border-top: 3px solid var(--fs-color-danger);
+}
+
+.severityIcon {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: var(--fs-radius-md);
+  background-color: var(--fs-color-danger-surface);
+  color: var(--fs-color-danger-text);
+}
+.severityIcon :global(svg) {
+  width: 1.15rem;
+  height: 1.15rem;
 }
 
 .description {

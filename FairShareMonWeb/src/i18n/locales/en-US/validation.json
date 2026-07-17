@@ -42,5 +42,13 @@
     "noteTooLong": "Note must not exceed 500 characters.",
     "duplicateMember": "Each member can have only one share per expense.",
     "ownerRepRequired": "The owner-representative's share is required."
+  },
+  "event": {
+    "nameRequired": "Event name is required.",
+    "nameTooLong": "Event name must not exceed 200 characters.",
+    "descriptionTooLong": "Description must not exceed 1000 characters.",
+    "startRequired": "Please choose a start date.",
+    "endRequired": "Please choose an end date.",
+    "rangeInvalid": "The end date must be on or after the start date."
   }
 }

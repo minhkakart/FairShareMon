@@ -1,0 +1,19 @@
+.tableWrap {
+  display: block;
+}
+.filterBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--fs-space-3);
+}
+.filterField {
+  flex: 1 1 12rem;
+  min-width: 10rem;
+}
+.filterClear {
+  display: flex;
+  align-items: center;
+  min-height: 2.5rem;
+  margin-inline-start: auto;
+}

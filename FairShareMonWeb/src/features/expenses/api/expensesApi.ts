@@ -2,6 +2,7 @@ import { api } from "@/lib/api/client";
 import type { QueryValue } from "@/lib/api/client";
 import type { MessageResponse } from "@/lib/api/types/envelope";
 import type {
+  AssignEventRequest,
   AuditLogResponse,
   CreateExpenseRequest,
   CreateShareRequest,
@@ -23,6 +24,7 @@ function filterQuery(filter: ExpenseFilter): Record<string, QueryValue> {
     tagUuid: filter.tagUuid,
     settled: filter.settled,
     looseOnly: filter.looseOnly,
+    eventUuid: filter.eventUuid,
   };
 }
 
@@ -64,6 +66,14 @@ export const expensesApi = {
 
   history: (uuid: string) =>
     api.get<AuditLogResponse[]>(`/v1/expenses/${uuid}/history`),
+
+  /** Assign / move the expense to an event (M5). Target must be owned + OPEN. */
+  assignEvent: (uuid: string, body: AssignEventRequest) =>
+    api.put<ExpenseResponse>(`/v1/expenses/${uuid}/event`, body),
+
+  /** Remove the expense from its event (M5). No-op if already loose. */
+  removeEvent: (uuid: string) =>
+    api.delete<MessageResponse>(`/v1/expenses/${uuid}/event`),
 
   /** Binary CSV export (blob path, not the JSON envelope). */
   exportCsv: (uuid: string) =>

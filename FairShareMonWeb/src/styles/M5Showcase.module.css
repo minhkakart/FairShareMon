@@ -1,0 +1,260 @@
+/* M5 showcase styles — the four net-new event surfaces (debt-balance table,
+   irreversible close confirm, status badge, assign-expense picker). Tokens only;
+   light + dark come free through the semantic tokens. */
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-4);
+}
+
+.sectionTitle {
+  font-size: var(--fs-text-xl);
+  padding-bottom: var(--fs-space-2);
+  border-bottom: 1px solid var(--fs-color-border-subtle);
+}
+
+.subhead {
+  margin-top: var(--fs-space-2);
+  font-size: var(--fs-text-md);
+  font-weight: var(--fs-weight-semibold);
+  color: var(--fs-color-text);
+}
+
+.note {
+  font-size: var(--fs-text-sm);
+  color: var(--fs-color-text-secondary);
+  line-height: var(--fs-leading-normal);
+  max-width: 60rem;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* == 1. Balance table ====================================================== */
+.memberCell {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--fs-space-2);
+  min-width: 0;
+}
+.memberName {
+  overflow-wrap: anywhere;
+}
+
+/* Owner-representative marker — a quiet neutral tag, meaning carried by the word
+   (not color). Sits beside the member name. */
+.repTag {
+  flex: none;
+  padding: 0.05rem var(--fs-space-2);
+  border: 1px solid var(--fs-color-border);
+  border-radius: var(--fs-radius-pill);
+  font-size: var(--fs-text-xs);
+  font-weight: var(--fs-weight-medium);
+  color: var(--fs-color-text-secondary);
+  background-color: var(--fs-color-surface-sunken);
+  white-space: nowrap;
+}
+
+/* Soft-deleted member — muted italic tag alongside the row's muted text (never
+   color alone; no strike-through, which wrecks Vietnamese diacritics). */
+.deletedTag {
+  font-size: var(--fs-text-sm);
+  font-style: italic;
+  color: var(--fs-color-text-secondary);
+  white-space: nowrap;
+}
+
+/* The signed balance cell: figure on top, polarity word beneath, both hard
+   right against the numeric column. The word is the color-independent cue that
+   backs up the +/− sign glyph. */
+.balanceCell {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.1rem;
+}
+.polarity {
+  font-size: var(--fs-text-xs);
+  font-weight: var(--fs-weight-regular);
+  color: var(--fs-color-text-secondary);
+  white-space: nowrap;
+}
+
+/* The sum-to-zero hint under the "Tổng" footer label. */
+.sumHint {
+  display: block;
+  margin-top: 0.1rem;
+  font-size: var(--fs-text-xs);
+  font-weight: var(--fs-weight-regular);
+  color: var(--fs-color-text-secondary);
+}
+
+/* == 2. Close confirm: the deliberate acknowledgment affordance ============ */
+.ack {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--fs-space-2);
+  padding: var(--fs-space-3);
+  border: 1px solid var(--fs-color-border);
+  border-radius: var(--fs-radius-md);
+  background-color: var(--fs-color-surface-sunken);
+  font-size: var(--fs-text-sm);
+  color: var(--fs-color-text);
+  line-height: var(--fs-leading-normal);
+  cursor: pointer;
+}
+.ackBox {
+  flex: none;
+  width: 1.1rem;
+  height: 1.1rem;
+  margin-top: 0.1rem;
+  accent-color: var(--fs-color-danger);
+  cursor: pointer;
+}
+
+/* == 3. Status badge in context =========================================== */
+.statusRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--fs-space-3);
+}
+.statusInContext {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--fs-space-3);
+  padding: var(--fs-space-3) var(--fs-space-4);
+  border: 1px solid var(--fs-color-border-subtle);
+  border-radius: var(--fs-radius-lg);
+  background-color: var(--fs-color-surface);
+}
+.eventTitle {
+  font-size: var(--fs-text-lg);
+  font-weight: var(--fs-weight-semibold);
+  color: var(--fs-color-text);
+  overflow-wrap: anywhere;
+}
+.closedAt {
+  font-size: var(--fs-text-sm);
+  color: var(--fs-color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* == 4. Assign-expense picker ============================================= */
+/* The scrollable panel that hosts the selectable list / loading / empty state
+   inside the dialog body — a bounded, sunken frame so long lists scroll here,
+   not the dialog. */
+.pickerPanel {
+  border: 1px solid var(--fs-color-border-subtle);
+  border-radius: var(--fs-radius-lg);
+  background-color: var(--fs-color-surface);
+  overflow: hidden;
+}
+.pickerFieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.pickerList {
+  display: flex;
+  flex-direction: column;
+  max-height: 22rem;
+  overflow-y: auto;
+  border: 1px solid var(--fs-color-border-subtle);
+  border-radius: var(--fs-radius-lg);
+  background-color: var(--fs-color-surface);
+}
+
+/* A single selectable expense row: radio · (name + date) · total. The whole row
+   is the label so pointer + keyboard both hit the radio. */
+.pickerRow {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--fs-space-3);
+  padding: var(--fs-space-3) var(--fs-space-4);
+  cursor: pointer;
+  transition: background-color var(--fs-duration-fast) var(--fs-ease-standard);
+}
+.pickerRow + .pickerRow {
+  border-top: 1px solid var(--fs-color-border-subtle);
+}
+.pickerRow:hover {
+  background-color: var(--fs-color-surface-hover);
+}
+/* Selection is carried by the checked radio AND the row tint — the radio is the
+   primary, color-independent cue. */
+.pickerRow:has(.pickerRadio:checked) {
+  background-color: var(--fs-color-primary-subtle);
+}
+.pickerRow:has(.pickerRadio:focus-visible) {
+  outline: 2px solid var(--fs-color-focus);
+  outline-offset: -2px;
+}
+.pickerRadio {
+  flex: none;
+  width: 1.1rem;
+  height: 1.1rem;
+  accent-color: var(--fs-color-primary);
+  cursor: pointer;
+}
+.pickerText {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+.pickerName {
+  font-weight: var(--fs-weight-medium);
+  color: var(--fs-color-text);
+  overflow-wrap: anywhere;
+}
+.pickerDate {
+  font-size: var(--fs-text-sm);
+  color: var(--fs-color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.pickerTotal {
+  justify-self: end;
+}
+
+/* Loading skeleton rows mirror the real row rhythm. */
+.pickerSkeletonRow {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--fs-space-3);
+  padding: var(--fs-space-3) var(--fs-space-4);
+}
+.pickerSkeletonRow + .pickerSkeletonRow {
+  border-top: 1px solid var(--fs-color-border-subtle);
+}
+.pickerSkeletonText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-2);
+}
+
+@media (max-width: 32rem) {
+  .pickerRow,
+  .pickerSkeletonRow {
+    grid-template-columns: auto 1fr;
+  }
+  .pickerTotal {
+    grid-column: 2;
+    justify-self: start;
+  }
+}

@@ -125,6 +125,13 @@ export interface ExpenseFilter {
   tagUuid?: string;
   settled?: boolean;
   looseOnly?: boolean;
+  /** Filter to a single event's expenses (M5 — completes the M4 OQ7 deferral). */
+  eventUuid?: string;
+}
+
+/** `AssignEventRequest` — assign/move an expense to an event (M5). */
+export interface AssignEventRequest {
+  eventUuid: string;
 }
 
 /** One row of the immutable change history (`AuditLogResponse`). */

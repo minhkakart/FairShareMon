@@ -4,6 +4,7 @@ import type { SelectOption } from "@/components/ui";
 import { useT } from "@/i18n/useT";
 import { useCategoriesQuery } from "@/features/categories/hooks/useCategories";
 import { useTagsQuery } from "@/features/tags/hooks/useTags";
+import { useEventsQuery } from "@/features/events/hooks/useEvents";
 import {
   buildCategoryOptions,
   makeRenderCategoryOption,
@@ -20,6 +21,8 @@ export type UiFilters = {
   tagUuid: string;
   settled: SettledFilter;
   looseOnly: boolean;
+  /** Single-event filter (M5). Mutually exclusive with `looseOnly`. */
+  eventUuid: string;
   /** Client-side name search (not sent to the API). */
   q: string;
 };
@@ -36,10 +39,12 @@ const ALL = "all";
 
 /**
  * The list filter bar (OQ7a/OQ13a): date range, category `Select`, tag `Select`,
- * settled tri-state `Select`, a loose-only toggle, and a client-side name search.
- * Uses an "all" sentinel (never an empty-string item value) for the optional
- * single-select filters. The event-select filter is deferred to M5. Filter state
- * lives in the URL (owned by the page); this component is controlled.
+ * settled tri-state `Select`, an event `Select` (M5 — completes the M4 OQ7
+ * deferral), a loose-only toggle, and a client-side name search. Uses an "all"
+ * sentinel (never an empty-string item value) for the optional single-select
+ * filters. Selecting an event and loose-only are mutually exclusive (selecting
+ * one clears the other). Filter state lives in the URL (owned by the page); this
+ * component is controlled.
  */
 export function ExpenseFilterBar({
   filters,
@@ -53,6 +58,7 @@ export function ExpenseFilterBar({
 
   const categoriesQuery = useCategoriesQuery(false);
   const tagsQuery = useTagsQuery(false);
+  const eventsQuery = useEventsQuery({});
 
   const categoryOptions: SelectOption<CategoryMeta | undefined>[] = [
     { value: ALL, label: t("expenses:filter.categoryAll") },
@@ -71,6 +77,16 @@ export function ExpenseFilterBar({
     { value: "all", label: t("expenses:filter.settledAll") },
     { value: "yes", label: t("expenses:filter.settledYes") },
     { value: "no", label: t("expenses:filter.settledNo") },
+  ];
+
+  const eventOptions: SelectOption[] = [
+    { value: ALL, label: t("expenses:filter.eventAll") },
+    ...(eventsQuery.data ?? []).map((event) => ({
+      value: event.uuid,
+      label: event.isClosed
+        ? `${event.name} (${t("events:status.closed")})`
+        : event.name,
+    })),
   ];
 
   return (
@@ -115,6 +131,19 @@ export function ExpenseFilterBar({
         onValueChange={(v) => onChange({ settled: v as SettledFilter })}
         options={settledOptions}
       />
+      <Select
+        className={styles.filterField}
+        label={t("expenses:filter.event")}
+        value={filters.eventUuid || ALL}
+        onValueChange={(v) =>
+          onChange(
+            v === ALL
+              ? { eventUuid: "" }
+              : { eventUuid: v, looseOnly: false },
+          )
+        }
+        options={eventOptions}
+      />
       <TextField
         className={styles.filterField}
         label={t("expenses:filter.search")}
@@ -128,7 +157,13 @@ export function ExpenseFilterBar({
           id={looseId}
           type="checkbox"
           checked={filters.looseOnly}
-          onChange={(e) => onChange({ looseOnly: e.target.checked })}
+          onChange={(e) =>
+            onChange(
+              e.target.checked
+                ? { looseOnly: true, eventUuid: "" }
+                : { looseOnly: false },
+            )
+          }
         />
         <span>{t("expenses:filter.looseOnly")}</span>
       </label>

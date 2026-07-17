@@ -40,6 +40,8 @@
     "settledAll": "Tất cả",
     "settledYes": "Đã trả",
     "settledNo": "Chưa trả",
+    "event": "Đợt",
+    "eventAll": "Tất cả đợt",
     "search": "Tìm theo tên",
     "searchPlaceholder": "Tên phiếu…",
     "looseOnly": "Chỉ phiếu lẻ",
@@ -128,6 +130,17 @@
     "closedTitle": "Đợt đã chốt",
     "closedBody": "Phiếu này thuộc một đợt đã chốt. Mọi thao tác chỉnh sửa bị khóa — chỉ còn đổi trạng thái đã trả.",
     "errorTitle": "Không tải được phiếu chi tiêu"
+  },
+  "expenseEvent": {
+    "loose": "Phiếu lẻ (không thuộc đợt nào)",
+    "assignLabel": "Gán vào đợt",
+    "moveLabel": "Chuyển sang đợt khác",
+    "changePlaceholder": "Chọn đợt…",
+    "noOpenEvents": "Chưa có đợt nào đang mở",
+    "remove": "Gỡ khỏi đợt",
+    "closedNote": "Phiếu thuộc một đợt đã chốt — không thể chuyển hay gỡ.",
+    "assigned": "Đã gán phiếu vào đợt.",
+    "removed": "Đã gỡ phiếu khỏi đợt."
   },
   "delete": {
     "title": "Xóa phiếu {{name}}?",

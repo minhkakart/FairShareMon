@@ -40,6 +40,8 @@
     "settledAll": "All",
     "settledYes": "Settled",
     "settledNo": "Unsettled",
+    "event": "Event",
+    "eventAll": "All events",
     "search": "Search by name",
     "searchPlaceholder": "Expense name…",
     "looseOnly": "Loose only",
@@ -128,6 +130,17 @@
     "closedTitle": "Event closed",
     "closedBody": "This expense belongs to a closed event. All edits are locked — only the settled status can still change.",
     "errorTitle": "Couldn't load the expense"
+  },
+  "expenseEvent": {
+    "loose": "Loose (not in any event)",
+    "assignLabel": "Assign to event",
+    "moveLabel": "Move to another event",
+    "changePlaceholder": "Choose an event…",
+    "noOpenEvents": "No open events yet",
+    "remove": "Remove from event",
+    "closedNote": "This expense belongs to a closed event — it can't be moved or removed.",
+    "assigned": "Expense assigned to the event.",
+    "removed": "Expense removed from the event."
   },
   "delete": {
     "title": "Delete {{name}}?",

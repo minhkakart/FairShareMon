@@ -1,0 +1,35 @@
+.control {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-3);
+  min-width: 0;
+}
+.current {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--fs-space-2);
+}
+.inlineWrap {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--fs-space-2);
+}
+.eventLink {
+  color: var(--fs-color-primary);
+  font-weight: var(--fs-weight-medium);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+.eventLink:hover {
+  text-decoration: underline;
+}
+.muted {
+  color: var(--fs-color-text-secondary);
+}
+.note {
+  font-size: var(--fs-text-sm);
+  color: var(--fs-color-text-secondary);
+  line-height: var(--fs-leading-normal);
+}

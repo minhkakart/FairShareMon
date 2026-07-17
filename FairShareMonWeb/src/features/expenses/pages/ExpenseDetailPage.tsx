@@ -30,6 +30,7 @@ import { SharesSection } from "../components/SharesSection";
 import { ExpenseAuditSection } from "../components/ExpenseAuditSection";
 import { ExpenseEditDialog } from "../components/ExpenseEditDialog";
 import { DeleteExpenseDialog } from "../components/DeleteExpenseDialog";
+import { ExpenseEventControl } from "../components/ExpenseEventControl";
 import {
   CheckIcon,
   ClockIcon,
@@ -201,20 +202,7 @@ function DetailView({ expense }: { expense: ExpenseResponse }) {
                 )}
               </DescriptionRow>
               <DescriptionRow term={t("expenses:detail.event")}>
-                {expense.eventUuid ? (
-                  <span className={styles.inlineWrap}>
-                    {expense.eventName ?? t("expenses:badge.event")}
-                    {closed ? (
-                      <Badge tone="neutral" icon={<LockIcon />}>
-                        {t("expenses:badge.closed")}
-                      </Badge>
-                    ) : null}
-                  </span>
-                ) : (
-                  <span className={styles.muted}>
-                    {t("expenses:detail.looseHint")}
-                  </span>
-                )}
+                <ExpenseEventControl expense={expense} />
               </DescriptionRow>
               <DescriptionRow term={t("expenses:detail.total")}>
                 <Money amount={expense.total} size="lg" format={formatMoneyVnd} />

@@ -1,0 +1,139 @@
+{
+  "title": "Đợt chi tiêu",
+  "subtitle": "Nhóm các phiếu chi tiêu theo từng đợt — xem cân đối công nợ và chốt đợt khi xong.",
+  "add": "Thêm đợt",
+  "list": {
+    "caption": "Danh sách đợt chi tiêu",
+    "name": "Tên đợt",
+    "range": "Khoảng thời gian",
+    "status": "Trạng thái",
+    "expenseCount": "Số phiếu",
+    "createdAt": "Ngày tạo",
+    "actions": "Hành động",
+    "view": "Xem",
+    "viewNamed": "Xem đợt {{name}}",
+    "errorTitle": "Không tải được danh sách đợt chi tiêu",
+    "retry": "Thử lại",
+    "emptyTitle": "Chưa có đợt chi tiêu nào",
+    "emptyBody": "Tạo đợt đầu tiên để nhóm các phiếu chi tiêu lại với nhau.",
+    "noMatchesTitle": "Không có đợt nào khớp bộ lọc",
+    "noMatchesBody": "Thử đổi bộ lọc trạng thái để xem thêm đợt."
+  },
+  "filter": {
+    "status": "Trạng thái",
+    "statusAll": "Tất cả",
+    "statusOpen": "Đang mở",
+    "statusClosed": "Đã chốt",
+    "clear": "Xóa lọc"
+  },
+  "status": {
+    "open": "Đang mở",
+    "closed": "Đã chốt"
+  },
+  "detail": {
+    "back": "Về danh sách",
+    "edit": "Sửa",
+    "delete": "Xóa",
+    "close": "Chốt đợt",
+    "export": "Xuất CSV",
+    "infoTitle": "Thông tin",
+    "description": "Mô tả",
+    "range": "Khoảng thời gian",
+    "status": "Trạng thái",
+    "closedAt": "Thời điểm chốt",
+    "expenseCount": "Số phiếu",
+    "createdAt": "Ngày tạo",
+    "closedTitle": "Đợt đã chốt",
+    "closedBody": "Đợt này đã chốt và không thể mở lại. Mọi thay đổi phiếu chi tiêu và phần gánh đều bị khóa — chỉ còn có thể xem, xuất CSV và bật/tắt trạng thái đã trả.",
+    "errorTitle": "Không tải được đợt chi tiêu"
+  },
+  "form": {
+    "createTitle": "Thêm đợt chi tiêu",
+    "editTitle": "Sửa đợt chi tiêu",
+    "nameLabel": "Tên đợt",
+    "namePlaceholder": "Ví dụ: Đà Lạt 07/2026",
+    "descriptionLabel": "Mô tả",
+    "descriptionPlaceholder": "Mô tả thêm (tùy chọn)",
+    "startLabel": "Ngày bắt đầu",
+    "endLabel": "Ngày kết thúc",
+    "submitCreate": "Thêm đợt",
+    "submitEdit": "Lưu",
+    "cancel": "Hủy"
+  },
+  "balance": {
+    "title": "Cân đối công nợ",
+    "caption": "Bảng cân đối công nợ của đợt",
+    "member": "Thành viên",
+    "advanced": "Đã ứng",
+    "owed": "Phải gánh",
+    "balance": "Cân bằng",
+    "totalRow": "Tổng",
+    "sumsToZeroHint": "Cân bằng luôn bằng 0",
+    "ownerRep": "đại diện",
+    "deletedTag": "(đã xóa)",
+    "positiveLabel": "được nhận lại",
+    "negativeLabel": "phải trả",
+    "zeroLabel": "đã cân bằng",
+    "emptyTitle": "Chưa có phiếu nào trong đợt",
+    "emptyBody": "Số dư sẽ xuất hiện khi đợt có phiếu chi tiêu. Gán phiếu để bắt đầu.",
+    "errorTitle": "Không tải được cân đối công nợ"
+  },
+  "expensesSection": {
+    "title": "Phiếu chi tiêu trong đợt",
+    "assign": "Gán phiếu",
+    "caption": "Các phiếu chi tiêu thuộc đợt",
+    "name": "Tên phiếu",
+    "payer": "Người trả",
+    "total": "Tổng",
+    "time": "Thời điểm chi",
+    "actions": "Hành động",
+    "remove": "Gỡ khỏi đợt",
+    "removeNamed": "Gỡ phiếu {{name}} khỏi đợt",
+    "readOnly": "Chỉ đọc",
+    "emptyTitle": "Chưa có phiếu nào trong đợt",
+    "emptyBody": "Dùng “Gán phiếu” để thêm các phiếu lẻ nằm trong khoảng ngày của đợt.",
+    "emptyClosedBody": "Đợt này đã chốt và không có phiếu nào.",
+    "closedNote": "Đợt đã chốt — không thể thêm hoặc gỡ phiếu.",
+    "errorTitle": "Không tải được danh sách phiếu của đợt"
+  },
+  "assign": {
+    "title": "Gán phiếu vào đợt “{{name}}”",
+    "hintInRange": "Chọn một phiếu chưa thuộc đợt nào, có thời điểm nằm trong khoảng ngày của đợt.",
+    "searchLabel": "Tìm phiếu",
+    "searchPlaceholder": "Tìm theo tên phiếu…",
+    "legend": "Phiếu đủ điều kiện để gán",
+    "confirm": "Gán phiếu",
+    "cancel": "Hủy",
+    "emptyTitle": "Không có phiếu nào để gán",
+    "emptyBody": "Chỉ những phiếu chưa thuộc đợt nào và có thời điểm nằm trong khoảng ngày của đợt mới hiện ở đây. Điều chỉnh khoảng ngày của đợt hoặc tạo phiếu mới.",
+    "noMatchesBody": "Không tìm thấy phiếu phù hợp. Thử từ khóa khác.",
+    "errorTitle": "Không tải được danh sách phiếu đủ điều kiện"
+  },
+  "close": {
+    "title": "Chốt đợt “{{name}}”?",
+    "subtitle": "Chốt đợt là hành động MỘT CHIỀU — không thể mở lại.",
+    "warningTitle": "Sau khi chốt, đợt bị khóa",
+    "body": "Mọi thay đổi phiếu chi tiêu và phần gánh của đợt sẽ bị khóa — chỉ còn có thể xem, xuất CSV và bật/tắt trạng thái “đã trả”. Bạn không thể thêm, gỡ hay sửa phiếu trong đợt nữa.",
+    "acknowledge": "Tôi hiểu rằng không thể mở lại đợt sau khi chốt.",
+    "confirmButton": "Chốt đợt — không thể hoàn tác",
+    "cancel": "Hủy",
+    "toast": "Đã chốt đợt chi tiêu."
+  },
+  "delete": {
+    "title": "Xóa đợt {{name}}?",
+    "body": "Đợt sẽ bị xóa vĩnh viễn. Các phiếu chi tiêu thuộc đợt KHÔNG bị xóa — chúng trở thành phiếu lẻ (không thuộc đợt nào).",
+    "confirmButton": "Xóa đợt",
+    "cancel": "Hủy"
+  },
+  "limit": {
+    "title": "Đã đạt giới hạn số đợt đang mở",
+    "body": "Tài khoản Free đã đạt số đợt đang mở tối đa. Chốt bớt một đợt hoặc nâng cấp Premium để bỏ giới hạn. Dữ liệu hiện có không bị ảnh hưởng."
+  },
+  "toast": {
+    "created": "Đã thêm đợt chi tiêu.",
+    "updated": "Đã cập nhật đợt chi tiêu.",
+    "deleted": "Đã xóa đợt chi tiêu.",
+    "assigned": "Đã gán phiếu vào đợt.",
+    "removed": "Đã gỡ phiếu khỏi đợt."
+  }
+}

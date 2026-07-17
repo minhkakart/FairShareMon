@@ -1,8 +1,10 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/query/queryClient";
 import { downloadBlob } from "@/lib/download/downloadBlob";
+import { eventsKeys } from "@/features/events/hooks/useEvents";
 import { expensesApi } from "../api/expensesApi";
 import type {
+  AssignEventRequest,
   CreateExpenseRequest,
   CreateShareRequest,
   ExpenseFilter,
@@ -117,6 +119,33 @@ export function useDeleteShare() {
     mutationFn: ({ uuid, shareUuid }: { uuid: string; shareUuid: string }) =>
       expensesApi.removeShare(uuid, shareUuid),
     onSuccess: (_data, { uuid }) => invalidateExpense(uuid),
+  });
+}
+
+/**
+ * Assign / move an expense to an event, or remove it from its event (M5). Both
+ * invalidate the expenses caches (linkage + detail) AND the events caches
+ * (`eventsKeys.all` for counts + the balance/detail reflect the change) so the
+ * event detail's expense list, counts, and balance refresh.
+ */
+export function useAssignExpenseEvent() {
+  return useMutation({
+    mutationFn: ({ uuid, body }: { uuid: string; body: AssignEventRequest }) =>
+      expensesApi.assignEvent(uuid, body),
+    onSuccess: (_data, { uuid }) => {
+      invalidateExpense(uuid);
+      void queryClient.invalidateQueries({ queryKey: eventsKeys.all });
+    },
+  });
+}
+
+export function useRemoveExpenseEvent() {
+  return useMutation({
+    mutationFn: (uuid: string) => expensesApi.removeEvent(uuid),
+    onSuccess: (_data, uuid) => {
+      invalidateExpense(uuid);
+      void queryClient.invalidateQueries({ queryKey: eventsKeys.all });
+    },
   });
 }
 

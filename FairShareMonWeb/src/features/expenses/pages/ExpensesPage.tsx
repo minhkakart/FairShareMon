@@ -86,6 +86,7 @@ export function ExpensesPage() {
     tagUuid: searchParams.get("tag") ?? "",
     settled: parseSettled(searchParams.get("settled")),
     looseOnly: searchParams.get("loose") === "1",
+    eventUuid: searchParams.get("event") ?? "",
     q: searchParams.get("q") ?? "",
   };
 
@@ -96,6 +97,7 @@ export function ExpensesPage() {
     filters.tagUuid !== "" ||
     filters.settled !== "all" ||
     filters.looseOnly ||
+    filters.eventUuid !== "" ||
     filters.q !== "";
 
   function applyPatch(patch: Partial<UiFilters>) {
@@ -107,6 +109,7 @@ export function ExpensesPage() {
     if (next.tagUuid) params.set("tag", next.tagUuid);
     if (next.settled !== "all") params.set("settled", next.settled);
     if (next.looseOnly) params.set("loose", "1");
+    if (next.eventUuid) params.set("event", next.eventUuid);
     if (next.q) params.set("q", next.q);
     setSearchParams(params, { replace: true });
   }
@@ -127,6 +130,7 @@ export function ExpensesPage() {
           ? false
           : undefined,
     looseOnly: filters.looseOnly || undefined,
+    eventUuid: filters.eventUuid || undefined,
   };
 
   const expensesQuery = useExpensesQuery(apiFilter);

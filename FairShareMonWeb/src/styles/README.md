@@ -146,6 +146,38 @@ labels the field for sighted users (the share-editor rows).
 - **Free limit reached (codes 13000/13001/13002):** `<LimitNotice/>` (calm,
   neutral — existing data is never touched).
 
+## Event & balance patterns (M5)
+
+The four net-new event surfaces are compositions over existing primitives — see
+`src/styles/M5Showcase.tsx` for the reviewable spec (light + dark). Two small,
+reusable primitive additions back them:
+
+- **Table summary/total row.** `<TableFoot>` (a `<tfoot>`) holding a
+  `<TableRow total>` — a heavier top rule, sunken tint, semibold cells, no
+  zebra/hover. Used for the **debt-balance sum-to-zero row**. The balance table
+  itself is a plain `Table` composition: member (row header, with the owner-rep
+  tag + muted "(đã xóa)" treatment), `Money` **đã ứng** / **phải gánh** numeric
+  cells, and a **cân bằng** cell = `<Money variant="balance">` (the +/− sign
+  glyph is the color-independent cue) **plus a polarity word** (được nhận lại /
+  phải trả / đã cân bằng) so meaning never rests on color. Totals are the
+  API-provided column sums, rendered verbatim — **never client-summed**.
+- **Irreversible-action confirm.** `<DialogContent tone="danger">` adds a danger
+  top accent + a warning-triangle severity glyph, marking a one-way / destructive
+  action as visually distinct from an ordinary confirm (an ordinary delete stays
+  `tone="default"`). For the **one-way event close**, pair it with a warning
+  `Alert` ("Sau khi chốt, đợt bị khóa"), a deliberate acknowledgment checkbox
+  that gates the danger button, and a `variant="danger"` primary button labelled
+  with the irreversibility ("Chốt đợt — không thể hoàn tác").
+- **Event status Badge.** Open → `<Badge tone="success">` + a clock glyph "Đang
+  mở"; closed → `<Badge tone="neutral" icon={<Lock/>}>` "Đã chốt". Icon + text,
+  never color alone; the closed badge pairs with the implementer disabling every
+  write control (except the settled toggle).
+- **Assign-expense picker.** A `Dialog` hosting a searchable single-select list
+  of eligible (loose, in-range) expenses. Built on a native `<fieldset>` +
+  `<input type="radio">` rows (full keyboard + SR support; each row named by
+  expense name + date + `Money` total), a bounded scroll panel, and `Skeleton`
+  (loading) / `EmptyState` (nothing eligible / no search match) states.
+
 ## Toast wiring (Radix)
 
 The `Toast` layer is presentational. The implementer owns the queue:

@@ -110,6 +110,24 @@ export function TableBody({
   );
 }
 
+/**
+ * `<tfoot>` — a summary section pinned below the body for total / sum rows
+ * (e.g. the event debt-balance sum-to-zero row). Put a `<TableRow total>` inside
+ * it. Semantically distinct from the body so assistive tech announces it as a
+ * footer; visually it carries a heavier top rule and an emphasized weight.
+ */
+export function TableFoot({
+  className,
+  children,
+  ...rest
+}: HTMLAttributes<HTMLTableSectionElement>) {
+  return (
+    <tfoot className={cx(styles.foot, className)} {...rest}>
+      {children}
+    </tfoot>
+  );
+}
+
 export type TableRowProps = HTMLAttributes<HTMLTableRowElement> & {
   /**
    * Muted styling for a soft-deleted / inactive row. Pair it with a visible
@@ -117,18 +135,31 @@ export type TableRowProps = HTMLAttributes<HTMLTableRowElement> & {
    * `data-deleted` for a styling/test hook.
    */
   deleted?: boolean;
+  /**
+   * Emphasized summary / total row — a heavier top rule, a faint sunken tint and
+   * semibold cells, opting out of zebra + hover. Typically the single row inside
+   * a `<TableFoot>` (the balance sum-to-zero row); also usable in the body.
+   */
+  total?: boolean;
 };
 
 export function TableRow({
   deleted = false,
+  total = false,
   className,
   children,
   ...rest
 }: TableRowProps) {
   return (
     <tr
-      className={cx(styles.row, deleted && styles.deleted, className)}
+      className={cx(
+        styles.row,
+        deleted && styles.deleted,
+        total && styles.total,
+        className,
+      )}
       data-deleted={deleted || undefined}
+      data-total={total || undefined}
       {...rest}
     >
       {children}

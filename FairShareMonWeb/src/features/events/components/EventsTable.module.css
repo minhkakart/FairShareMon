@@ -1,0 +1,9 @@
+.nameLink {
+  color: var(--fs-color-primary);
+  font-weight: var(--fs-weight-medium);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+.nameLink:hover {
+  text-decoration: underline;
+}

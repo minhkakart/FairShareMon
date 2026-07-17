@@ -1,0 +1,139 @@
+{
+  "title": "Events",
+  "subtitle": "Group expenses into events — see the debt balance and close an event when it's done.",
+  "add": "Add event",
+  "list": {
+    "caption": "Events list",
+    "name": "Name",
+    "range": "Date range",
+    "status": "Status",
+    "expenseCount": "Expenses",
+    "createdAt": "Created",
+    "actions": "Actions",
+    "view": "View",
+    "viewNamed": "View event {{name}}",
+    "errorTitle": "Couldn't load the events list",
+    "retry": "Try again",
+    "emptyTitle": "No events yet",
+    "emptyBody": "Create your first event to group expenses together.",
+    "noMatchesTitle": "No events match the filter",
+    "noMatchesBody": "Try changing the status filter to see more events."
+  },
+  "filter": {
+    "status": "Status",
+    "statusAll": "All",
+    "statusOpen": "Open",
+    "statusClosed": "Closed",
+    "clear": "Clear filters"
+  },
+  "status": {
+    "open": "Open",
+    "closed": "Closed"
+  },
+  "detail": {
+    "back": "Back to list",
+    "edit": "Edit",
+    "delete": "Delete",
+    "close": "Close event",
+    "export": "Export CSV",
+    "infoTitle": "Info",
+    "description": "Description",
+    "range": "Date range",
+    "status": "Status",
+    "closedAt": "Closed at",
+    "expenseCount": "Expenses",
+    "createdAt": "Created",
+    "closedTitle": "Event closed",
+    "closedBody": "This event is closed and can't be reopened. All expense and share changes are locked — only viewing, CSV export, and the settled toggle remain.",
+    "errorTitle": "Couldn't load the event"
+  },
+  "form": {
+    "createTitle": "Add event",
+    "editTitle": "Edit event",
+    "nameLabel": "Name",
+    "namePlaceholder": "e.g. Da Lat 07/2026",
+    "descriptionLabel": "Description",
+    "descriptionPlaceholder": "Additional notes (optional)",
+    "startLabel": "Start date",
+    "endLabel": "End date",
+    "submitCreate": "Add event",
+    "submitEdit": "Save",
+    "cancel": "Cancel"
+  },
+  "balance": {
+    "title": "Debt balance",
+    "caption": "The event's debt balance",
+    "member": "Member",
+    "advanced": "Advanced",
+    "owed": "Owed",
+    "balance": "Balance",
+    "totalRow": "Total",
+    "sumsToZeroHint": "Balance always nets to 0",
+    "ownerRep": "representative",
+    "deletedTag": "(deleted)",
+    "positiveLabel": "to receive",
+    "negativeLabel": "to pay",
+    "zeroLabel": "settled up",
+    "emptyTitle": "No expenses in this event yet",
+    "emptyBody": "The balance appears once the event has expenses. Assign an expense to start.",
+    "errorTitle": "Couldn't load the debt balance"
+  },
+  "expensesSection": {
+    "title": "Expenses in this event",
+    "assign": "Assign expense",
+    "caption": "The expenses in this event",
+    "name": "Name",
+    "payer": "Payer",
+    "total": "Total",
+    "time": "Expense time",
+    "actions": "Actions",
+    "remove": "Remove from event",
+    "removeNamed": "Remove {{name}} from the event",
+    "readOnly": "Read-only",
+    "emptyTitle": "No expenses in this event yet",
+    "emptyBody": "Use “Assign expense” to add loose expenses within the event's date range.",
+    "emptyClosedBody": "This event is closed and has no expenses.",
+    "closedNote": "The event is closed — expenses can't be added or removed.",
+    "errorTitle": "Couldn't load the event's expenses"
+  },
+  "assign": {
+    "title": "Assign an expense to “{{name}}”",
+    "hintInRange": "Choose a loose expense whose time falls within the event's date range.",
+    "searchLabel": "Search expenses",
+    "searchPlaceholder": "Search by name…",
+    "legend": "Expenses eligible to assign",
+    "confirm": "Assign expense",
+    "cancel": "Cancel",
+    "emptyTitle": "No expenses to assign",
+    "emptyBody": "Only loose expenses whose time falls within the event's date range appear here. Adjust the event's dates or create a new expense.",
+    "noMatchesBody": "No matching expense found. Try a different search.",
+    "errorTitle": "Couldn't load eligible expenses"
+  },
+  "close": {
+    "title": "Close “{{name}}”?",
+    "subtitle": "Closing an event is a ONE-WAY action — it can't be reopened.",
+    "warningTitle": "Once closed, the event is locked",
+    "body": "All expense and share changes for the event will be locked — only viewing, CSV export, and the “settled” toggle remain. You can no longer add, remove, or edit expenses in this event.",
+    "acknowledge": "I understand this event can't be reopened after closing.",
+    "confirmButton": "Close event — can't be undone",
+    "cancel": "Cancel",
+    "toast": "Event closed."
+  },
+  "delete": {
+    "title": "Delete {{name}}?",
+    "body": "The event will be permanently deleted. Its expenses are NOT deleted — they become loose (not in any event).",
+    "confirmButton": "Delete event",
+    "cancel": "Cancel"
+  },
+  "limit": {
+    "title": "Open-event limit reached",
+    "body": "Your Free account has reached the maximum number of open events. Close an event or upgrade to Premium to remove the limit. Existing data is unaffected."
+  },
+  "toast": {
+    "created": "Event added.",
+    "updated": "Event updated.",
+    "deleted": "Event deleted.",
+    "assigned": "Expense assigned to the event.",
+    "removed": "Expense removed from the event."
+  }
+}

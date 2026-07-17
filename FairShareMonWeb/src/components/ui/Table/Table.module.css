@@ -111,6 +111,31 @@
   color: var(--fs-color-text-secondary);
 }
 
+/* == Footer / total (summary) row ========================================= */
+/* A pinned summary section (e.g. the balance sum-to-zero row). It sits on the
+   sunken plane with a heavier top rule so the totals read as a distinct band,
+   not just another body row. The `total` row opts out of zebra/hover. */
+.foot {
+  background-color: var(--fs-color-surface-sunken);
+}
+
+.row.total td,
+.row.total th {
+  border-top: 2px solid var(--fs-color-border);
+  background-color: var(--fs-color-surface-sunken);
+  font-weight: var(--fs-weight-semibold);
+  color: var(--fs-color-text);
+}
+
+/* Totals never take the interactive body treatments. */
+.foot .row:hover td,
+.body .row.total:hover td {
+  background-color: var(--fs-color-surface-sunken);
+}
+.foot .row:nth-child(even) td {
+  background-color: var(--fs-color-surface-sunken);
+}
+
 /* == Numeric / alignment ================================================== */
 .numeric {
   text-align: right;

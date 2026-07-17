@@ -44,6 +44,7 @@ import {
 } from "../components/ui";
 import type { Locale, ThemePreference } from "../components/ui";
 import { M4Showcase } from "./M4Showcase";
+import { M5Showcase } from "./M5Showcase";
 import styles from "./StyleGuide.module.css";
 
 /**
@@ -566,6 +567,9 @@ export function StyleGuide() {
 
         {/* M4 — EXPENSES & SHARES: pickers + complex surfaces */}
         <M4Showcase />
+
+        {/* M5 — EVENTS: balance table, close confirm, status badge, assign picker */}
+        <M5Showcase />
 
         <Section title="Bố cục xác thực (auth)">
           <div className={styles.authPreview}>

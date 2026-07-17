@@ -32,6 +32,28 @@ const CloseIcon = (
   </svg>
 );
 
+/** Warning-triangle severity glyph for the danger tone (decorative — the title
+ *  copy carries the meaning; the icon reinforces it, never stands alone). */
+const DangerIcon = (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    aria-hidden="true"
+  >
+    <path
+      d="M12 3.2 22 20H2L12 3.2Z"
+      strokeLinejoin="round"
+      strokeLinecap="round"
+    />
+    <path d="M12 9.5v4.5" strokeLinecap="round" />
+    <circle cx="12" cy="17" r="0.6" fill="currentColor" stroke="none" />
+  </svg>
+);
+
+export type DialogTone = "default" | "danger";
+
 export type DialogContentProps = {
   /** Accessible dialog title — REQUIRED (Radix warns without it). */
   title: ReactNode;
@@ -40,6 +62,15 @@ export type DialogContentProps = {
   children?: ReactNode;
   /** sm | md (default) | lg — max width of the panel. */
   size?: "sm" | "md" | "lg";
+  /**
+   * Severity treatment. `default` is the ordinary confirm/form dialog. `danger`
+   * marks a destructive or IRREVERSIBLE action (closing an event, a hard
+   * delete): the panel gains a danger top accent and the title a warning-triangle
+   * severity glyph, so it reads as distinct from a routine confirm at a glance.
+   * Pair `danger` with a `variant="danger"` primary button and explicit
+   * "không thể hoàn tác" copy.
+   */
+  tone?: DialogTone;
   /** Show the top-right close button (default true). */
   showClose?: boolean;
   /** Label for the close button (localized by the implementer). */
@@ -52,6 +83,7 @@ export function DialogContent({
   description,
   children,
   size = "md",
+  tone = "default",
   showClose = true,
   closeLabel = "Đóng",
   className,
@@ -60,11 +92,21 @@ export function DialogContent({
     <RadixDialog.Portal>
       <RadixDialog.Overlay className={styles.overlay} />
       <RadixDialog.Content
-        className={cx(styles.content, styles[size], className)}
+        className={cx(
+          styles.content,
+          styles[size],
+          tone === "danger" && styles.danger,
+          className,
+        )}
       >
         <div className={styles.header}>
           <RadixDialog.Title className={styles.title}>
-            {title}
+            {tone === "danger" ? (
+              <span className={styles.severityIcon} aria-hidden="true">
+                {DangerIcon}
+              </span>
+            ) : null}
+            <span>{title}</span>
           </RadixDialog.Title>
           {showClose ? (
             <RadixDialog.Close className={styles.close} aria-label={closeLabel}>

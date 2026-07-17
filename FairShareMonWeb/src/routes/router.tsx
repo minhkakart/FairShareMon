@@ -17,6 +17,8 @@ import { TagsPage } from "@/features/tags/pages/TagsPage";
 import { ExpensesPage } from "@/features/expenses/pages/ExpensesPage";
 import { ExpenseCreatePage } from "@/features/expenses/pages/ExpenseCreatePage";
 import { ExpenseDetailPage } from "@/features/expenses/pages/ExpenseDetailPage";
+import { EventsPage } from "@/features/events/pages/EventsPage";
+import { EventDetailPage } from "@/features/events/pages/EventDetailPage";
 import { AdminPage } from "@/features/admin/pages/AdminPage";
 
 export const router = createBrowserRouter([
@@ -54,7 +56,10 @@ export const router = createBrowserRouter([
               },
               {
                 path: "events",
-                element: <StubPage titleKey="common:nav.events" />,
+                children: [
+                  { index: true, element: <EventsPage /> },
+                  { path: ":uuid", element: <EventDetailPage /> },
+                ],
               },
               {
                 path: "stats",

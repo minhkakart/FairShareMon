@@ -1,0 +1,40 @@
+.detailHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--fs-space-4);
+}
+.detailTitleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-2);
+  min-width: 0;
+}
+.detailTitle {
+  font-size: var(--fs-text-2xl);
+  font-weight: var(--fs-weight-semibold);
+  line-height: var(--fs-leading-tight);
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+.detailBadges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--fs-space-3);
+}
+.range {
+  font-size: var(--fs-text-sm);
+  color: var(--fs-color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.detailActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--fs-space-2);
+}
+.muted {
+  color: var(--fs-color-text-secondary);
+}
