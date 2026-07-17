@@ -42,27 +42,28 @@ must terminate TLS and pass the real client IP in X-Forwarded-For.
 2a. deployment/.env — service secrets used by Docker Compose:
 
     cp .env.example .env
-    #    MARIADB_ROOT_PASSWORD  = a strong password   (mariadb root)
-    #    REDIS_PASSWORD         = a strong password   (redis auth)
+    #    MARIADB_ROOT_PASSWORD  = a strong password  (SINGLE source: the mariadb container AND the
+    #                                                 API's connection string, injected by compose)
+    #    REDIS_PASSWORD         = a strong password  (SINGLE source: the redis container AND the API)
     #    VITE_API_BASE_URL      = https://fairsharemon-api.minhkakart.com (baked into the web build)
     #    ASPNETCORE_ENVIRONMENT = Production
 
-2b. The API's own config — mounted read-only into the api container (NOT baked into the image):
+2b. The API's app config — mounted read-only into the api container (NOT baked into the image):
 
         FairShareMonApi/FairShareMonApi/appsettings.Production.local.json
 
     Create this file on the host (copy the committed appsettings.json as a base) and set:
-      ConnectionStrings:Default    Server=mariadb;Port=3306;Database=fairsharemon;User=root;Password=<MARIADB_ROOT_PASSWORD>
-      Redis:Configuration          redis:6379,password=<REDIS_PASSWORD>
       App:AllowedOrigins           [ "https://fairsharemon.minhkakart.com" ]   (the web origin, for CORS)
       App:RunMigrationsOnStartup   true
       Admin:Username / Admin:Password   (optional; empty password => no admin seeded)
+      ...plus any Auth / Tiers overrides you want.
 
-    IMPORTANT:
-      - The DB/Redis passwords here MUST equal MARIADB_ROOT_PASSWORD / REDIS_PASSWORD in .env.
-      - This file MUST EXIST before `docker compose up` — a missing bind-mount source makes Docker
-        create a directory in its place and the API starts without config.
-      - Hosts are the compose service names (`mariadb`, `redis`).
+    Do NOT put ConnectionStrings / Redis here — compose injects them from .env (env wins over the
+    file), so the DB/Redis password lives in exactly one place (.env). Hosts are the compose service
+    names (`mariadb`, `redis`).
+
+    IMPORTANT: this file MUST EXIST before `docker compose up` — a missing bind-mount source makes
+    Docker create a directory in its place and the API starts without config.
 
 --------------------------------------------------------------------------------
 3. CONFIRM THE DOMAINS IN NGINX
@@ -173,5 +174,6 @@ NOTES
   bans last 1h. Adjust in the two files noted above.
 - The API reads its config from appsettings.Production.local.json, mounted at
   runtime (gitignored + excluded from the image, so secrets are never baked in).
-  Compose .env holds only the mariadb/redis service passwords + the web build arg.
-  Any key can still be overridden per-container with an env var (env wins).
+  The DB/Redis passwords live only in .env (single source) and compose injects
+  them into the API's connection strings (env wins over the file). Any other key
+  can also be overridden per-container with an env var.

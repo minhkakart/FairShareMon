@@ -83,15 +83,18 @@
     expose:
       - "8080"
     environment:
-      # Selects appsettings.Production.local.json (mounted below) as the config source. All other API
-      # settings — DB, Redis, CORS, Admin, migrations — live in that file. Any key can still be
-      # overridden with an env var here (env wins over the file).
+      # ASPNETCORE_ENVIRONMENT selects appsettings.Production.local.json (mounted below) for the app
+      # config. The DB/Redis connection strings are injected here from .env — the SINGLE source of
+      # those passwords (also consumed by the mariadb/redis containers) — and override the file (env
+      # wins), so the password is never duplicated in the mounted file.
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+      ConnectionStrings__Default: "Server=mariadb;Port=3306;Database=fairsharemon;User=root;Password=${MARIADB_ROOT_PASSWORD}"
+      Redis__Configuration: "redis:6379,password=${REDIS_PASSWORD}"
     volumes:
-      # Production API config — gitignored and NOT baked into the image; mounted read-only at runtime.
-      # Create it on the host BEFORE `docker compose up` (a missing bind-mount source makes Docker
-      # create a directory and the API boots without config). Its DB/Redis passwords MUST match
-      # MARIADB_ROOT_PASSWORD / REDIS_PASSWORD in .env.
+      # App config (CORS, Admin, migrations, Auth, Tiers, ...) — gitignored, mounted read-only, never
+      # baked into the image. Do NOT put the DB/Redis password here; it comes from .env above. Create
+      # the file on the host BEFORE `docker compose up` (a missing bind-mount source makes Docker
+      # create a directory in its place and the API boots without config).
       - ../FairShareMonApi/FairShareMonApi/appsettings.Production.local.json:/app/appsettings.Production.local.json:ro
       # No persistent data resource yet — re-enable (with the top-level volume) when the app
       # writes files it needs to keep (e.g. uploads / file logs).
