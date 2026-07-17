@@ -37,25 +37,32 @@ must terminate TLS and pass the real client IP in X-Forwarded-For.
     cd FairShareMon/deployment
 
 --------------------------------------------------------------------------------
-2. CONFIGURE SECRETS  (deployment/.env)
+2. CONFIGURE  (two gitignored files — never commit either)
 --------------------------------------------------------------------------------
-Create .env from the template and fill it in. .env is gitignored — never commit it.
+2a. deployment/.env — service secrets used by Docker Compose:
 
     cp .env.example .env
-    #  edit .env:
-    #    MARIADB_ROOT_PASSWORD   = a strong password
-    #    REDIS_PASSWORD          = a strong password
-    #    ADMIN_USERNAME          = your admin login   (optional)
-    #    ADMIN_PASSWORD          = a strong password  (empty -> no admin seeded)
-    #    ASPNETCORE_WEB_URL      = https://fairsharemon.minhkakart.com   (API CORS origin)
-    #    VITE_API_BASE_URL       = https://fairsharemon-api.minhkakart.com (baked into the web build)
+    #    MARIADB_ROOT_PASSWORD  = a strong password   (mariadb root)
+    #    REDIS_PASSWORD         = a strong password   (redis auth)
+    #    VITE_API_BASE_URL      = https://fairsharemon-api.minhkakart.com (baked into the web build)
+    #    ASPNETCORE_ENVIRONMENT = Production
 
-These map into the containers as:
-    ConnectionStrings__Default -> Server=mariadb;...;Password=${MARIADB_ROOT_PASSWORD}
-    Redis__Configuration       -> redis:6379,password=${REDIS_PASSWORD}
-    App__AllowedOrigins__0     -> ${ASPNETCORE_WEB_URL}
-    Admin__Username/Password    -> ${ADMIN_USERNAME}/${ADMIN_PASSWORD}
-    web build arg              -> VITE_API_BASE_URL   (change it => rebuild the web image)
+2b. The API's own config — mounted read-only into the api container (NOT baked into the image):
+
+        FairShareMonApi/FairShareMonApi/appsettings.Production.local.json
+
+    Create this file on the host (copy the committed appsettings.json as a base) and set:
+      ConnectionStrings:Default    Server=mariadb;Port=3306;Database=fairsharemon;User=root;Password=<MARIADB_ROOT_PASSWORD>
+      Redis:Configuration          redis:6379,password=<REDIS_PASSWORD>
+      App:AllowedOrigins           [ "https://fairsharemon.minhkakart.com" ]   (the web origin, for CORS)
+      App:RunMigrationsOnStartup   true
+      Admin:Username / Admin:Password   (optional; empty password => no admin seeded)
+
+    IMPORTANT:
+      - The DB/Redis passwords here MUST equal MARIADB_ROOT_PASSWORD / REDIS_PASSWORD in .env.
+      - This file MUST EXIST before `docker compose up` — a missing bind-mount source makes Docker
+        create a directory in its place and the API starts without config.
+      - Hosts are the compose service names (`mariadb`, `redis`).
 
 --------------------------------------------------------------------------------
 3. CONFIRM THE DOMAINS IN NGINX
@@ -164,5 +171,7 @@ NOTES
   via an nginx deny-list (iptables can't see real IPs behind the tunnel).
 - Balanced limits: API ~10 r/s, login/refresh ~20 r/min, register ~5/hour;
   bans last 1h. Adjust in the two files noted above.
-- Secrets come only from .env (gitignored) / container env. The gitignored
-  appsettings.*.local.json is deliberately excluded from the API image.
+- The API reads its config from appsettings.Production.local.json, mounted at
+  runtime (gitignored + excluded from the image, so secrets are never baked in).
+  Compose .env holds only the mariadb/redis service passwords + the web build arg.
+  Any key can still be overridden per-container with an env var (env wins).
