@@ -10,6 +10,7 @@ using FairShareMonApi.Swagger;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
@@ -19,6 +20,20 @@ using NLog.Extensions.Logging;
 using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Configuration: CreateBuilder already loads appsettings.json + appsettings.{env}.json, then
+// environment variables and command-line args. Append an optional, gitignored per-environment local
+// override (appsettings.{env}.local.json), then re-add environment variables and command-line args so
+// they win over that file. Final precedence (low -> high): appsettings.json < appsettings.{env}.json <
+// appsettings.{env}.local.json < environment variables < command-line args — so container/deploy-time
+// env vars (e.g. ConnectionStrings__Default) override the local file.
+builder.Configuration
+    .AddJsonFile(
+        $"appsettings.{builder.Environment.EnvironmentName}.local.json",
+        optional: true,
+        reloadOnChange: true)
+    .AddEnvironmentVariables()
+    .AddCommandLine(args);
 
 // Logging: NLog, configured from the "NLog" appsettings section.
 LogManager.Configuration = new NLogLoggingConfiguration(builder.Configuration.GetSection("NLog"));
@@ -53,6 +68,18 @@ builder.Services.AddAppLocalization();
 // (planning/cors-configuration.md). Bearer token lives in the Authorization header, so credentialed
 // CORS via SetIsOriginAllowed + AllowCredentials is safe.
 builder.Services.AddDefaultCorsPolicy(builder.Configuration, builder.Environment.IsDevelopment());
+
+// Forwarded headers: process X-Forwarded-For / X-Forwarded-Proto so the app sees the real client IP
+// and scheme behind the reverse proxy (nginx). Without this configuration UseForwardedHeaders() is a
+// no-op (the default ForwardedHeaders is None). KnownNetworks/KnownProxies are cleared because the API
+// is only reachable over the internal container network (compose `expose`, never published), so the
+// immediate peer is always the trusted proxy.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
 // Attribute-driven DI (DiDecoration): [ScopedService] / [SingletonService] / [TransientService].
 builder.Services.RegisterDecorators(builder.Configuration, typeof(Program).Assembly);
@@ -145,7 +172,11 @@ builder.Services.AddAuthorization(options =>
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
+// Forwarded headers must run first so the request scheme/remote IP are rewritten from the proxy's
+// X-Forwarded-* headers before any middleware reads them (options configured above).
+app.UseForwardedHeaders();
+
+if (!app.Environment.IsProduction())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
