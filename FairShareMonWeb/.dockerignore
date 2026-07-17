@@ -1,0 +1,33 @@
+# Dependencies & build output (installed/built fresh inside the image)
+node_modules
+dist
+dist-ssr
+
+# VCS & Docker
+.git
+.gitignore
+.dockerignore
+Dockerfile
+
+# Env files — the image injects VITE_* via build args; keep dev/local values out of the build
+.env
+.env.development
+.env.*.local
+
+# Editor / OS
+.vscode
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sw?
+
+# Logs & test coverage
+*.log
+logs
+coverage
+
+# Docs / planning (not needed to build the image)
+planning
+README.md
