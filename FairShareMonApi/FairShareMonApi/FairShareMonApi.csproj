@@ -4,6 +4,7 @@
         <TargetFramework>net8.0</TargetFramework>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
+        <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     </PropertyGroup>
 
     <ItemGroup>
@@ -50,6 +51,12 @@
              FairShareMonApi.Localization.Resources.StringResources(.en-US), matching the marker type
              namespace so IStringLocalizer<StringResources> resolves. No Designer/strongly-typed accessor
              is used - resolution is via IStringLocalizer only (planning/localization-subsystem.md D5/D6). -->
+    </ItemGroup>
+
+    <ItemGroup>
+      <Content Include="..\.dockerignore">
+        <Link>.dockerignore</Link>
+      </Content>
     </ItemGroup>
 
 </Project>
