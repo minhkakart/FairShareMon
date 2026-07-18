@@ -9,6 +9,13 @@ interface ImportMetaEnv {
   readonly VITE_API_BASE_URL: string;
   /** "true" serves the app against MSW browser mocks instead of the backend. */
   readonly VITE_ENABLE_MOCKS?: string;
+  /**
+   * Origin of the external VietQR bank directory (scheme + host, no trailing
+   * slash). The bank picker fetches `${VITE_VIETQR_BASE_URL}/api/vietqr/banks`
+   * and renders logos from `.../api/vietqr/images/{imageId}`. Optional — falls
+   * back to the public default `https://vietqr.vn` when unset.
+   */
+  readonly VITE_VIETQR_BASE_URL?: string;
 }
 
 interface ImportMeta {

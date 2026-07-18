@@ -26,7 +26,7 @@ export function bankAccountFormSchema(t: AppTFunction) {
     bankBin: z
       .string()
       .trim()
-      .min(1, t("validation:bankAccount.binRequired"))
+      .min(1, t("validation:bankAccount.selectBank"))
       .regex(BANK_BIN_PATTERN, t("validation:bankAccount.binPattern")),
     accountNumber: z
       .string()

@@ -72,9 +72,15 @@
   }
 }
 
-/* Bank cell — the primary label with the BIN muted beneath it. Long bank /
-   holder names wrap rather than scroll. */
+/* Bank cell — logo plate beside the primary label with the BIN muted beneath it.
+   Long bank / holder names wrap rather than scroll. */
 .bankCell {
+  display: flex;
+  align-items: center;
+  gap: var(--fs-space-2);
+  min-width: 0;
+}
+.bankText {
   display: flex;
   flex-direction: column;
   gap: 0.1rem;

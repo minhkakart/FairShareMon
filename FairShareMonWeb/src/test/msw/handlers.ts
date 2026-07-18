@@ -2396,6 +2396,74 @@ export const handlers = [
     return pngResponse(`event-qr-${ev.uuid}.png`);
   }),
 
+  // --- VietQR bank directory (external, raw fetch — NOT our envelope) -------
+  // The bank picker fetches this directly (not via client.ts). Returns a RAW
+  // array (the third party doesn't speak ApiResult<T>), including the seeded BINs
+  // 970436 (Vietcombank) + 970407 (Techcombank) so the pick→store→table
+  // round-trip is demonstrable, plus one entry with an invalid caiValue to
+  // exercise the normalize drop-filter. onUnhandledRequest:"error" means these
+  // absolute-URL handlers are required for the tests; they also make dev
+  // mock-mode work offline.
+  http.get("https://vietqr.vn/api/vietqr/banks", () =>
+    HttpResponse.json([
+      {
+        id: "vqr-vcb",
+        bankCode: "VCB",
+        bankName: "Ngân hàng TMCP Ngoại Thương Việt Nam",
+        bankShortName: "Vietcombank",
+        imageId: "d0e196fc-3d4c-4501-b453-ac8c3df968cf",
+        status: 0,
+        caiValue: "970436",
+        unlinkedType: 0,
+      },
+      {
+        id: "vqr-tcb",
+        bankCode: "TCB",
+        bankName: "Ngân hàng TMCP Kỹ thương Việt Nam",
+        bankShortName: "Techcombank",
+        imageId: "97c7b39e-812c-48b5-8126-16e187cfe91b",
+        status: 0,
+        caiValue: "970407",
+        unlinkedType: 0,
+      },
+      {
+        id: "vqr-bidv",
+        bankCode: "BIDV",
+        bankName: "Ngân hàng TMCP Đầu tư và Phát triển Việt Nam",
+        bankShortName: "BIDV",
+        imageId: "cb18c1b3-d661-4695-b2e8-dba8e887abd6",
+        status: 0,
+        caiValue: "970418",
+        unlinkedType: 0,
+      },
+      {
+        id: "vqr-mb",
+        bankCode: "MB",
+        bankName: "Ngân hàng TMCP Quân đội",
+        bankShortName: "MBBank",
+        imageId: "58b7190b-a294-4b14-968f-cd365593893e",
+        status: 0,
+        caiValue: "970422",
+        unlinkedType: 0,
+      },
+      {
+        // Invalid caiValue (not 6 digits) — MUST be dropped by normalize().
+        id: "vqr-bad",
+        bankCode: "BAD",
+        bankName: "Ngân hàng không hợp lệ",
+        bankShortName: "BadBank",
+        imageId: "00000000-0000-0000-0000-000000000000",
+        status: 0,
+        caiValue: "12AB",
+        unlinkedType: 0,
+      },
+    ]),
+  ),
+
+  http.get("https://vietqr.vn/api/vietqr/images/:imageId", ({ params }) =>
+    pngResponse(`bank-logo-${String(params.imageId)}.png`),
+  ),
+
   // --- Admin (M8) — account metadata + tier-grant/revenue ONLY (R10) -------
   http.get("*/api/v1/admin/dashboard", ({ request }) => {
     const gate = adminGate(request);

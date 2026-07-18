@@ -1,0 +1,64 @@
+/* BankLogo — a square logo plate. The loaded plate is a FIXED light (#ffffff)
+   background in both themes so bank brand artwork (often dark ink on transparent)
+   stays legible in dark mode (OQ-D2 — the one sanctioned literal hex, mirroring
+   ColorPicker's brand-value rationale). The hairline border is theme-aware so the
+   plate edge reads on any ground; the fallback tile is fully theme-aware. */
+
+.plate {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: var(--bank-logo-size);
+  height: var(--bank-logo-size);
+  border-radius: var(--fs-radius-sm);
+  border: 1px solid var(--fs-color-border-subtle);
+  background-color: #ffffff;
+  overflow: hidden;
+}
+
+.sm {
+  padding: 2px;
+}
+.md,
+.lg {
+  padding: 3px;
+}
+
+.img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+/* Fallback tile — theme-aware (this is our UI, not brand art). */
+.fallback {
+  background-color: var(--fs-color-surface-sunken);
+}
+
+.initials {
+  font-weight: var(--fs-weight-semibold);
+  line-height: 1;
+  color: var(--fs-color-text-secondary);
+}
+.sm .initials {
+  font-size: var(--fs-text-xs);
+}
+.md .initials {
+  font-size: 0.8125rem;
+}
+.lg .initials {
+  font-size: var(--fs-text-sm);
+}
+
+.glyph {
+  display: inline-flex;
+  width: 60%;
+  height: 60%;
+  color: var(--fs-color-text-muted);
+}
+.glyph :global(svg) {
+  width: 100%;
+  height: 100%;
+}

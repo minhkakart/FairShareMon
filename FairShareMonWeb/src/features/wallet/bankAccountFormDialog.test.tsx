@@ -86,15 +86,24 @@ function Harness({
   );
 }
 
+/** Open the bank picker, filter by `typed`, and select the option matching it. */
+async function pickBank(
+  user: ReturnType<typeof userEvent.setup>,
+  dialog: HTMLElement,
+  typed: string,
+  optionLabel: string | RegExp,
+) {
+  await user.click(within(dialog).getByRole("button", { name: /Ngân hàng/ }));
+  const search = await within(dialog).findByRole("combobox");
+  await user.type(search, typed);
+  await user.click(
+    await within(dialog).findByRole("option", { name: optionLabel }),
+  );
+}
+
 async function fillValid(user: ReturnType<typeof userEvent.setup>, dialog: HTMLElement) {
-  await user.type(
-    within(dialog).getByRole("textbox", { name: "Tên ngân hàng" }),
-    "ACB",
-  );
-  await user.type(
-    within(dialog).getByRole("textbox", { name: "Mã ngân hàng (BIN)" }),
-    "970416",
-  );
+  // Techcombank (970407) is in the MSW VietQR directory + the committed snapshot.
+  await pickBank(user, dialog, "techcom", /Techcombank/);
   await user.type(
     within(dialog).getByRole("textbox", { name: "Số tài khoản" }),
     "123456789",
@@ -134,14 +143,15 @@ describe("BankAccountFormDialog client validation", () => {
 
     await user.click(within(dialog).getByRole("button", { name: "Thêm" }));
 
-    // Zod blocks the empty submit — no request leaves the client.
+    // Zod blocks the empty submit — the picker is required ("select a bank");
+    // no request leaves the client.
     expect(
-      await within(dialog).findByText("Tên ngân hàng không được để trống."),
+      await within(dialog).findByText("Vui lòng chọn ngân hàng."),
     ).toBeInTheDocument();
     expect(posts).toBe(0);
   });
 
-  it("BankAccountFormDialog_BadBin_ShowsPatternErrorClientSide", async () => {
+  it("BankAccountFormDialog_BadAccountNumber_ShowsPatternErrorClientSide", async () => {
     let posts = 0;
     server.use(
       http.post("*/api/v1/bank-accounts", () => {
@@ -153,17 +163,12 @@ describe("BankAccountFormDialog client validation", () => {
     renderWithProviders(<Harness mode="create" />, { queryClient });
     const dialog = await screen.findByRole("dialog");
 
-    await user.type(
-      within(dialog).getByRole("textbox", { name: "Tên ngân hàng" }),
-      "ACB",
-    );
-    await user.type(
-      within(dialog).getByRole("textbox", { name: "Mã ngân hàng (BIN)" }),
-      "12ab",
-    );
+    // A valid bank is picked (the picker only yields valid 6-digit BINs), but a
+    // malformed account number is still blocked client-side.
+    await pickBank(user, dialog, "techcom", /Techcombank/);
     await user.type(
       within(dialog).getByRole("textbox", { name: "Số tài khoản" }),
-      "123456789",
+      "12ab",
     );
     await user.type(
       within(dialog).getByRole("textbox", { name: "Chủ tài khoản" }),
@@ -172,7 +177,7 @@ describe("BankAccountFormDialog client validation", () => {
     await user.click(within(dialog).getByRole("button", { name: "Thêm" }));
 
     expect(
-      await within(dialog).findByText("BIN gồm đúng 6 chữ số."),
+      await within(dialog).findByText("Số tài khoản gồm 6–19 chữ số."),
     ).toBeInTheDocument();
     expect(posts).toBe(0);
   });
@@ -201,9 +206,9 @@ describe("BankAccountFormDialog server errors", () => {
     expect(
       within(dialog).getByText("Số tài khoản không hợp lệ theo máy chủ."),
     ).toBeInTheDocument();
-    // Form stays mounted for correction.
+    // Form stays mounted for correction (the bank picker is still present).
     expect(
-      within(dialog).getByRole("textbox", { name: "Mã ngân hàng (BIN)" }),
+      within(dialog).getByRole("button", { name: /Ngân hàng/ }),
     ).toBeInTheDocument();
   });
 
@@ -232,7 +237,7 @@ describe("BankAccountFormDialog server errors", () => {
       ),
     ).toBeInTheDocument();
     expect(
-      within(dialog).getByRole("textbox", { name: "Tên ngân hàng" }),
+      within(dialog).getByRole("button", { name: /Ngân hàng/ }),
     ).toBeInTheDocument();
     expect(
       screen.queryByText("Đã thêm tài khoản ngân hàng."),
@@ -298,10 +303,11 @@ describe("BankAccountFormDialog success", () => {
     });
     const dialog = await screen.findByRole("dialog");
 
-    // Edit mode pre-fills every field from the account.
+    // Edit mode pre-fills every field from the account — the picker trigger
+    // shows the account's bank (Vietcombank 970436, matched in the directory).
     expect(
-      within(dialog).getByRole("textbox", { name: "Tên ngân hàng" }),
-    ).toHaveValue("Vietcombank");
+      within(dialog).getByRole("button", { name: /Vietcombank/ }),
+    ).toBeInTheDocument();
     expect(
       within(dialog).getByRole("textbox", { name: "Số tài khoản" }),
     ).toHaveValue("0071001234567");
@@ -310,5 +316,67 @@ describe("BankAccountFormDialog success", () => {
     expect(
       await screen.findByText("Đã cập nhật tài khoản ngân hàng."),
     ).toBeInTheDocument();
+  });
+});
+
+describe("BankAccountFormDialog bank picker → body", () => {
+  /** A legacy/edited account whose BIN is NOT in the VietQR directory/snapshot. */
+  const LEGACY: BankAccountResponse = {
+    ...ACCOUNT,
+    uuid: "ba-legacy",
+    bankBin: "999999",
+    bankName: "Ngân hàng Cũ",
+  };
+
+  it("BankAccountFormDialog_SelectBank_SubmitsBinAndShortNameInBody", async () => {
+    let body: Record<string, unknown> | undefined;
+    server.use(
+      http.post("*/api/v1/bank-accounts", async ({ request }) => {
+        body = (await request.json()) as Record<string, unknown>;
+        return ok({ ...ACCOUNT, uuid: "ba-new" });
+      }),
+      http.get("*/api/v1/bank-accounts", () => ok([])),
+    );
+    const user = userEvent.setup();
+    renderWithProviders(<Harness mode="create" />, { queryClient });
+    const dialog = await screen.findByRole("dialog");
+
+    // Picking Techcombank sets bankBin (970407) AND bankName = its short name.
+    await fillValid(user, dialog);
+    await user.click(within(dialog).getByRole("button", { name: "Thêm" }));
+
+    await screen.findByText("Đã thêm tài khoản ngân hàng.");
+    // The submitted contract is unchanged and carries the derived values (D2/D3).
+    expect(body).toEqual({
+      bankBin: "970407",
+      bankName: "Techcombank",
+      accountNumber: "123456789",
+      accountHolderName: "TRAN VAN B",
+    });
+  });
+
+  it("BankAccountFormDialog_EditUnknownBin_ShowsSyntheticOptionAndSubmitsStoredValues", async () => {
+    let body: Record<string, unknown> | undefined;
+    server.use(
+      http.put("*/api/v1/bank-accounts/:uuid", async ({ request }) => {
+        body = (await request.json()) as Record<string, unknown>;
+        return ok(LEGACY);
+      }),
+      http.get("*/api/v1/bank-accounts", () => ok([])),
+    );
+    const user = userEvent.setup();
+    renderWithProviders(<Harness mode="edit" account={LEGACY} />, { queryClient });
+    const dialog = await screen.findByRole("dialog");
+
+    // The unknown BIN pre-selects via a synthetic option carrying the stored name
+    // (no logo) — nothing is lost; the trigger renders that synthetic option.
+    expect(
+      within(dialog).getByRole("button", { name: /Ngân hàng Cũ/ }),
+    ).toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole("button", { name: "Lưu" }));
+    await screen.findByText("Đã cập nhật tài khoản ngân hàng.");
+    // The stored BIN + name round-trip unchanged (picker-only, no data loss — R4).
+    expect(body).toMatchObject({ bankBin: "999999", bankName: "Ngân hàng Cũ" });
   });
 });

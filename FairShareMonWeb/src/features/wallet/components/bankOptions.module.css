@@ -1,0 +1,46 @@
+/* Bank option row — a two-line member/category-row shape: logo + short name
+   (primary) over the full legal name · BIN (secondary). In the collapsed
+   Combobox trigger (`data-combobox-value`), the secondary line is hidden and the
+   primary clamps to a single line, so the trigger reads "logo + short name" while
+   list rows stay two-line (OQ-D1). */
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--fs-space-3);
+  min-width: 0;
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+}
+
+.primary {
+  font-size: var(--fs-text-md);
+  color: var(--fs-color-text);
+  overflow-wrap: anywhere;
+}
+
+.secondary {
+  font-size: var(--fs-text-sm);
+  line-height: var(--fs-leading-snug);
+  color: var(--fs-color-text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.bin {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Collapsed trigger presentation: one clean line (logo + short name). */
+[data-combobox-value] .secondary {
+  display: none;
+}
+[data-combobox-value] .primary {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

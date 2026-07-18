@@ -58,6 +58,9 @@ export type { MoneyProps } from "./Money/Money";
 export { Select } from "./Select/Select";
 export type { SelectProps, SelectOption } from "./Select/Select";
 
+export { Combobox, normalizeForSearch } from "./Combobox/Combobox";
+export type { ComboboxProps, ComboboxOption } from "./Combobox/Combobox";
+
 export { TagMultiSelect } from "./TagMultiSelect/TagMultiSelect";
 export type {
   TagMultiSelectProps,

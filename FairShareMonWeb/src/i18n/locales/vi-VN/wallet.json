@@ -44,11 +44,14 @@
   "form": {
     "createTitle": "Thêm tài khoản ngân hàng",
     "editTitle": "Sửa tài khoản ngân hàng",
-    "bankNameLabel": "Tên ngân hàng",
-    "bankNamePlaceholder": "Ví dụ: Vietcombank",
-    "binLabel": "Mã ngân hàng (BIN)",
-    "binPlaceholder": "Ví dụ: 970436",
-    "binHint": "Mã NAPAS gồm đúng 6 chữ số.",
+    "bankPicker": {
+      "label": "Ngân hàng",
+      "placeholder": "Chọn ngân hàng",
+      "searchPlaceholder": "Tìm ngân hàng…",
+      "emptyLabel": "Không tìm thấy ngân hàng",
+      "loading": "Đang cập nhật danh sách ngân hàng…"
+    },
+    "logoAlt": "Logo {{bank}}",
     "accountNumberLabel": "Số tài khoản",
     "accountNumberPlaceholder": "Ví dụ: 0071001234567",
     "accountNumberHint": "Chỉ gồm chữ số, 6–19 ký tự.",

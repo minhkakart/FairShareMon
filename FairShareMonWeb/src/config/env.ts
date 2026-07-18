@@ -28,4 +28,12 @@ export const env = {
   /** Serve the app against MSW browser mocks instead of the real backend. */
   enableMocks: import.meta.env.VITE_ENABLE_MOCKS === "true",
   isDev: import.meta.env.DEV,
+  /**
+   * External VietQR directory origin for the bank picker (no trailing slash).
+   * Unlike `apiBaseUrl` this never throws: a missing value falls back to the
+   * public default, and a failed live fetch is covered by the committed snapshot.
+   */
+  vietqrBaseUrl: (
+    import.meta.env.VITE_VIETQR_BASE_URL ?? "https://vietqr.vn"
+  ).replace(/\/+$/, ""),
 } as const;

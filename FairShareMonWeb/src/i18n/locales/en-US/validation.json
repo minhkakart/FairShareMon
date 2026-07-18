@@ -57,7 +57,7 @@
   "bankAccount": {
     "bankNameRequired": "Bank name is required.",
     "bankNameTooLong": "Bank name must not exceed 100 characters.",
-    "binRequired": "Please enter the bank code (BIN).",
+    "selectBank": "Please select a bank.",
     "binPattern": "The BIN must be exactly 6 digits.",
     "accountNumberRequired": "Please enter the account number.",
     "accountNumberInvalid": "The account number must be 6–19 digits.",

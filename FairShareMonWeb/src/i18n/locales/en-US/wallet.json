@@ -44,11 +44,14 @@
   "form": {
     "createTitle": "Add bank account",
     "editTitle": "Edit bank account",
-    "bankNameLabel": "Bank name",
-    "bankNamePlaceholder": "e.g. Vietcombank",
-    "binLabel": "Bank code (BIN)",
-    "binPlaceholder": "e.g. 970436",
-    "binHint": "The NAPAS code — exactly 6 digits.",
+    "bankPicker": {
+      "label": "Bank",
+      "placeholder": "Select a bank",
+      "searchPlaceholder": "Search banks…",
+      "emptyLabel": "No matching bank",
+      "loading": "Refreshing the bank list…"
+    },
+    "logoAlt": "{{bank}} logo",
     "accountNumberLabel": "Account number",
     "accountNumberPlaceholder": "e.g. 0071001234567",
     "accountNumberHint": "Digits only, 6–19 characters.",

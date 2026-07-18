@@ -172,14 +172,11 @@ describe("WalletPage premium mutations", () => {
 
     await user.click(screen.getByRole("button", { name: "Thêm tài khoản" }));
     const dialog = await screen.findByRole("dialog");
-    await user.type(
-      within(dialog).getByRole("textbox", { name: "Tên ngân hàng" }),
-      "ACB",
-    );
-    await user.type(
-      within(dialog).getByRole("textbox", { name: "Mã ngân hàng (BIN)" }),
-      "970416",
-    );
+    // Pick a bank via the searchable picker — MBBank (970422) is in the MSW
+    // VietQR directory + the snapshot, so the pick→store→row round-trip resolves.
+    await user.click(within(dialog).getByRole("button", { name: /Ngân hàng/ }));
+    await user.type(await within(dialog).findByRole("combobox"), "mbbank");
+    await user.click(await within(dialog).findByRole("option", { name: /MBBank/ }));
     await user.type(
       within(dialog).getByRole("textbox", { name: "Số tài khoản" }),
       "123456789",
@@ -194,7 +191,7 @@ describe("WalletPage premium mutations", () => {
       await screen.findByText("Đã thêm tài khoản ngân hàng."),
     ).toBeInTheDocument();
     expect(
-      await screen.findByRole("rowheader", { name: /ACB/ }),
+      await screen.findByRole("rowheader", { name: /MBBank/ }),
     ).toBeInTheDocument();
     await waitFor(() =>
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),

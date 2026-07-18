@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useT } from "@/i18n/useT";
 import {
   Button,
+  Combobox,
   Dialog,
   DialogClose,
   DialogContent,
@@ -14,6 +15,7 @@ import {
   UpgradePrompt,
   TextField,
 } from "@/components/ui";
+import type { ComboboxOption } from "@/components/ui";
 import { useToast } from "@/app/ToastHost";
 import { ErrorCodes, isApiError } from "@/lib/api/errors";
 import {
@@ -23,10 +25,13 @@ import {
 import { bankAccountFormSchema } from "../schemas";
 import type { BankAccountFormValues } from "../schemas";
 import type { BankAccountResponse } from "../api/types";
+import type { VietqrBank } from "../api/vietqrDirectoryApi";
 import {
   useCreateBankAccount,
   useUpdateBankAccount,
 } from "../hooks/useBankAccounts";
+import { useVietqrBanks } from "../hooks/useVietqrBanks";
+import { buildBankOptions, makeRenderBankOption } from "./bankOptions";
 
 export type BankAccountFormDialogProps = {
   mode: "create" | "edit";
@@ -70,11 +75,17 @@ export function BankAccountFormDialog({
   const [formError, setFormError] = useState<string | null>(null);
   const [gateMessage, setGateMessage] = useState<string | null>(null);
 
+  const banks = useVietqrBanks();
+  const renderBankOption = makeRenderBankOption(t);
+
   const {
     register,
     handleSubmit,
     reset,
     setError,
+    setValue,
+    watch,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<BankAccountFormValues>({
     resolver: zodResolver(bankAccountFormSchema(t)),
@@ -155,26 +166,59 @@ export function BankAccountFormDialog({
             />
           ) : null}
           <FieldStack>
-            <TextField
-              label={t("wallet:form.bankNameLabel")}
-              placeholder={t("wallet:form.bankNamePlaceholder")}
-              autoComplete="off"
-              autoFocus
-              required
-              maxLength={100}
-              error={errors.bankName?.message}
-              {...register("bankName")}
-            />
-            <TextField
-              label={t("wallet:form.binLabel")}
-              placeholder={t("wallet:form.binPlaceholder")}
-              hint={t("wallet:form.binHint")}
-              inputMode="numeric"
-              autoComplete="off"
-              required
-              maxLength={6}
-              error={errors.bankBin?.message}
-              {...register("bankBin")}
+            <Controller
+              name="bankBin"
+              control={control}
+              render={({ field, fieldState }) => {
+                const baseOptions = buildBankOptions(banks.data ?? []);
+                // Legacy/unknown BIN (edit of an account whose BIN isn't in the
+                // directory): inject a synthetic option carrying the stored name
+                // + BIN (no logo) so nothing is lost and it still pre-selects.
+                const known =
+                  !field.value ||
+                  baseOptions.some((o) => o.value === field.value);
+                const options: ComboboxOption<VietqrBank>[] = known
+                  ? baseOptions
+                  : [
+                      {
+                        value: field.value,
+                        label: watch("bankName") || field.value,
+                        keywords: [field.value],
+                      },
+                      ...baseOptions,
+                    ];
+                return (
+                  <Combobox<VietqrBank>
+                    label={t("wallet:form.bankPicker.label")}
+                    placeholder={t("wallet:form.bankPicker.placeholder")}
+                    searchPlaceholder={t(
+                      "wallet:form.bankPicker.searchPlaceholder",
+                    )}
+                    emptyLabel={t("wallet:form.bankPicker.emptyLabel")}
+                    loading={
+                      banks.isFetching
+                        ? t("wallet:form.bankPicker.loading")
+                        : false
+                    }
+                    required
+                    name={field.name}
+                    ref={field.ref}
+                    value={field.value || undefined}
+                    options={options}
+                    renderOption={renderBankOption}
+                    onValueChange={(bin) => {
+                      field.onChange(bin);
+                      const bank = banks.data?.find((b) => b.bin === bin);
+                      // Persist the picked short name into bankName (D3); for the
+                      // synthetic legacy option keep the stored name.
+                      setValue("bankName", bank ? bank.shortName : watch("bankName"), {
+                        shouldValidate: true,
+                      });
+                    }}
+                    error={fieldState.error?.message ?? errors.bankName?.message}
+                  />
+                );
+              }}
             />
             <TextField
               label={t("wallet:form.accountNumberLabel")}

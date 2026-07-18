@@ -13,6 +13,8 @@ import {
 } from "@/components/ui";
 import type { BankAccountResponse } from "../api/types";
 import { maskAccount, groupAccount } from "../format";
+import { useVietqrBanks } from "../hooks/useVietqrBanks";
+import { BankLogo } from "./BankLogo";
 import {
   EyeIcon,
   EyeOffIcon,
@@ -50,6 +52,10 @@ export function BankAccountsTable({
   const { t } = useT();
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
   const isPremium = mode === "premium";
+  // Re-derive logo + short name from the stored BIN via the cached directory
+  // query (one lookup map — never a hook per row).
+  const { data: banks } = useVietqrBanks();
+  const bankByBin = new Map((banks ?? []).map((b) => [b.bin, b]));
 
   return (
     <Card padded={false}>
@@ -78,13 +84,23 @@ export function BankAccountsTable({
         <TableBody>
           {accounts.map((account) => {
             const show = revealed[account.uuid] ?? false;
+            const bank = bankByBin.get(account.bankBin);
+            const displayName = bank?.shortName ?? account.bankName;
             return (
               <TableRow key={account.uuid}>
                 <TableHeaderCell scope="row">
                   <span className={styles.bankCell}>
-                    <span className={styles.bankName}>{account.bankName}</span>
-                    <span className={styles.bankBin}>
-                      {t("wallet:table.bin", { bin: account.bankBin })}
+                    <BankLogo
+                      imageId={bank?.imageId}
+                      name={displayName}
+                      alt=""
+                      size="sm"
+                    />
+                    <span className={styles.bankText}>
+                      <span className={styles.bankName}>{displayName}</span>
+                      <span className={styles.bankBin}>
+                        {t("wallet:table.bin", { bin: account.bankBin })}
+                      </span>
                     </span>
                   </span>
                 </TableHeaderCell>
@@ -101,8 +117,8 @@ export function BankAccountsTable({
                       aria-pressed={show}
                       aria-label={
                         show
-                          ? t("wallet:table.hide", { bank: account.bankName })
-                          : t("wallet:table.reveal", { bank: account.bankName })
+                          ? t("wallet:table.hide", { bank: displayName })
+                          : t("wallet:table.reveal", { bank: displayName })
                       }
                       onClick={() =>
                         setRevealed((prev) => ({
@@ -137,7 +153,7 @@ export function BankAccountsTable({
                         variant="ghost"
                         size="sm"
                         aria-label={t("wallet:setDefault.actionNamed", {
-                          bank: account.bankName,
+                          bank: displayName,
                         })}
                         onClick={() => onSetDefault(account)}
                       >
@@ -153,7 +169,7 @@ export function BankAccountsTable({
                       variant="ghost"
                       size="sm"
                       aria-label={t("wallet:actions.editNamed", {
-                        bank: account.bankName,
+                        bank: displayName,
                       })}
                       onClick={() => onEdit(account)}
                     >
@@ -163,7 +179,7 @@ export function BankAccountsTable({
                       variant="ghost"
                       size="sm"
                       aria-label={t("wallet:actions.deleteNamed", {
-                        bank: account.bankName,
+                        bank: displayName,
                       })}
                       onClick={() => onDelete(account)}
                     >

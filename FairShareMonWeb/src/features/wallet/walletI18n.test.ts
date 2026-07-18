@@ -48,7 +48,7 @@ describe("wallet i18n parity", () => {
     const keys = [
       "bankNameRequired",
       "bankNameTooLong",
-      "binRequired",
+      "selectBank",
       "binPattern",
       "accountNumberRequired",
       "accountNumberInvalid",
@@ -70,5 +70,26 @@ describe("wallet i18n parity", () => {
     expect(viWallet.badge.default).toBe("Mặc định");
     expect(viWallet.tier.premium).toBe("Premium");
     expect(viWallet.tier.free).toBe("Free");
+  });
+
+  it("WalletForm_BankPickerAndLogoAltKeys_ExistInBothLocales", () => {
+    // The new bank-picker feature keys must be present + non-empty in both locales
+    // so no picker surface falls back to a raw key or the wrong language.
+    for (const locale of [viWallet, enWallet]) {
+      expect(locale.form.bankPicker.label.trim()).toBeTruthy();
+      expect(locale.form.bankPicker.placeholder.trim()).toBeTruthy();
+      expect(locale.form.bankPicker.searchPlaceholder.trim()).toBeTruthy();
+      expect(locale.form.bankPicker.emptyLabel.trim()).toBeTruthy();
+      expect(locale.form.bankPicker.loading.trim()).toBeTruthy();
+      expect(locale.form.logoAlt.trim()).toBeTruthy();
+    }
+  });
+
+  it("ValidationBankAccount_SelectBankKey_ExistsInBothLocales", () => {
+    // The picker "required" message replaced the old typed-BIN "required" copy.
+    const vi = viValidation as { bankAccount: Record<string, string> };
+    const en = enValidation as { bankAccount: Record<string, string> };
+    expect(vi.bankAccount.selectBank?.trim()).toBeTruthy();
+    expect(en.bankAccount.selectBank?.trim()).toBeTruthy();
   });
 });

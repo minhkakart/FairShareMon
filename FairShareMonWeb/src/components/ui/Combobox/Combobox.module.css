@@ -1,0 +1,296 @@
+/* Combobox — a searchable single-select. The closed trigger matches the Select
+   trigger rhythm (sunken control, ~2.5rem) so it lines up with TextFields in a
+   form column; opening drops the shared raised popover with a pinned search input
+   and a scrolling listbox. Tokens only — same family as Select / TagMultiSelect. */
+
+.field {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-2);
+}
+
+.label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fs-space-1);
+  font-size: var(--fs-text-sm);
+  font-weight: var(--fs-weight-medium);
+  color: var(--fs-color-text);
+  line-height: var(--fs-leading-snug);
+}
+
+.required {
+  color: var(--fs-color-danger-text);
+  font-weight: var(--fs-weight-bold);
+}
+
+.labelHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* == Trigger (closed state) — mirrors Select .trigger ====================== */
+.trigger {
+  display: flex;
+  align-items: center;
+  gap: var(--fs-space-2);
+  width: 100%;
+  min-width: 0;
+  min-height: 2.5rem;
+  padding-block: var(--fs-space-2);
+  padding-inline: var(--fs-space-3);
+  background-color: var(--fs-color-surface-sunken);
+  border: 1px solid var(--fs-color-border);
+  border-radius: var(--fs-radius-md);
+  color: var(--fs-color-text);
+  font: inherit;
+  font-size: var(--fs-text-md);
+  text-align: start;
+  cursor: pointer;
+  transition:
+    border-color var(--fs-duration-fast) var(--fs-ease-standard),
+    box-shadow var(--fs-duration-fast) var(--fs-ease-standard);
+}
+
+.trigger:hover:not(:disabled) {
+  border-color: var(--fs-color-border-strong);
+}
+
+.trigger:focus-visible,
+.trigger[data-state="open"] {
+  outline: none;
+  border-color: var(--fs-color-focus);
+  box-shadow: var(--fs-shadow-focus);
+}
+
+.trigger:disabled {
+  cursor: not-allowed;
+  color: var(--fs-color-text-disabled);
+  background-color: var(--fs-color-surface);
+}
+
+.triggerInvalid {
+  border-color: var(--fs-color-danger);
+}
+.triggerInvalid:focus-visible,
+.triggerInvalid[data-state="open"] {
+  border-color: var(--fs-color-danger);
+  box-shadow: 0 0 0 3px var(--fs-color-danger-surface);
+}
+
+/* The value slot — grows, clips overflow. The single-line trigger presentation
+   for rich (multi-line) options is handled by the caller's stylesheet via the
+   `data-combobox-value` hook (see bankOptions.module.css). */
+.value {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+.placeholder {
+  color: var(--fs-color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chevron {
+  display: inline-flex;
+  flex: none;
+  color: var(--fs-color-text-secondary);
+}
+.chevron :global(svg) {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+/* == Popover panel — shared raised surface ================================= */
+.panel {
+  position: absolute;
+  top: calc(100% + var(--fs-space-1));
+  inset-inline: 0;
+  z-index: var(--fs-z-dropdown);
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-1);
+  padding: var(--fs-space-1);
+  background-color: var(--fs-color-surface-raised);
+  border: 1px solid var(--fs-color-border-subtle);
+  border-radius: var(--fs-radius-md);
+  box-shadow: var(--fs-shadow-md);
+  animation: fs-combobox-in var(--fs-duration-fast) var(--fs-ease-decelerate);
+}
+
+/* == Search input (pinned) ================================================= */
+.search {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.searchIcon {
+  position: absolute;
+  inset-inline-start: var(--fs-space-3);
+  display: inline-flex;
+  color: var(--fs-color-text-muted);
+  pointer-events: none;
+}
+.searchIcon :global(svg) {
+  width: 1rem;
+  height: 1rem;
+}
+
+.searchInput {
+  width: 100%;
+  height: 2.25rem;
+  padding-inline: var(--fs-space-8) var(--fs-space-3);
+  background-color: var(--fs-color-surface-sunken);
+  border: 1px solid var(--fs-color-border);
+  border-radius: var(--fs-radius-sm);
+  color: var(--fs-color-text);
+  font: inherit;
+  font-size: var(--fs-text-md);
+}
+.searchInput::placeholder {
+  color: var(--fs-color-text-muted);
+}
+.searchInput:focus-visible {
+  outline: none;
+  border-color: var(--fs-color-focus);
+  box-shadow: var(--fs-shadow-focus);
+}
+
+/* == Loading hint (top of listbox, aria-live) ============================== */
+.loading {
+  display: flex;
+  align-items: center;
+  gap: var(--fs-space-2);
+  padding: var(--fs-space-1) var(--fs-space-3);
+  font-size: var(--fs-text-sm);
+  color: var(--fs-color-text-secondary);
+}
+.spinner {
+  width: 1rem;
+  height: 1rem;
+  flex: none;
+  animation: fs-combobox-spin 0.7s linear infinite;
+}
+
+/* == Listbox (scroll region) =============================================== */
+.listbox {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: min(60vh, 18rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--fs-space-3);
+  min-height: 2.25rem;
+  padding: var(--fs-space-2) var(--fs-space-3);
+  padding-inline-end: var(--fs-space-8); /* room for the ✓ */
+  border-radius: var(--fs-radius-sm);
+  color: var(--fs-color-text);
+  cursor: pointer;
+  user-select: none;
+}
+
+.optionBody {
+  min-width: 0;
+  flex: 1;
+}
+
+/* Active option (keyboard aria-activedescendant / pointer hover) — the same cue
+   Select's highlighted item uses. */
+.optionActive {
+  background-color: var(--fs-color-primary-subtle);
+  color: var(--fs-color-text);
+}
+
+.optionSelected {
+  font-weight: var(--fs-weight-medium);
+}
+
+.optionCheck {
+  position: absolute;
+  inset-inline-end: var(--fs-space-2);
+  display: inline-flex;
+  align-items: center;
+  color: var(--fs-color-primary);
+}
+.optionCheck :global(svg) {
+  width: 1rem;
+  height: 1rem;
+}
+
+.empty {
+  padding: var(--fs-space-3);
+  text-align: center;
+  font-size: var(--fs-text-sm);
+  color: var(--fs-color-text-secondary);
+}
+
+.hint {
+  font-size: var(--fs-text-sm);
+  line-height: var(--fs-leading-snug);
+  color: var(--fs-color-text-secondary);
+}
+
+.error {
+  display: flex;
+  gap: var(--fs-space-1);
+  font-size: var(--fs-text-sm);
+  line-height: var(--fs-leading-snug);
+  color: var(--fs-color-danger-text);
+  font-weight: var(--fs-weight-medium);
+}
+
+/* Coarse-pointer (touch) — 44px targets for the trigger, search, and rows. */
+@media (pointer: coarse) {
+  .trigger {
+    min-height: 2.75rem;
+  }
+  .searchInput {
+    height: 2.75rem;
+  }
+  .option {
+    min-height: 2.75rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel {
+    animation: none;
+  }
+  .spinner {
+    animation-duration: 1.4s;
+  }
+}
+
+@keyframes fs-combobox-in {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes fs-combobox-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

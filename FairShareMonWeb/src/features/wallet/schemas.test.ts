@@ -75,7 +75,7 @@ describe("bankAccountFormSchema", () => {
   it("BankAccountFormSchema_BinEmpty_FailsRequiredRule", () => {
     const result = schema.safeParse({ ...VALID, bankBin: "" });
     expect(result.success).toBe(false);
-    expect(issues(result)).toContain("validation:bankAccount.binRequired");
+    expect(issues(result)).toContain("validation:bankAccount.selectBank");
   });
 
   // ── Account number (^\d{6,19}$) ────────────────────────────────────────────

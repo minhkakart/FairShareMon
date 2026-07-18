@@ -57,7 +57,7 @@
   "bankAccount": {
     "bankNameRequired": "Tên ngân hàng không được để trống.",
     "bankNameTooLong": "Tên ngân hàng không được vượt quá 100 ký tự.",
-    "binRequired": "Vui lòng nhập mã ngân hàng (BIN).",
+    "selectBank": "Vui lòng chọn ngân hàng.",
     "binPattern": "BIN gồm đúng 6 chữ số.",
     "accountNumberRequired": "Vui lòng nhập số tài khoản.",
     "accountNumberInvalid": "Số tài khoản gồm 6–19 chữ số.",
