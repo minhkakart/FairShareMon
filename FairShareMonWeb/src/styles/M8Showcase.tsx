@@ -173,6 +173,19 @@ const SIGNUPS: Period[] = [
   { key: "2026-07", label: "07/26", count: 121 },
 ];
 
+/* A DENSE daily range (31 buckets) — the phone-density case for
+   TimeSeriesBarChart (cycle-2 2b): each column keeps a legible min-width and the
+   plot + axis scroll together, with the axis thinning to ~every 3rd day label so
+   captions never collide. Every column + the paired table still carry all 31
+   days (no data dropped). */
+const DAILY_SIGNUPS: Period[] = Array.from({ length: 31 }, (_, i) => {
+  const day = i + 1;
+  const dd = String(day).padStart(2, "0");
+  // A gently varying series so the columns read as a real trend.
+  const count = 20 + Math.round(18 * Math.sin(i / 3)) + (i % 4) * 3;
+  return { key: `2026-07-${dd}`, label: `${dd}/07`, count };
+});
+
 type RevenueBucket = { key: string; label: string; total: number; grantCount: number };
 const REVENUE_BUCKETS: RevenueBucket[] = [
   { key: "2026-02", label: "02/26", total: 3_600_000, grantCount: 18 },
@@ -283,6 +296,15 @@ function MetricsSurface() {
     title: `${s.label}: ${s.count.toLocaleString("vi-VN")} đăng ký`,
   }));
 
+  const maxDaily = Math.max(...DAILY_SIGNUPS.map((s) => s.count));
+  const dailyItems: TimeSeriesBarItem[] = DAILY_SIGNUPS.map((s) => ({
+    key: s.key,
+    periodLabel: s.label,
+    ratio: maxDaily > 0 ? s.count / maxDaily : 0,
+    value: s.count.toLocaleString("vi-VN"),
+    title: `${s.label}: ${s.count.toLocaleString("vi-VN")} đăng ký`,
+  }));
+
   return (
     <>
       <KpiRow>
@@ -338,6 +360,44 @@ function MetricsSurface() {
             </TableHead>
             <TableBody>
               {SIGNUPS.map((s) => (
+                <TableRow key={s.key}>
+                  <TableHeaderCell scope="row">{s.label}</TableHeaderCell>
+                  <TableCell numeric>{s.count.toLocaleString("vi-VN")}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardBody>
+      </Card>
+
+      {/* Dense DAILY range — the phone-density case (cycle-2 2b). Columns keep a
+          legible min-width and the plot + axis scroll TOGETHER (scroll it left↔
+          right on a phone); the axis thins to ~every 3rd day so labels never
+          collide, and `showValues={false}` drops the per-column caps. Resize the
+          window narrow (or view on a phone) to see the shared scroller; check
+          both light + dark. The paired table below carries all 31 days. */}
+      <Card>
+        <CardBody>
+          <h4 className={styles.panelTitle}>
+            Đăng ký theo ngày (dày đặc — cuộn ngang)
+          </h4>
+          <TimeSeriesBarChart
+            items={dailyItems}
+            showValues={false}
+            ariaLabel="Số lượt đăng ký mỗi ngày trong tháng 07/26 (31 ngày). Cuộn ngang để xem, hoặc xem bảng bên dưới."
+          />
+          <p className={styles.subhead}>Bảng số đi kèm (đủ 31 ngày)</p>
+          <Table caption="Đăng ký theo ngày" captionHidden>
+            <TableHead>
+              <TableRow>
+                <TableHeaderCell scope="col">Ngày</TableHeaderCell>
+                <TableHeaderCell scope="col" numeric>
+                  Số lượt đăng ký
+                </TableHeaderCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {DAILY_SIGNUPS.map((s) => (
                 <TableRow key={s.key}>
                   <TableHeaderCell scope="row">{s.label}</TableHeaderCell>
                   <TableCell numeric>{s.count.toLocaleString("vi-VN")}</TableCell>

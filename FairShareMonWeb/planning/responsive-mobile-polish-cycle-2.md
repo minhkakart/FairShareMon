@@ -788,10 +788,166 @@ adds any new mobile E2E per OQ4. Hand-off points are called out per step.
     selectors were not modified.**
   **Status: 2a TEST complete + all suites green; ready for web-code-reviewer.**
 
+- **2026-07-18 (2b build — ui-designer, OQ3=a, `dataviz` applied)** — Implemented
+  sub-cycle **2b** (charts): the `TimeSeriesBarChart` phone-density pattern. Only
+  the chart primitive + its showcase were touched; **no feature page and no
+  `--fs-viz-*` hue changed** (so `validate_palette.js` was not re-run, per the
+  directive). `gitnexus_impact` (upstream) on `TimeSeriesBarChart` = **LOW** risk,
+  the expected **4 consumers** (`RevenueChart`, `SignupsPanel`, `M8Showcase`
+  `MetricsSurface` + `RevenueSurface`); the change is additive markup + CSS with an
+  **unchanged public props/API**, so all four are behaviorally unaffected.
+
+  ### 2b design spec
+
+  - **Public API — UNCHANGED.** `TimeSeriesBarChartProps` stays
+    `{ items, ariaLabel, showValues?, className? }` and `TimeSeriesBarItem` stays
+    `{ key, periodLabel, ratio, value, title? }`. Consumers pass exactly what they
+    passed before; the density behavior is internal + automatic. `role="img"` +
+    summarizing `ariaLabel`, `aria-hidden` marks, and the paired accessible table
+    (the a11y data channel) are all preserved; `prefers-reduced-motion` still
+    neutralizes the grow transition.
+  - **Scroll / min-width mechanism (the fix).** Each `.tsCol` (and its aligned
+    `.tsAxisLabel`) now holds a legible **`min-width` of `--fs-ts-col-min` = 2.75rem**
+    (44px — matches the bar's `max-width` and the app's touch rhythm) with
+    `flex: 1 1 var(--fs-ts-col-min)`, so columns **grow to fill** when there is room
+    and **stop shrinking** when there isn't. The plot **and** its axis are wrapped
+    in ONE new `.tsScroll` box (`overflow-x: auto` + `overscroll-behavior-x:
+    contain`) so they **scroll together** — labels never drift out of column
+    alignment. Both `.tsPlot` and `.tsAxis` are `width: max-content; min-width: 100%`
+    so the baseline axis line + every label span the full scrollable width (not just
+    the visible width) when dense, and fill the box when sparse. This mirrors the
+    `Table` `.scroll` idiom (`Table.module.css:9`): the overflow lives on the data
+    box, the **page never scrolls sideways**. Largely viewport-independent — **no
+    new breakpoint** was added (the ladder was not touched).
+  - **Label-thinning rule (dense/day buckets).** Internally
+    `stride = max(1, ceil(items.length / 12))`; the axis renders `periodLabel` only
+    when `index % stride === 0`, else an empty slot (which still holds its column
+    width, keeping alignment). So ≤ 12 buckets show every label (months
+    unaffected); a ~31-day range shows ~11 labels; ~53 weeks ~11. **No data is
+    dropped** — every column renders and the paired table carries the full series;
+    only decorative axis captions thin. When thinned (`stride > 1`) the
+    `.tsAxisThinned` modifier switches labels to `white-space: nowrap; overflow:
+    visible` so a sparse label uses its blank neighbours' width instead of wrapping
+    under one narrow column. The existing `showValues={false}` path (consumers
+    already gate it to > 12 buckets) still suppresses the per-column caps.
+  - **Files:** `src/components/ui/charts/TimeSeriesBarChart.tsx` (the `.tsScroll`
+    wrapper + internal stride/thinning; API untouched) and
+    `charts.module.css` (`.tsChart` gains the `--fs-ts-col-min` token; new
+    `.tsScroll`; `.tsPlot`/`.tsAxis` `max-content`+100% floor; `.tsCol`/
+    `.tsAxisLabel` min-width; `.tsAxisThinned`). Showcase:
+    `src/styles/M8Showcase.tsx` gains a **dense 31-day** signups chart
+    (`showValues={false}`) + its paired 31-row table so the scroll + thinning is
+    reviewable in light + dark via `StyleGuide.tsx`.
+  - **`RankedBarChart` + `KpiRow`/`KpiTile` (R5) — verified fine, NO change.** At
+    360px (live admin dashboard) the distribution panels read cleanly (badge label
+    + value + % on the header line, full-width bar below) and the KPI tiles stack
+    one-column with legible tabular values. Confirms the audit; light-touch only,
+    nothing tuned.
+  - **Web-implementer / feature-composition notes (for verification, not action):**
+    the fix is entirely inside the shared primitive, so `SignupsPanel` /
+    `RevenueChart` / stats / home need **no code change** — they inherit the
+    scroll + thinning automatically. Verified live at 360px (admin dashboard +
+    revenue, admin/Premium seed `admin`): no page-level horizontal scroll; axis
+    labels align 1:1 with columns (measured centres identical within 1px); columns
+    hold the 44px floor and the chart box scrolls when the buckets exceed the
+    available width (e.g. the 6 monthly buckets scroll a little at 360px, the 4
+    revenue buckets fit-then-scroll; at an extreme 200px the `.tsScroll` box
+    scrolled — `scrollWidth 274 > clientWidth 84` — while the page stayed at
+    `200 = 200`). **One thing the web-implementer/reviewer should eyeball at
+    feature-composition level:** the real API `periodLabel` for the **month** bucket
+    (the component doc examples it as `07/2026`, 7 chars) is wide enough that 6–12
+    month columns now *scroll* at ≤ 360px rather than shrink-to-fit — this is the
+    intended OQ3a trade-off (legible columns + a scrollable box over crushed
+    fluid columns), not a defect; confirm it reads acceptably against whatever
+    exact `periodLabel` string the backend emits.
+  - **Verification (PATH-prefixed, exact outputs):** `pnpm lint` **clean** (6
+    pre-existing fast-refresh warnings, none in touched files); `pnpm exec tsc -b`
+    **exit 0**; `pnpm build` **built in ~8s, exit 0**; `pnpm test` (Vitest)
+    **777 passed / 93 files** (the existing `timeSeriesBarChart.test.tsx` stays
+    green — its 2-item case has `stride = 1`, all labels shown, so the new markup
+    did not break it; the web-test-engineer will ADD focused density RTL tests
+    next); `pnpm test:e2e` **10 passed** (chromium 1 + mobile 9 — the admin
+    dashboards render `TimeSeriesBarChart` and stayed green). Live-app check at
+    360px + a 200px stress width via a throwaway Playwright probe (since removed).
+  **Status: 2b implementation complete + verified; ready for
+  web-test-engineer (density RTL tests) → web-code-reviewer.**
+
+- **2026-07-18 (2b TEST — web-test-engineer, OQ4a)** — Added focused Vitest + RTL
+  component tests guarding the new `TimeSeriesBarChart` phone-density behavior
+  (OQ4a: charts get RTL component tests, NOT E2E). **No product code touched**
+  (test file only). Extended the existing
+  `src/components/ui/charts/timeSeriesBarChart.test.tsx` (repo convention =
+  one spec per component) with a new `describe("TimeSeriesBarChart phone density
+  (cycle-2 2b)")` block of **6** cases; the file went **7 → 13** tests. Assertions
+  follow the existing spec's patterns (jsdom + `css: true`) — on rendered
+  structure/classes + text + `aria-*`, never pixel widths or scroll offsets (jsdom
+  computes no layout); class selectors use the imported `charts.module.css` token
+  map (`styles.tsCol` / `.tsAxisLabel` / `.tsAxis` / `.tsAxisThinned` / `.tsScroll`
+  / `.tsCap`) so they are robust to the CSS-module hashing.
+  - `TimeSeriesBarChart_DenseBuckets_ThinsAxisLabelsAndFlagsThinned` — 31 buckets
+    (stride = ceil(31/12) = 3): 31 axis slots kept, exactly **11** carry text
+    (≈ ceil(31/stride)); index 0 shows `p0`, indices 1 & 2 are blank slots, index 3
+    shows `p3`; the `.tsAxisThinned` modifier is applied.
+  - `TimeSeriesBarChart_AtThresholdTwelve_AppliesNoThinning` — boundary guard: 12
+    buckets (stride 1) → all 12 labels show, **no** `.tsAxisThinned` class.
+  - `TimeSeriesBarChart_JustAboveThreshold_StartsThinningAtThirteen` — the exact
+    >12 boundary: 13 buckets (stride 2) → 7 labels shown, `.tsAxisThinned` on.
+  - `TimeSeriesBarChart_ThinnedAxis_DropsNoColumnOrValue` — **load-bearing
+    invariant:** 31 columns render regardless of thinning; every column carries its
+    `title` ("period: value"); all 31 value caps render; the column whose axis
+    caption is thinned away (index 1, blank label) still renders with its value
+    (`v1`), and `v30` renders — thinning drops captions, never data.
+  - `TimeSeriesBarChart_Scroller_WrapsBothPlotAndAxisSoTheyScrollTogether` — the
+    single `.tsScroll` box `contains()` both the `role="img"` plot and the `.tsAxis`
+    row (robust to DOM depth), so they scroll together and labels stay column-aligned.
+  - `TimeSeriesBarChart_DenseBuckets_PreservesRoleImgAndAriaHiddenMarks` — a11y
+    preserved under thinning: `role="img"` + summarizing `ariaLabel` present; all 31
+    column marks + the axis row stay `aria-hidden` (the caller's paired table is the
+    data channel).
+  - **Scope note (reported, not a bug):** `TimeSeriesBarChart` renders **no**
+    `<table>` itself — the paired accessible table is composed by each CALLER
+    (`SignupsPanel` / `RevenueChart` via the `Table` primitive). So the "paired
+    table has a row per item" assertion (task point 2) is asserted at the level the
+    primitive owns: rendered columns === `items.length` AND each column keeps its
+    value (cap + `title`). The external table stays the caller's contract.
+  - **No product bug found.** The chart behaves exactly as the 2b design spec
+    describes (stride = max(1, ceil(len/12)); labels at `index % stride === 0`;
+    hidden slots kept; `.tsAxisThinned` when stride > 1; `.tsScroll` wraps plot+axis;
+    props/API + `role="img"`/`aria-hidden` contract unchanged).
+  - **Verification (PATH-prefixed, exact outputs):** `pnpm test` (Vitest) —
+    **783 passed / 93 files** (was 777; +6 new density cases), run clean at
+    `--maxWorkers=4`, **exit 0**, all green (chart file 13/13 confirmed in
+    isolation). `pnpm lint` **clean** (6 pre-existing fast-refresh warnings, none
+    in the touched file). `pnpm exec tsc -b` **exit 0**. `pnpm test:e2e`
+    **10 passed** (chromium 1: ledger-loop; mobile 9: ledger-loop + 4
+    header-responsive + 2 admin-users-responsive + 2 wallet-responsive) — unaffected
+    (unit-test-only change; the admin dashboards that render `TimeSeriesBarChart`
+    stayed green). *Note:* a first full-suite run that was launched concurrently with
+    the E2E suite produced network-bound `Test timed out in 5000ms` flakes (the
+    CPU-saturation scenario `src/test/setup.ts` documents); re-running the suite
+    alone at reduced concurrency was deterministically **783/783 green**, and the
+    flaky files pass in isolation — not a product defect.
+  **Status: 2b TEST complete + all suites green; ready for web-code-reviewer.**
+
 ## Final Outcome
 
-**Sub-cycle 2a delivered (2026-07-18); 2b (charts) pending as its own cycle.**
-Split confirmed at the checkpoint (OQ1=a). **2a** — reviewed **APPROVE, 0
+**Cycle 2 complete (2026-07-18) — both 2a and 2b delivered, reviewed APPROVE, 0
+blocking.** Split confirmed at the checkpoint (OQ1=a).
+
+**2b (charts) — delivered.** Fixed the one real chart defect, `TimeSeriesBarChart`
+phone density (OQ3=a), as an additive chart-local change with the public
+props/API unchanged (all 4 consumers unaffected): a 44px (`--fs-ts-col-min:
+2.75rem`) column floor with the plot + axis wrapped in one `.tsScroll`
+(`overflow-x:auto`) box so they scroll together and labels stay column-aligned
+(the page never scrolls sideways), plus axis-label auto-thinning above ~12 buckets
+(`stride = max(1, ceil(n/12))`) that hides only *label text* — every column,
+value cap, and `title` still renders, and the caller's paired accessible `Table`
+stays the full data channel. `RankedBarChart`/`KpiRow` confirmed fine, untouched.
+`dataviz` skill applied; no `--fs-viz-*` hue changed. +6 RTL density tests
+(7→13). Verified: lint clean, `tsc -b` 0, Vitest **783/783**, build 0, E2E **10
+passed**, live @360px. Charts got component tests (not E2E) per OQ4a.
+
+ **2a** — reviewed **APPROVE, 0
 blocking** — shipped: `AdminUserTable`, `GrantHistoryTable`, and
 `BankAccountsTable` adopt the additive `Table stackOnMobile` card-stack (i18n
 `data-label`s from the existing column-header keys; `Table` primitive + its 33

@@ -139,14 +139,35 @@
 
 /* =============================================================================
  * 3. Time-series column chart (net-new)
+ * -----------------------------------------------------------------------------
+ * Phone density (cycle-2 2b): columns hold a legible `--fs-ts-col-min` width and
+ * the plot + its aligned axis live in ONE `.tsScroll` (`overflow-x: auto`) box,
+ * so a dense range scrolls the CHART (not the page) with axis labels staying
+ * column-aligned — the app's `Table` "scroll the data box" idiom. When there is
+ * room the columns flex-grow to fill (no scrollbar); when there isn't, the plot
+ * and axis both size to `max-content` (so the baseline axis + all labels span the
+ * full scrollable width) and the shared box scrolls. Largely viewport-independent
+ * — no breakpoint needed; the min-width + shared scroller drive the behavior.
  * ========================================================================== */
 .tsChart {
+  /* Min legible width per column/label; the bar's own max-width matches it so a
+     dense column reads as a full-width mark. Tweak here to retune density. */
+  --fs-ts-col-min: 2.75rem;
+}
+/* The shared scroller: the plot and its axis scroll TOGETHER inside this one box
+   so labels never drift out of alignment with their columns. Mirrors the
+   `Table` `.scroll` wrapper — the overflow lives on the data box, never the page. */
+.tsScroll {
   display: flex;
   flex-direction: column;
   gap: var(--fs-space-2);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
 }
 /* The plot band — columns grow up from a single baseline. Padding-top gives a
-   full-height column's cap label room so it never clips. */
+   full-height column's cap label room so it never clips. `max-content` + a 100%
+   floor makes the band (and its baseline axis) span the full scroll width when
+   dense, and fill the box when sparse. */
 .tsPlot {
   display: flex;
   align-items: flex-end;
@@ -154,10 +175,14 @@
   height: 12rem;
   padding-top: var(--fs-space-5);
   border-bottom: 1px solid var(--fs-viz-axis);
+  width: max-content;
+  min-width: 100%;
 }
 .tsCol {
-  flex: 1 1 0;
-  min-width: 0;
+  /* min-width floors the shrink so dense ranges overflow into the scroller
+     instead of crushing columns; flex-grow fills any spare width when sparse. */
+  flex: 1 1 var(--fs-ts-col-min);
+  min-width: var(--fs-ts-col-min);
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -184,19 +209,30 @@
   min-height: 2px; /* a non-zero bucket is always visible */
   transition: height var(--fs-duration-slow) var(--fs-ease-decelerate);
 }
-/* Axis label row aligned 1:1 with the columns. */
+/* Axis label row aligned 1:1 with the columns — same flex basis + min-width +
+   gap as `.tsPlot`, and the same `max-content`/100% sizing, so every label sits
+   under its column at any scroll position. */
 .tsAxis {
   display: flex;
   gap: var(--fs-space-2);
+  width: max-content;
+  min-width: 100%;
 }
 .tsAxisLabel {
-  flex: 1 1 0;
-  min-width: 0;
+  flex: 1 1 var(--fs-ts-col-min);
+  min-width: var(--fs-ts-col-min);
   text-align: center;
   font-size: var(--fs-text-xs);
   color: var(--fs-color-text-muted);
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
+}
+/* Thinned axis (dense ranges): only every Nth label carries text and the rest
+   are blank slots, so a shown label may sit on one line and use its blank
+   neighbours' width rather than wrapping under a single narrow column. */
+.tsAxisThinned .tsAxisLabel {
+  white-space: nowrap;
+  overflow: visible;
 }
 
 @media (prefers-reduced-motion: reduce) {
