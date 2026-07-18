@@ -403,7 +403,10 @@ implies a user's ledger.**
   `aria-expanded`/`aria-controls`; the drawer closes when any nav entry is
   activated (pointer or keyboard). Optional props: `mobileMenuLabel`,
   `mobileMenuCloseLabel`, `navLabel` (all localized by the implementer). The
-  slide honors `prefers-reduced-motion`.
+  slide honors `prefers-reduced-motion`. Below `lg` the header shows **brand +
+  hamburger only** and the trailing `actions` are hidden; pass the toggles /
+  account / logout to the `secondaryActions` slot (drawer footer) — see
+  "Responsive / breakpoints" above.
 - **Page scaffolding:** `<PageHeader title description actions/>` gives every
   routed page one `<h1>` hierarchy (title/description wrap; actions drop below on
   narrow viewports). `<Stack gap>` is the vertical-rhythm column (token gaps, no
@@ -412,6 +415,67 @@ implies a user's ledger.**
   for read-only detail rows (profile fields, event details): term beside value
   on wide viewports, stacked when narrow; a value may be a `Skeleton`, `Badge`,
   or text.
+
+## Responsive / breakpoints
+
+**One ladder, mobile-first.** Author base styles for the smallest viewport, then
+add capability at each `min-width` stop. Reflow against these three values only —
+never invent a new one-off threshold (the definitive list lives as a named
+comment block in `tokens.css`):
+
+| stop | `min-width` | px @16 | what unlocks |
+|------|-------------|--------|--------------|
+| `sm` | `30rem` | 480 | large phone → simple 2-up; the `Table` card-stack reverts to a real table |
+| `md` | `48rem` | 768 | tablet → multi-column forms, side-by-side |
+| `lg` | `64rem` | 1024 | desktop → inline nav shows, mobile drawer retires (matches the AppShell nav-collapse stop) |
+
+CSS cannot put a custom property inside a media condition
+(`@media (min-width: var(--x))` is invalid) and this cycle adds **no** build
+tooling, so the ladder is a documented convention enforced by review, authored
+raw:
+
+```css
+@media (min-width: 30rem) { … } /* sm and up */
+@media (min-width: 48rem) { … } /* md and up */
+@media (min-width: 64rem) { … } /* lg and up */
+```
+
+The **only** sanctioned `max-width` is the AppShell header-actions hide
+(`@media (max-width: 63.99rem)`), which pairs with `lg`; it is written that way
+so the header actions stay in the accessibility tree in jsdom tests (which apply
+base rules but not media queries) — a base `display:none` would hide them from
+`getByRole`. When you touch a file, consolidate any stray 32/34/40/60rem
+threshold to the nearest ladder stop (a full repo-wide sweep is deferred).
+
+### Touch targets (coarse pointers)
+
+`Button size="sm"` and the segmented `ThemeToggle`/`LanguageToggle` add
+`@media (pointer: coarse)` rules that grow their effective hit area to **≥44px**
+on touch devices only (WCAG 2.5.5 comfort). Fine-pointer (mouse) desktop keeps
+the compact sizing, so dense tables/toolbars are not fattened. No caller change
+is needed — it is automatic wherever `sm`/the toggles already render.
+
+### Opt-in mobile table card-stack
+
+`Table` gains an **additive** `stackOnMobile` prop. Below `sm` (30rem) each body
+row reflows into a labeled stacked card (label:value pairs); at/above `sm` it is
+the normal scrolling table. Default is unchanged horizontal-scroll — tables that
+do not opt in render byte-for-byte as before. The label for each value cell
+comes from a `data-label` attribute on that `<TableCell>` (the `data-label`
+convention — pass i18n strings, never hardcode); the `scope="row"` header
+becomes the card title; a cell without `data-label` (e.g. the actions cell)
+shows no label. Reviewable in the "Bảng dồn thẻ trên di động" showcase section.
+
+### AppShell drawer-footer secondary actions
+
+`AppShell` gains a `secondaryActions` slot rendered pinned to the bottom of the
+mobile nav drawer. Below `lg` the header keeps **brand + hamburger only** (the
+inline `actions` are hidden, so the header never overflows at 320px); the
+language/theme toggles + account link + logout live in the drawer footer
+instead. The footer is inside the Radix Dialog, so it inherits the focus trap /
+Escape / focus-restore contract unchanged. The implementer wires the same
+controls into both `actions` (desktop header) and `secondaryActions` (mobile
+drawer), passing the account/logout `Button`s with `fullWidth`.
 
 ## Accessibility baseline
 

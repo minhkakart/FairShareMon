@@ -50,6 +50,8 @@
   font-weight: var(--fs-weight-bold);
   color: var(--fs-color-text);
   white-space: nowrap;
+  /* Allow the brand to shrink instead of shoving the row wider at ~320px. */
+  min-width: 0;
 }
 
 /* Inline nav — hidden on mobile-first; the hamburger drives navigation there.
@@ -69,12 +71,16 @@
   display: none;
 }
 
-/* Hamburger — mobile-first (shown), hidden once the inline nav takes over. */
+/* Hamburger — mobile-first (shown), hidden once the inline nav takes over.
+   `margin-left: auto` pins it to the trailing edge below `lg` (where the nav and
+   the header actions are both hidden, so brand + hamburger are the only row
+   items); at/above `lg` the button is `display:none`, so the margin is inert. */
 .menuButton {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex: none;
+  margin-left: auto;
   width: 2.25rem;
   height: 2.25rem;
   border: 1px solid var(--fs-color-border);
@@ -130,12 +136,24 @@
   color: var(--fs-color-primary);
 }
 
+/* Trailing header actions. Base is VISIBLE (inline flex) — this matters: the
+   unit tests assert the account link + logout button in jsdom, which applies
+   base rules but NOT media queries. A base `display:none` would make them
+   inaccessible in tests. So the "hide below lg" is written as the one sanctioned
+   `max-width` companion to the `lg` (64rem) ladder stop (see tokens.css). Below
+   lg the controls live in the drawer footer (`secondaryActions`); at/above lg
+   they sit inline here, unchanged. */
 .actions {
   display: flex;
   align-items: center;
   gap: var(--fs-space-2);
   margin-left: auto;
   flex: none;
+}
+@media (max-width: 63.99rem) {
+  .actions {
+    display: none;
+  }
 }
 
 .main {
@@ -233,6 +251,22 @@
   padding: var(--fs-space-3) var(--fs-space-4);
   font-size: var(--fs-text-md);
   border-radius: var(--fs-radius-md);
+}
+
+/* Drawer footer — the mobile home for the secondary actions (language/theme
+   toggles, account link, logout). Pinned to the bottom of the drawer column and
+   set off by a hairline. It lives inside the Radix Dialog content, so it is
+   already within the focus trap / Escape / focus-restore contract. Children
+   stack full-width; the implementer passes the account/logout `Button`s with
+   `fullWidth`. Segmented toggles keep their intrinsic width, left-aligned. */
+.menuFooter {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--fs-space-3);
+  padding-top: var(--fs-space-4);
+  border-top: 1px solid var(--fs-color-border-subtle);
 }
 
 @keyframes fs-menu-overlay-in {

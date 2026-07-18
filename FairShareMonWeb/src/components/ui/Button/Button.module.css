@@ -76,6 +76,16 @@
   width: 100%;
 }
 
+/* Touch-target comfort (OQ4a): on COARSE pointers only (touch), give the compact
+   `sm` size a >=44px effective hit area (WCAG 2.5.5 mobile comfort). `min-height`
+   wins over the fixed `height`; fine-pointer (mouse) desktop stays 2rem/32px, so
+   dense toolbars/tables are not fattened. `sm` is what table row-actions use. */
+@media (pointer: coarse) {
+  .sm {
+    min-height: 2.75rem;
+  }
+}
+
 /* == Variants ============================================================== */
 .primary {
   background-color: var(--fs-color-primary);

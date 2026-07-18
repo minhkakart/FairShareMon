@@ -1,5 +1,5 @@
 import { test as base, type Page } from "@playwright/test";
-import { login, navLink } from "./session";
+import { login } from "./session";
 
 /**
  * Test fixtures for the E2E harness.
@@ -19,4 +19,4 @@ export const test = base.extend<{ appPage: Page }>({
 
 export { expect } from "@playwright/test";
 export { copy, interpolate } from "./copy";
-export { navLink } from "./session";
+export { navLink, gotoNav } from "./session";

@@ -311,6 +311,36 @@
 }
 
 /* =============================================================================
+ * BREAKPOINT LADDER — the ONE responsive vocabulary (cycle: responsive-mobile-
+ * polish). Mobile-first: author base styles for the smallest viewport, then add
+ * capability at each `min-width` stop. Reflow against THESE THREE values only —
+ * never invent a new one-off threshold (the pre-cycle mess was six: 30/32/34/40/
+ * 60/64rem). Consolidate toward the nearest stop when you touch a file.
+ *
+ *   ┌──────┬──────────┬─────────┬────────────────────────────────────────────┐
+ *   │ stop │  min-w   │  px@16  │ meaning                                     │
+ *   ├──────┼──────────┼─────────┼────────────────────────────────────────────┤
+ *   │  sm  │  30rem   │  480px  │ large phone — single col → simple 2-up;     │
+ *   │      │          │         │ the Table card-stack reverts to a real table│
+ *   │  md  │  48rem   │  768px  │ tablet — multi-col forms, side-by-side      │
+ *   │  lg  │  64rem   │ 1024px  │ desktop — inline nav shows, drawer retires  │
+ *   │      │          │         │ (MATCHES the AppShell nav-collapse stop)    │
+ *   └──────┴──────────┴─────────┴────────────────────────────────────────────┘
+ *
+ * WHY A COMMENT, NOT A TOKEN: CSS cannot interpolate a custom property into a
+ * media-query condition (`@media (min-width: var(--x))` is invalid), and this
+ * cycle adds NO build tooling (no postcss-custom-media). So the ladder is a
+ * documented convention enforced by review, authored as raw:
+ *
+ *     @media (min-width: 30rem) { … }   // sm and up
+ *     @media (min-width: 48rem) { … }   // md and up
+ *     @media (min-width: 64rem) { … }   // lg and up
+ *
+ * The single sanctioned `max-width` companion is the AppShell header-actions
+ * hide (`@media (max-width: 63.99rem)`) — see AppShell.module.css for why.
+ * ========================================================================== */
+
+/* =============================================================================
  * DARK — via OS preference (unless the viewer forced light).
  * ========================================================================== */
 @media (prefers-color-scheme: dark) {

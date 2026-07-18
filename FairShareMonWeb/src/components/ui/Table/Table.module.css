@@ -174,3 +174,166 @@
     transition: none;
   }
 }
+
+/* =============================================================================
+ * OPT-IN CARD-STACK  (`stackOnMobile`) — mobile-first.
+ * BELOW the `sm` stop (30rem) a `.stack` table reflows each body row into a
+ * labeled card; at/above `sm` the `@media (min-width: 30rem)` block below
+ * restores the normal table model. Only a table that passes `stackOnMobile`
+ * gets the `.stack` class, so every other table is untouched.
+ *
+ * Label source = the `data-label` on each value `<TableCell>` (rendered via a
+ * `::before`); the `scope="row"` header becomes the card title with no label.
+ * ========================================================================== */
+
+/* The framed `.scroll` box stays (its `overflow-x:auto` also clips the rounded
+   corners); a stacked card never overflows horizontally, so no scrollbar shows.
+   Break the table box model down to blocks (the card). */
+.stack,
+.stack .body,
+.stack .foot {
+  display: block;
+  width: 100%;
+}
+
+/* The column-header row is redundant once every value carries its own label. */
+.stack .head {
+  display: none;
+}
+
+/* Each body/foot row is a card: full-width block, its own padding, separated by
+   a hairline (the framed container supplies the outer edge). */
+.stack .body .row,
+.stack .foot .row {
+  display: block;
+  padding: var(--fs-space-3) var(--fs-space-4);
+  border-top: 1px solid var(--fs-color-border-subtle);
+}
+.stack .body .row:first-child {
+  border-top: 0;
+}
+/* Zebra/hover are row-scoped in card mode (the whole card tints, not per-cell). */
+.stack .body .row:nth-child(even) {
+  background-color: var(--fs-color-surface-sunken);
+}
+.stack .body .row:nth-child(even) td {
+  background-color: transparent;
+}
+
+/* Value cells become label:value lines. */
+.stack .body .row td,
+.stack .foot .row td {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--fs-space-1) var(--fs-space-4);
+  padding: var(--fs-space-1) 0;
+  border: 0;
+  text-align: left;
+  white-space: normal;
+  background-color: transparent;
+}
+
+/* The inline label — only for cells that opted in via `data-label`. */
+.stack .body .row td[data-label]::before,
+.stack .foot .row td[data-label]::before {
+  content: attr(data-label);
+  flex: none;
+  font-weight: var(--fs-weight-semibold);
+  font-size: var(--fs-text-xs);
+  letter-spacing: var(--fs-tracking-wide);
+  text-transform: uppercase;
+  color: var(--fs-color-text-secondary);
+}
+
+/* Numeric values stay tabular but left-of-line rules no longer force nowrap on
+   a narrow card — let long grouped figures sit on the value side. */
+.stack .body .row td.numeric {
+  white-space: normal;
+}
+
+/* The row-header is the card title: full-width, body-weight, no label prefix. */
+.stack .body .row .headerCell {
+  display: block;
+  padding: 0 0 var(--fs-space-2);
+  font-size: var(--fs-text-md);
+  font-weight: var(--fs-weight-semibold);
+  color: var(--fs-color-text);
+}
+
+/* Actions drop to their own full-width line, left-aligned in the card. */
+.stack .actionsCell {
+  display: block;
+  width: auto;
+  padding: var(--fs-space-2) 0 0;
+  white-space: normal;
+}
+.stack .actionsCell .actions {
+  justify-content: flex-start;
+}
+
+/* Empty-state cell spans the whole card. */
+.stack .empty {
+  display: block;
+}
+
+/* ---- sm and up: restore the real table model ---------------------------- */
+@media (min-width: 30rem) {
+  .stack {
+    display: table;
+  }
+  .stack .head {
+    display: table-header-group;
+  }
+  .stack .body {
+    display: table-row-group;
+  }
+  .stack .foot {
+    display: table-footer-group;
+  }
+  .stack .body .row,
+  .stack .foot .row {
+    display: table-row;
+    padding: 0;
+    border-top: 0;
+    background-color: transparent;
+  }
+  .stack .body .row td,
+  .stack .foot .row td,
+  .stack .body .row .headerCell,
+  .stack .actionsCell {
+    display: table-cell;
+    padding: var(--fs-space-3) var(--fs-space-4);
+    border: 0;
+  }
+  .stack .body .row td {
+    flex-wrap: initial;
+    gap: 0;
+    text-align: left;
+  }
+  /* The card-title rule bumped the row-header to `md`; table mode reads `sm`. */
+  .stack .body .row .headerCell {
+    font-size: var(--fs-text-sm);
+  }
+  .stack .body .row td[data-label]::before,
+  .stack .foot .row td[data-label]::before {
+    content: none;
+  }
+  /* Re-assert the numeric/actions/zebra behaviors the table-mode selectors own. */
+  .stack .body .row td.numeric {
+    text-align: right;
+    white-space: nowrap;
+  }
+  .stack .actionsCell {
+    width: 1%;
+    white-space: nowrap;
+    padding-block: var(--fs-space-3);
+  }
+  .stack .actionsCell .actions {
+    justify-content: flex-end;
+  }
+  .stack .body .row:nth-child(even) td {
+    background-color: var(--fs-color-surface-sunken);
+  }
+}

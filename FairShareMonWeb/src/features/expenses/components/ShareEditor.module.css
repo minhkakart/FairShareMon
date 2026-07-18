@@ -4,12 +4,29 @@
   gap: var(--fs-space-3);
 }
 
-/* Row grid: member | amount | note | remove. Collapses to stacked on narrow. */
+/* Row grid: member | amount | note | remove. Mobile-first — stacked areas below
+   the `md` ladder stop (48rem), one 4-column row at/above it (see the min-width
+   block at the foot of this file). */
 .shareRow {
   display: grid;
-  grid-template-columns: minmax(11rem, 1.4fr) minmax(8rem, 0.9fr) minmax(9rem, 1.3fr) auto;
-  gap: var(--fs-space-3);
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    "member remove"
+    "amount amount"
+    "note   note";
+  gap: var(--fs-space-2);
   align-items: start;
+  padding-block: var(--fs-space-2);
+  border-bottom: 1px solid var(--fs-color-border-subtle);
+}
+.shareMember {
+  grid-area: member;
+}
+.shareAmount {
+  grid-area: amount;
+}
+.shareNote {
+  grid-area: note;
 }
 
 .shareRowLocked {
@@ -32,6 +49,7 @@
 }
 
 .shareRemove {
+  grid-area: remove;
   display: flex;
   justify-content: flex-end;
   min-width: 2.5rem;
@@ -90,27 +108,13 @@
   color: var(--fs-color-info, var(--fs-color-primary));
 }
 
-@media (max-width: 40rem) {
+/* md (48rem) and up — the four fields sit in a single row again. */
+@media (min-width: 48rem) {
   .shareRow {
-    grid-template-columns: 1fr auto;
-    grid-template-areas:
-      "member remove"
-      "amount amount"
-      "note   note";
-    gap: var(--fs-space-2);
-    padding-block: var(--fs-space-2);
-    border-bottom: 1px solid var(--fs-color-border-subtle);
-  }
-  .shareMember {
-    grid-area: member;
-  }
-  .shareRemove {
-    grid-area: remove;
-  }
-  .shareAmount {
-    grid-area: amount;
-  }
-  .shareNote {
-    grid-area: note;
+    grid-template-columns: minmax(11rem, 1.4fr) minmax(8rem, 0.9fr) minmax(9rem, 1.3fr) auto;
+    grid-template-areas: "member amount note remove";
+    gap: var(--fs-space-3);
+    padding-block: 0;
+    border-bottom: 0;
   }
 }

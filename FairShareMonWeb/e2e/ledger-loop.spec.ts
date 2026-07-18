@@ -1,4 +1,4 @@
-import { test, expect, copy, interpolate, navLink } from "./fixtures/test";
+import { test, expect, copy, interpolate, gotoNav } from "./fixtures/test";
 import type { Locator } from "@playwright/test";
 
 /**
@@ -41,7 +41,7 @@ test("ledger loop: member → expense → event → assign → close → balance
   await expect(page).toHaveURL(/\/dashboard$/);
 
   // 2. Add a member.
-  await navLink(page, copy.common.nav.members).click();
+  await gotoNav(page, copy.common.nav.members);
   await page.waitForURL("**/members");
   await page
     .getByRole("button", { name: copy.members.add, exact: true })
@@ -60,7 +60,7 @@ test("ledger loop: member → expense → event → assign → close → balance
   ).toBeVisible();
 
   // 3. Add an expense with shares (owner-rep pays; one non-zero member share).
-  await navLink(page, copy.common.nav.expenses).click();
+  await gotoNav(page, copy.common.nav.expenses);
   await page.waitForURL("**/expenses");
   await page
     .getByRole("link", { name: copy.expenses.add, exact: true })
@@ -92,7 +92,7 @@ test("ledger loop: member → expense → event → assign → close → balance
   await expect(page.getByText(EXPENSE_NAME).first()).toBeVisible();
 
   // 4. Create an event covering the expense's date.
-  await navLink(page, copy.common.nav.events).click();
+  await gotoNav(page, copy.common.nav.events);
   await page.waitForURL("**/events");
   await page
     .getByRole("button", { name: copy.events.add, exact: true })

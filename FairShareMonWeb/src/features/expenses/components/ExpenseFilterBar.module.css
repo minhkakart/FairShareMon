@@ -4,13 +4,22 @@
   align-items: flex-end;
   gap: var(--fs-space-3);
 }
-.filterDate {
-  flex: 1 1 9rem;
-  min-width: 8rem;
-}
+/* Mobile-first: fields stack full-width so nothing crowds at 320px; at the `sm`
+   ladder stop (30rem) they flex-wrap into shared rows. */
+.filterDate,
 .filterField {
-  flex: 1 1 12rem;
-  min-width: 10rem;
+  flex: 1 1 100%;
+  min-width: 0;
+}
+@media (min-width: 30rem) {
+  .filterDate {
+    flex: 1 1 9rem;
+    min-width: 8rem;
+  }
+  .filterField {
+    flex: 1 1 12rem;
+    min-width: 10rem;
+  }
 }
 .filterToggle {
   display: flex;

@@ -16,8 +16,31 @@ import styles from "./Table.module.css";
  * zebra + hover rows, right-aligned tabular numeric columns (money later), a
  * trailing row-actions cell, an empty-state row, and a muted soft-deleted row
  * treatment. It is presentational — data, sorting, and actions are wired by the
- * feature (the implementer). A responsive stacked-card variant can layer on
- * later without a rewrite; it is deliberately NOT built now.
+ * feature (the implementer).
+ *
+ * Responsive (opt-in): pass `stackOnMobile` and, BELOW the `sm` breakpoint
+ * (30rem / 480px), each body row reflows into a labeled stacked card instead of
+ * a sideways-scrolling row; at/above `sm` it is a normal table again. This is
+ * ADDITIVE — the default is unchanged horizontal-scroll, so tables that do not
+ * opt in render byte-for-byte as before. The stacked label for each value cell
+ * comes from a `data-label` on that `<TableCell>` (the `data-label` convention),
+ * so the reflow needs no per-column config:
+ *
+ *   <Table caption="…" captionHidden stackOnMobile>
+ *     <TableHead> … column headers (hidden in the stacked view) … </TableHead>
+ *     <TableBody>
+ *       <TableRow>
+ *         <TableHeaderCell scope="row">An Nguyễn</TableHeaderCell>  ← card title
+ *         <TableCell data-label="Người trả">…</TableCell>          ← "Người trả: …"
+ *         <TableCell data-label="Tổng" numeric>…</TableCell>
+ *         <TableCell actions>…</TableCell>                          ← no label
+ *       </TableRow>
+ *     </TableBody>
+ *   </Table>
+ *
+ * The row-header (`scope="row"`) becomes the card title (no label prefix); a
+ * cell WITHOUT `data-label` (e.g. the actions cell) shows no label. Pass the
+ * label strings from i18n — never hardcode.
  *
  * Composition:
  *   <Table caption="Danh sách thành viên" captionHidden>
@@ -56,6 +79,15 @@ export type TableProps = TableHTMLAttributes<HTMLTableElement> & {
   captionHidden?: boolean;
   /** Compact row height for dense lists. */
   dense?: boolean;
+  /**
+   * Opt-in responsive reflow: below the `sm` breakpoint (30rem) each body row
+   * renders as a labeled stacked card (label:value pairs) instead of a
+   * sideways-scrolling row; at/above `sm` it is a normal table. Value cells take
+   * their label from a `data-label` attribute (the `data-label` convention);
+   * the `scope="row"` header becomes the card title. Additive — omitting it
+   * keeps the default horizontal-scroll render unchanged.
+   */
+  stackOnMobile?: boolean;
   children: ReactNode;
 };
 
@@ -63,6 +95,7 @@ export function Table({
   caption,
   captionHidden = false,
   dense = false,
+  stackOnMobile = false,
   className,
   children,
   ...rest
@@ -70,7 +103,12 @@ export function Table({
   return (
     <div className={styles.scroll}>
       <table
-        className={cx(styles.table, dense && styles.dense, className)}
+        className={cx(
+          styles.table,
+          dense && styles.dense,
+          stackOnMobile && styles.stack,
+          className,
+        )}
         {...rest}
       >
         {caption != null ? (

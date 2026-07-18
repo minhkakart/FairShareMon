@@ -79,6 +79,36 @@ export function AppShellLayout() {
           </Button>
         </>
       }
+      secondaryActions={
+        <>
+          <LanguageToggle
+            value={locale}
+            onChange={setLocale}
+            labels={localeLabels}
+            groupLabel={t("common:locale.label")}
+          />
+          <ThemeToggle
+            value={theme}
+            onChange={setTheme}
+            labels={themeLabels}
+            groupLabel={t("common:theme.label")}
+          />
+          <Button asChild variant="ghost" size="sm" fullWidth>
+            <Link to="/settings">
+              {user?.username ?? t("common:account")}
+            </Link>
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            fullWidth
+            onClick={() => void doLogout()}
+            loading={loggingOut}
+          >
+            {t("common:logout")}
+          </Button>
+        </>
+      }
     >
       <Outlet />
     </AppShell>

@@ -34,7 +34,7 @@ export function ExpensesTable({ expenses }: ExpensesTableProps) {
   const deletedTag = t("expenses:badge.deletedTag");
 
   return (
-    <Table caption={t("expenses:list.caption")} captionHidden>
+    <Table caption={t("expenses:list.caption")} captionHidden stackOnMobile>
       <TableHead>
         <TableRow>
           <TableHeaderCell>{t("expenses:list.name")}</TableHeaderCell>
@@ -57,7 +57,7 @@ export function ExpensesTable({ expenses }: ExpensesTableProps) {
                 {expense.name}
               </Link>
             </TableHeaderCell>
-            <TableCell>
+            <TableCell data-label={t("expenses:list.payer")}>
               <span className={styles.inlineWrap}>
                 {expense.payer.name}
                 {expense.payer.isDeleted ? (
@@ -65,7 +65,7 @@ export function ExpensesTable({ expenses }: ExpensesTableProps) {
                 ) : null}
               </span>
             </TableCell>
-            <TableCell>
+            <TableCell data-label={t("expenses:list.category")}>
               <span className={styles.inlineWrap}>
                 <CategoryMarker
                   color={expense.category.color}
@@ -78,18 +78,20 @@ export function ExpensesTable({ expenses }: ExpensesTableProps) {
                 ) : null}
               </span>
             </TableCell>
-            <TableCell numeric>
+            <TableCell numeric data-label={t("expenses:list.total")}>
               <Money amount={expense.total} format={formatMoneyVnd} />
             </TableCell>
-            <TableCell>{formatDateTime(expense.expenseTime)}</TableCell>
-            <TableCell>
+            <TableCell data-label={t("expenses:list.time")}>
+              {formatDateTime(expense.expenseTime)}
+            </TableCell>
+            <TableCell data-label={t("expenses:list.settled")}>
               <SettledToggle
                 uuid={expense.uuid}
                 isSettled={expense.isSettled}
                 contextName={expense.name}
               />
             </TableCell>
-            <TableCell>
+            <TableCell data-label={t("expenses:list.event")}>
               {expense.eventUuid ? (
                 <span className={styles.inlineWrap}>
                   <Badge tone="neutral">

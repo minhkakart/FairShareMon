@@ -16,12 +16,44 @@ The browser context pins `locale: "vi-VN"` and `timezoneId: "Asia/Ho_Chi_Minh"`
 so money/datetime formatting, the client's `X-Time-Zone` header, and the
 date-boundary handling are deterministic regardless of the host clock/zone.
 
+## Projects — desktop + mobile viewport (responsive-mobile-polish, OQ6a)
+
+Two Playwright projects run off the same MSW dev-server harness:
+
+| Project    | Device                     | Runs                                              |
+|------------|----------------------------|---------------------------------------------------|
+| `chromium` | Desktop Chrome (~1280px)   | `ledger-loop.spec.ts` (excludes header-responsive)|
+| `mobile`   | Pixel 5 (393px, touch)     | `ledger-loop.spec.ts` **+** `header-responsive.spec.ts` |
+
+The `mobile` project re-runs the full ledger loop at a phone viewport (proving
+the `ExpensesTable` card-stack reflow and the drawer-driven navigation on a real
+small viewport) and adds `header-responsive.spec.ts`. The Pixel 5 preset sets
+viewport / UA / `isMobile` / `hasTouch` but NOT locale or timezone, so the
+`mobile` project re-pins `locale: "vi-VN"` + `timezoneId: "Asia/Ho_Chi_Minh"`
+explicitly (see `playwright.config.ts`) — keep them if you edit that project.
+
+**`header-responsive.spec.ts` is phone-only.** Its assertions describe the
+*collapsed* header (brand + hamburger, secondary actions relocated to the
+drawer footer), which only exists below the `lg` / 64rem nav breakpoint. It is
+pinned to the `mobile` project by a `testIgnore: /header-responsive\.spec\.ts$/`
+on the `chromium` project — that is the single, declarative place the split
+lives (no per-spec `test.use({ viewport })`), so the desktop project never runs
+phone-shaped assertions.
+
+**Viewport-agnostic navigation.** Below the nav breakpoint the header hides its
+inline `<nav>` and navigates through the hamburger drawer, so the shared
+`gotoNav(page, name)` helper (`fixtures/session.ts`) opens the drawer first on a
+collapsed viewport, then clicks the SAME nav-link selector inside it; at/above
+`lg` it clicks the inline link directly. `login()`'s readiness assertion is
+likewise viewport-aware (hamburger below `lg`, inline nav link above). This lets
+the one `ledger-loop.spec.ts` run byte-identical selectors under both projects.
+
 ## Commands
 
 ```bash
 pnpm test:e2e:install   # one-time: download the Chromium binary
                         # (CI: pnpm exec playwright install --with-deps chromium)
-pnpm test:e2e           # run headless (Chromium only)
+pnpm test:e2e           # run headless (both projects: chromium + mobile)
 pnpm test:e2e:ui        # interactive UI mode
 pnpm test:e2e:report    # open the last HTML report
 ```
@@ -60,6 +92,8 @@ tests.
 ## Fixtures
 
 - `fixtures/copy.ts` — vi-VN locale copy + `interpolate`.
-- `fixtures/session.ts` — `login(page, { username, password })` drives `/login`.
+- `fixtures/session.ts` — `login(page, { username, password })` drives `/login`
+  (viewport-aware readiness); `navLink(page, name)` (inline nav-link locator);
+  `gotoNav(page, name)` (viewport-agnostic navigation — drawer below `lg`).
 - `fixtures/test.ts` — extends Playwright `test` with an `appPage` fixture that
   logs in as `demo` and lands on `/dashboard`.

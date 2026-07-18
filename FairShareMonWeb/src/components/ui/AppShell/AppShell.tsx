@@ -41,8 +41,22 @@ export type AppShellProps = {
    * Each entry should be a link/button so keyboard activation closes the menu.
    */
   nav?: ReactNode;
-  /** Trailing header actions: language + theme toggle, user menu, logout. */
+  /**
+   * Trailing header actions: language + theme toggle, user menu, logout. Shown
+   * inline in the header ONLY at/above the nav breakpoint (lg / 64rem); below it
+   * the header is brand + hamburger only (so it never overflows on a phone) and
+   * these controls belong in `secondaryActions` instead.
+   */
   actions?: ReactNode;
+  /**
+   * Secondary actions for the mobile nav drawer footer (language/theme toggles,
+   * account link, logout). Rendered pinned to the bottom of the slide-in drawer,
+   * which only exists below the nav breakpoint — so this is the mobile home for
+   * the same controls `actions` shows inline on desktop. It inherits the drawer's
+   * focus trap / Escape / focus-restore (Radix), so no extra a11y wiring is
+   * needed. Omit it and the drawer has no footer.
+   */
+  secondaryActions?: ReactNode;
   /** Main routed content. */
   children: ReactNode;
   /** Text for the skip-to-content link (localized). */
@@ -72,6 +86,7 @@ export function AppShell({
   brand,
   nav,
   actions,
+  secondaryActions,
   children,
   skipToContentLabel = "Bỏ qua tới nội dung",
   mobileMenuLabel = "Menu",
@@ -85,6 +100,14 @@ export function AppShell({
   // the close behavior color- and pointer-independent.
   const closeOnNavActivate = (event: MouseEvent<HTMLElement>) => {
     if ((event.target as HTMLElement).closest("a,button")) setMenuOpen(false);
+  };
+
+  // Drawer-footer close: fire ONLY when a link (e.g. the account link) is
+  // activated — navigating away should dismiss the drawer. The language/theme
+  // toggles are <button>s that mutate state in place and must NOT close the
+  // drawer; logout navigates to /login, which unmounts the shell (and drawer).
+  const closeOnFooterLinkActivate = (event: MouseEvent<HTMLElement>) => {
+    if ((event.target as HTMLElement).closest("a")) setMenuOpen(false);
   };
 
   return (
@@ -136,6 +159,15 @@ export function AppShell({
                   >
                     {nav}
                   </nav>
+                  {secondaryActions ? (
+                    // eslint-disable-next-line jsx-a11y/no-static-element-interactions -- delegated close on link activation only (toggles are buttons and stay open)
+                    <div
+                      className={styles.menuFooter}
+                      onClick={closeOnFooterLinkActivate}
+                    >
+                      {secondaryActions}
+                    </div>
+                  ) : null}
                 </RadixDialog.Content>
               </RadixDialog.Portal>
             </RadixDialog.Root>

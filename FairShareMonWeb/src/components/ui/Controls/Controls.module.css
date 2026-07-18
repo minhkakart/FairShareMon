@@ -48,3 +48,14 @@
   width: 1.05rem;
   height: 1.05rem;
 }
+
+/* Touch-target comfort (OQ4a): on COARSE pointers only, grow each segment to a
+   >=44px effective hit area (from the compact ~30px). Fine-pointer (mouse)
+   desktop keeps the dense pill, so the toolbar is not fattened. The container
+   pill grows with its children (no fixed height on `.segmented`). */
+@media (pointer: coarse) {
+  .segment {
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+  }
+}

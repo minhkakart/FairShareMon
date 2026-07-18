@@ -72,20 +72,41 @@ export function StyleGuide() {
     </span>
   );
 
+  const languageToggle = (
+    <LanguageToggle
+      value={locale}
+      onChange={setLocale}
+      groupLabel="Ngôn ngữ"
+      labels={{ "vi-VN": "Tiếng Việt", "en-US": "English" }}
+    />
+  );
+  const themeToggle = (
+    <ThemeToggle
+      value={theme}
+      onChange={setTheme}
+      groupLabel="Giao diện"
+      labels={{ light: "Sáng", system: "Theo hệ thống", dark: "Tối" }}
+    />
+  );
   const actions = (
     <>
-      <LanguageToggle
-        value={locale}
-        onChange={setLocale}
-        groupLabel="Ngôn ngữ"
-        labels={{ "vi-VN": "Tiếng Việt", "en-US": "English" }}
-      />
-      <ThemeToggle
-        value={theme}
-        onChange={setTheme}
-        groupLabel="Giao diện"
-        labels={{ light: "Sáng", system: "Theo hệ thống", dark: "Tối" }}
-      />
+      {languageToggle}
+      {themeToggle}
+    </>
+  );
+  // Below `lg` the header keeps brand + hamburger only; the same controls move
+  // into the drawer footer via `secondaryActions` (OQ5a). Open the mobile menu
+  // (narrow the window or use the hamburger) to review the footer.
+  const secondaryActions = (
+    <>
+      {languageToggle}
+      {themeToggle}
+      <Button variant="ghost" size="sm" fullWidth>
+        Tài khoản
+      </Button>
+      <Button variant="secondary" size="sm" fullWidth>
+        Đăng xuất
+      </Button>
     </>
   );
 
@@ -93,6 +114,7 @@ export function StyleGuide() {
     <AppShell
       brand={brand}
       actions={actions}
+      secondaryActions={secondaryActions}
       mobileMenuLabel="Menu"
       mobileMenuCloseLabel="Đóng"
       nav={
@@ -489,6 +511,91 @@ export function StyleGuide() {
               </TableEmpty>
             </TableBody>
           </Table>
+        </Section>
+
+        {/* RESPONSIVE — breakpoint ladder + opt-in mobile card-stack table */}
+        <Section title="Responsive: thang breakpoint + bảng dồn thẻ trên di động">
+          <p className={styles.note}>
+            Thang breakpoint (mobile-first, min-width):{" "}
+            <code>sm 30rem / 480px</code> · <code>md 48rem / 768px</code> ·{" "}
+            <code>lg 64rem / 1024px</code>. Bảng dưới đây bật{" "}
+            <code>stackOnMobile</code>: dưới <code>sm</code> mỗi dòng dồn thành
+            một thẻ nhãn:giá trị (nhãn lấy từ <code>data-label</code> của ô);
+            từ <code>sm</code> trở lên là bảng bình thường. Thu hẹp cửa sổ dưới
+            480px để xem. Mặc định (không bật) vẫn là cuộn ngang — không dòng nào
+            khác bị ảnh hưởng.
+          </p>
+          <Table
+            caption="Phiếu chi tiêu (ví dụ) — dồn thẻ trên di động"
+            captionHidden
+            stackOnMobile
+          >
+            <TableHead>
+              <TableRow>
+                <TableHeaderCell scope="col">Tên phiếu</TableHeaderCell>
+                <TableHeaderCell scope="col">Người trả</TableHeaderCell>
+                <TableHeaderCell scope="col" numeric>
+                  Tổng
+                </TableHeaderCell>
+                <TableHeaderCell scope="col">Trạng thái</TableHeaderCell>
+                <TableHeaderCell scope="col">
+                  <span className={styles.srOnly}>Hành động</span>
+                </TableHeaderCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              <TableRow>
+                <TableHeaderCell scope="row">
+                  Ăn tối nhà hàng Ngọc Sương
+                </TableHeaderCell>
+                <TableCell data-label="Người trả">An Nguyễn</TableCell>
+                <TableCell data-label="Tổng" numeric>
+                  <Money amount={1_250_000} size="sm" />
+                </TableCell>
+                <TableCell data-label="Trạng thái">
+                  <Badge tone="settled" icon={<Check />}>
+                    Đã trả
+                  </Badge>
+                </TableCell>
+                <TableCell actions>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-label="Xem Ăn tối nhà hàng Ngọc Sương"
+                  >
+                    Xem
+                  </Button>
+                </TableCell>
+              </TableRow>
+              <TableRow>
+                <TableHeaderCell scope="row">Taxi sân bay</TableHeaderCell>
+                <TableCell data-label="Người trả">
+                  Trần Thị Bích Ngọc
+                </TableCell>
+                <TableCell data-label="Tổng" numeric>
+                  <Money amount={385_000} size="sm" />
+                </TableCell>
+                <TableCell data-label="Trạng thái">
+                  <Badge tone="neutral">Chưa trả</Badge>
+                </TableCell>
+                <TableCell actions>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-label="Xem Taxi sân bay"
+                  >
+                    Xem
+                  </Button>
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+          <p className={styles.note}>
+            Mục tiêu chạm (touch target): trên con trỏ thô (<code>pointer:
+            coarse</code>) nút <code>size="sm"</code> và các nút gạt phân đoạn
+            (theme/ngôn ngữ) mở rộng vùng chạm tới ≥44px; chuột trên desktop giữ
+            kích thước gọn. Bật giả lập cảm ứng trong DevTools để kiểm chứng.
+          </p>
         </Section>
 
         {/* LINK-STYLED-AS-BUTTON (asChild) */}

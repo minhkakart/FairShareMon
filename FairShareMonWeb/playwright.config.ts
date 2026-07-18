@@ -36,7 +36,27 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
+      // Desktop project: the ledger-loop runs here at a desktop viewport. The
+      // phone-only header-responsive spec is excluded (it asserts the collapsed
+      // header + drawer-footer, which only exist below the nav breakpoint).
+      testIgnore: /header-responsive\.spec\.ts$/,
       use: { ...devices["Desktop Chrome"] },
+    },
+    {
+      // Phone viewport project (Pixel 5, 393px). Re-runs the ledger-loop so the
+      // full loop is proven on a real small viewport (exercising the
+      // ExpensesTable card-stack reflow + the drawer-driven navigation) AND runs
+      // the header-responsive spec. The Pixel 5 preset sets viewport / UA /
+      // deviceScaleFactor / isMobile / hasTouch but NOT locale or timezone. The
+      // top-level `use` (vi-VN + Asia/Ho_Chi_Minh) does merge into a project's
+      // `use`, so these would carry over — we re-pin them here anyway to keep the
+      // determinism explicit and local to the project block.
+      name: "mobile",
+      use: {
+        ...devices["Pixel 5"],
+        locale: "vi-VN",
+        timezoneId: "Asia/Ho_Chi_Minh",
+      },
     },
   ],
   webServer: {
