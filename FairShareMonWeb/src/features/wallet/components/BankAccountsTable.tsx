@@ -53,7 +53,7 @@ export function BankAccountsTable({
 
   return (
     <Card padded={false}>
-      <Table caption={t("wallet:table.caption")}>
+      <Table caption={t("wallet:table.caption")} captionHidden stackOnMobile>
         <TableHead>
           <TableRow>
             <TableHeaderCell scope="col">
@@ -88,7 +88,7 @@ export function BankAccountsTable({
                     </span>
                   </span>
                 </TableHeaderCell>
-                <TableCell>
+                <TableCell data-label={t("wallet:table.accountNumber")}>
                   <span className={styles.acctCell}>
                     <span className={styles.acctNumber}>
                       {show
@@ -115,10 +115,13 @@ export function BankAccountsTable({
                     </button>
                   </span>
                 </TableCell>
-                <TableCell className={styles.holderCell}>
+                <TableCell
+                  className={styles.holderCell}
+                  data-label={t("wallet:table.holder")}
+                >
                   {account.accountHolderName}
                 </TableCell>
-                <TableCell>
+                <TableCell data-label={t("wallet:table.default")}>
                   {account.isDefault ? (
                     <Badge tone="settled" icon={<StarIcon />}>
                       {t("wallet:badge.default")}

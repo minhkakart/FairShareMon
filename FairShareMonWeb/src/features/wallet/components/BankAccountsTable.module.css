@@ -62,6 +62,15 @@
   color: var(--fs-color-primary);
   background-color: var(--fs-color-primary-subtle);
 }
+/* On touch (coarse) pointers grow the compact 28px toggle to a ≥44px hit area
+   (WCAG 2.5.5) — mirrors the primitive coarse-pointer rule. Fine-pointer
+   (mouse) desktop keeps its compact 1.75rem square. */
+@media (pointer: coarse) {
+  .revealBtn {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+}
 
 /* Bank cell — the primary label with the BIN muted beneath it. Long bank /
    holder names wrap rather than scroll. */

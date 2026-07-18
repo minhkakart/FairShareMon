@@ -13,8 +13,10 @@ import auth from "../../src/i18n/locales/vi-VN/auth.json" with { type: "json" };
 import members from "../../src/i18n/locales/vi-VN/members.json" with { type: "json" };
 import expenses from "../../src/i18n/locales/vi-VN/expenses.json" with { type: "json" };
 import events from "../../src/i18n/locales/vi-VN/events.json" with { type: "json" };
+import admin from "../../src/i18n/locales/vi-VN/admin.json" with { type: "json" };
+import wallet from "../../src/i18n/locales/vi-VN/wallet.json" with { type: "json" };
 
-export const copy = { common, auth, members, expenses, events };
+export const copy = { common, auth, members, expenses, events, admin, wallet };
 
 /**
  * Resolve an i18next-style `{{name}}` interpolation the way react-i18next does,

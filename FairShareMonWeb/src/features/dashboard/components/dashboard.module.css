@@ -37,7 +37,7 @@
   grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
   gap: var(--fs-space-5);
 }
-@media (max-width: 60rem) {
+@media (max-width: 64rem) {
   .homeGrid {
     grid-template-columns: minmax(0, 1fr);
   }

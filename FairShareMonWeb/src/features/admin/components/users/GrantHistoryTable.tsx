@@ -37,6 +37,7 @@ export function GrantHistoryTable({
     <Table
       caption={t("admin:detail.grantHistory.caption", { name: username })}
       captionHidden
+      stackOnMobile
     >
       <TableHead>
         <TableRow>
@@ -73,7 +74,7 @@ export function GrantHistoryTable({
             const isGrant = g.action === "GRANT";
             return (
               <TableRow key={g.uuid}>
-                <TableCell>
+                <TableCell data-label={t("admin:detail.grantHistory.action")}>
                   {isGrant ? (
                     <Badge tone="success" icon={<CheckIcon />}>
                       {t("admin:grantAction.grant")}
@@ -84,24 +85,31 @@ export function GrantHistoryTable({
                     </Badge>
                   )}
                 </TableCell>
-                <TableCell>
+                <TableCell data-label={t("admin:detail.grantHistory.tier")}>
                   <AdminTierBadge tier={g.tier} />
                 </TableCell>
-                <TableCell numeric>
+                <TableCell
+                  numeric
+                  data-label={t("admin:detail.grantHistory.amount")}
+                >
                   {isGrant ? (
                     <Money amount={g.amount} />
                   ) : (
                     <span className={styles.mono}>{t("admin:users.none")}</span>
                   )}
                 </TableCell>
-                <TableCell>
+                <TableCell data-label={t("admin:detail.grantHistory.reference")}>
                   <span className={styles.mono}>
                     {g.reference ?? t("admin:users.none")}
                   </span>
                 </TableCell>
-                <TableCell>{g.note ?? t("admin:users.none")}</TableCell>
-                <TableCell>{g.grantedByUsername}</TableCell>
-                <TableCell>
+                <TableCell data-label={t("admin:detail.grantHistory.note")}>
+                  {g.note ?? t("admin:users.none")}
+                </TableCell>
+                <TableCell data-label={t("admin:detail.grantHistory.grantedBy")}>
+                  {g.grantedByUsername}
+                </TableCell>
+                <TableCell data-label={t("admin:detail.grantHistory.createdAt")}>
                   <span className={styles.mono}>
                     {formatDateTime(g.createdAt)}
                   </span>

@@ -270,6 +270,14 @@
   outline-offset: 2px;
   border-radius: var(--fs-radius-sm);
 }
+/* On touch (coarse) pointers give the inline (padding:0) sort header a ≥44px
+   effective hit area (WCAG 2.5.5) — mirrors the primitive coarse-pointer rule.
+   Fine-pointer (mouse) desktop keeps the compact inline glyph. */
+@media (pointer: coarse) {
+  .sortButton {
+    min-height: 2.75rem;
+  }
+}
 .sortIcon {
   width: 0.85em;
   height: 0.85em;

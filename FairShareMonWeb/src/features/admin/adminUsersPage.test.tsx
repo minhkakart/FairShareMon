@@ -140,12 +140,21 @@ describe("AdminUsersPage — filters + sort are URL-synced", () => {
     renderUsers();
     await screen.findByRole("table", { name: "Danh sách người dùng" });
 
-    const sortBtn = screen.getByRole("button", { name: /Tên đăng nhập/ });
+    // The table now opts into `stackOnMobile`; in jsdom the `min-width: 30rem`
+    // restore never applies, so the column-header row (where the sort controls
+    // live) is `display:none` at base. The sort button still exists and works —
+    // query it with `hidden: true`.
+    const sortBtn = screen.getByRole("button", {
+      name: /Tên đăng nhập/,
+      hidden: true,
+    });
     await userEvent.click(sortBtn);
     await waitFor(() => expect(loc()).toContain("sort=username"));
     expect(loc()).toContain("dir=asc");
 
-    await userEvent.click(screen.getByRole("button", { name: /Tên đăng nhập/ }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /Tên đăng nhập/, hidden: true }),
+    );
     await waitFor(() => expect(loc()).toContain("dir=desc"));
     expect(
       urls.some((u) => {

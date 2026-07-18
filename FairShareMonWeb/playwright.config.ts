@@ -37,9 +37,13 @@ export default defineConfig({
     {
       name: "chromium",
       // Desktop project: the ledger-loop runs here at a desktop viewport. The
-      // phone-only header-responsive spec is excluded (it asserts the collapsed
-      // header + drawer-footer, which only exist below the nav breakpoint).
-      testIgnore: /header-responsive\.spec\.ts$/,
+      // phone-only `*-responsive.spec.ts` specs are excluded — they assert
+      // phone-shaped layout (the collapsed header + drawer-footer, and the
+      // admin/wallet table card-stack) that only exists below the breakpoints.
+      // The `-responsive.spec.ts` suffix is the single declarative convention
+      // marking a spec phone-only (header-responsive, admin-users-responsive,
+      // wallet-responsive); see e2e/README.md.
+      testIgnore: /-responsive\.spec\.ts$/,
       use: { ...devices["Desktop Chrome"] },
     },
     {

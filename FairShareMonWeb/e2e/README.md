@@ -22,23 +22,36 @@ Two Playwright projects run off the same MSW dev-server harness:
 
 | Project    | Device                     | Runs                                              |
 |------------|----------------------------|---------------------------------------------------|
-| `chromium` | Desktop Chrome (~1280px)   | `ledger-loop.spec.ts` (excludes header-responsive)|
-| `mobile`   | Pixel 5 (393px, touch)     | `ledger-loop.spec.ts` **+** `header-responsive.spec.ts` |
+| `chromium` | Desktop Chrome (~1280px)   | `ledger-loop.spec.ts` (excludes `*-responsive.spec.ts`) |
+| `mobile`   | Pixel 5 (393px, touch)     | `ledger-loop.spec.ts` **+** every `*-responsive.spec.ts` |
 
 The `mobile` project re-runs the full ledger loop at a phone viewport (proving
 the `ExpensesTable` card-stack reflow and the drawer-driven navigation on a real
-small viewport) and adds `header-responsive.spec.ts`. The Pixel 5 preset sets
-viewport / UA / `isMobile` / `hasTouch` but NOT locale or timezone, so the
-`mobile` project re-pins `locale: "vi-VN"` + `timezoneId: "Asia/Ho_Chi_Minh"`
+small viewport) and adds the phone-only `*-responsive.spec.ts` specs. The Pixel 5
+preset sets viewport / UA / `isMobile` / `hasTouch` but NOT locale or timezone, so
+the `mobile` project re-pins `locale: "vi-VN"` + `timezoneId: "Asia/Ho_Chi_Minh"`
 explicitly (see `playwright.config.ts`) — keep them if you edit that project.
 
-**`header-responsive.spec.ts` is phone-only.** Its assertions describe the
-*collapsed* header (brand + hamburger, secondary actions relocated to the
-drawer footer), which only exists below the `lg` / 64rem nav breakpoint. It is
-pinned to the `mobile` project by a `testIgnore: /header-responsive\.spec\.ts$/`
-on the `chromium` project — that is the single, declarative place the split
-lives (no per-spec `test.use({ viewport })`), so the desktop project never runs
-phone-shaped assertions.
+**Phone-only specs use the `-responsive.spec.ts` suffix.** These assert
+phone-shaped layout that only exists below a breakpoint, so they run on the
+`mobile` project only:
+
+- `header-responsive.spec.ts` — the *collapsed* header (brand + hamburger,
+  secondary actions relocated to the drawer footer), below `lg` / 64rem.
+- `admin-users-responsive.spec.ts` (cycle-2 2a) — the admin `AdminUserTable`
+  `stackOnMobile` card-stack below `sm` / 30rem: rows render as labeled cards
+  (username title + `admin:users.columns.*` labeled value lines), the column
+  headers are hidden (OQ6), and a card still navigates to the user detail.
+- `wallet-responsive.spec.ts` (cycle-2 2a) — the wallet `BankAccountsTable`
+  `stackOnMobile` card-stack below `sm`: accounts render as labeled cards
+  (bank+BIN title + `wallet:table.*` labeled lines) and the reveal (eye) toggle
+  is present + operable. Logs in as the PREMIUM seed user `admin` (seeded with
+  bank accounts).
+
+The split lives in ONE declarative place: `testIgnore: /-responsive\.spec\.ts$/`
+on the `chromium` project (no per-spec `test.use({ viewport })`). Naming a spec
+`*-responsive.spec.ts` is therefore all it takes to make it phone-only — the
+desktop project never runs phone-shaped assertions.
 
 **Viewport-agnostic navigation.** Below the nav breakpoint the header hides its
 inline `<nav>` and navigates through the hamburger drawer, so the shared

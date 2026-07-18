@@ -248,7 +248,7 @@
   gap: var(--fs-space-2);
 }
 
-@media (max-width: 32rem) {
+@media (max-width: 30rem) {
   .pickerRow,
   .pickerSkeletonRow {
     grid-template-columns: auto 1fr;

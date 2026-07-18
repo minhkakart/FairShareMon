@@ -444,8 +444,13 @@ The **only** sanctioned `max-width` is the AppShell header-actions hide
 (`@media (max-width: 63.99rem)`), which pairs with `lg`; it is written that way
 so the header actions stay in the accessibility tree in jsdom tests (which apply
 base rules but not media queries) — a base `display:none` would hide them from
-`getByRole`. When you touch a file, consolidate any stray 32/34/40/60rem
-threshold to the nearest ladder stop (a full repo-wide sweep is deferred).
+`getByRole`. The repo-wide off-ladder sweep is **complete** (cycle-2a): the
+remaining feature/showcase strays (`AuditTimeline`, `AssignExpenseDialog`,
+`dashboard`/`M6` `.homeGrid`, `M4`/`M5`) were consolidated to the nearest ladder
+value (their pre-existing `max-width` layout-collapse direction was kept — value
+alignment only). Any new query must land on a ladder value; the only sanctioned
+`max-width` for *hiding* remains the AppShell one. (The `Layout`/`Dialog`/`Form`
+primitive strays stay the ui-designer's call.)
 
 ### Touch targets (coarse pointers)
 

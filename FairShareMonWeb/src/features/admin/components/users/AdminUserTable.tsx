@@ -51,7 +51,7 @@ export function AdminUserTable({
   const { t } = useT();
 
   return (
-    <Table caption={t("admin:users.caption")}>
+    <Table caption={t("admin:users.caption")} captionHidden stackOnMobile>
       <TableHead>
         <TableRow>
           <SortHeader
@@ -120,20 +120,22 @@ export function AdminUserTable({
           rows.map((u) => (
             <TableRow key={u.uuid} deleted={u.status === "DISABLED"}>
               <TableHeaderCell scope="row">{u.username}</TableHeaderCell>
-              <TableCell>
+              <TableCell data-label={t("admin:users.columns.tier")}>
                 <AdminTierBadge tier={u.tier} />
               </TableCell>
-              <TableCell>
+              <TableCell data-label={t("admin:users.columns.role")}>
                 <RoleBadge role={u.role} />
               </TableCell>
-              <TableCell>
+              <TableCell data-label={t("admin:users.columns.status")}>
                 <StatusBadge status={u.status} />
               </TableCell>
-              <TableCell>
+              <TableCell data-label={t("admin:users.columns.createdAt")}>
                 <span className={styles.mono}>{formatDate(u.createdAt)}</span>
               </TableCell>
-              <TableCell numeric>{formatCount(u.grantCount)}</TableCell>
-              <TableCell>
+              <TableCell numeric data-label={t("admin:users.columns.grantCount")}>
+                {formatCount(u.grantCount)}
+              </TableCell>
+              <TableCell data-label={t("admin:users.columns.lastGrantAt")}>
                 <span className={styles.mono}>
                   {u.lastGrantAt
                     ? formatDate(u.lastGrantAt)

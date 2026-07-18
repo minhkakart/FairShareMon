@@ -129,7 +129,7 @@
   text-decoration-color: var(--fs-color-border-strong);
 }
 
-@media (max-width: 34rem) {
+@media (max-width: 30rem) {
   .diffRow {
     grid-template-columns: 1fr;
     gap: 0;
