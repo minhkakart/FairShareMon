@@ -1,0 +1,5 @@
+# pnpm 11 blocks dependency build scripts until each is explicitly allowed here.
+# msw's postinstall (re)generates public/mockServiceWorker.js (the browser mock
+# worker); without this approval `pnpm install` fails with ERR_PNPM_IGNORED_BUILDS.
+allowBuilds:
+  msw: true

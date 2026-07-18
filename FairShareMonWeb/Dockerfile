@@ -1,14 +1,16 @@
 # syntax=docker/dockerfile:1
 
 # ---- Build stage: compile the SPA to static assets ----
-FROM node:22-alpine AS build
+FROM node:24-alpine AS build
 WORKDIR /app
 
-# pnpm via corepack, pinned to the lockfile major (pnpm-lock.yaml lockfileVersion 9.0).
-RUN corepack enable && corepack prepare pnpm@9 --activate
+# pnpm via corepack, pinned to the version in package.json's "packageManager" field.
+RUN corepack enable && corepack prepare pnpm@11.14.0 --activate
 
 # Install dependencies first so this layer is cached until the manifests change.
-COPY package.json pnpm-lock.yaml ./
+# pnpm-workspace.yaml carries the allowBuilds msw approval — it must be present
+# during install or pnpm 11 fails with ERR_PNPM_IGNORED_BUILDS.
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 
 # Vite inlines VITE_* at BUILD time. src/config/env.ts requires VITE_API_BASE_URL in a prod build
