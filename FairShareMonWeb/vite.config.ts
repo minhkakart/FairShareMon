@@ -32,6 +32,10 @@ export default defineConfig(({ mode }) => {
       globals: true,
       setupFiles: ["./src/test/setup.ts"],
       css: true,
+      // Vitest's default glob would also collect Playwright's e2e/*.spec.ts.
+      // Pin unit/component specs to src/** so the two runners never overlap:
+      // unit = src/**/*.test.* (Vitest); E2E = e2e/**/*.spec.ts (Playwright).
+      include: ["src/**/*.{test,spec}.{ts,tsx}"],
     },
   };
 });

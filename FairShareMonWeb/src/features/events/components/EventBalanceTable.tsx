@@ -148,7 +148,11 @@ function BalanceRows({ rows }: { rows: MemberBalanceRow[] }) {
           </TableEmpty>
         ) : (
           rows.map((row) => (
-            <TableRow key={row.memberUuid} deleted={row.isDeleted}>
+            <TableRow
+              key={row.memberUuid}
+              deleted={row.isDeleted}
+              data-testid="event-balance-row"
+            >
               <TableHeaderCell scope="row">
                 <span className={styles.memberCell}>
                   <span className={styles.memberName}>{row.memberName}</span>
@@ -170,7 +174,7 @@ function BalanceRows({ rows }: { rows: MemberBalanceRow[] }) {
               <TableCell numeric>
                 <Money amount={row.owed} format={formatMoneyVnd} />
               </TableCell>
-              <TableCell numeric>
+              <TableCell numeric data-testid="balance-amount">
                 <BalanceAmount amount={row.balance} />
               </TableCell>
             </TableRow>
@@ -179,7 +183,7 @@ function BalanceRows({ rows }: { rows: MemberBalanceRow[] }) {
       </TableBody>
       {rows.length > 0 ? (
         <TableFoot>
-          <TableRow total>
+          <TableRow total data-testid="event-balance-total">
             <TableHeaderCell scope="row">
               {t("events:balance.totalRow")}
               <span className={styles.sumHint}>

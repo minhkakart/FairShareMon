@@ -147,6 +147,10 @@ run the app and exercise the feature. New tests are Vitest + RTL, network mocked
 at the client boundary (MSW), deterministic (pinned TZ + locale). Path alias
 `@/*` → `src/*`.
 
+**Test split:** unit/component = `src/**/*.test.{ts,tsx}` (Vitest, `pnpm test`);
+E2E = `e2e/**/*.spec.ts` (Playwright, `pnpm test:e2e`, MSW-mocked on the dev
+server, vi-VN + Asia/Ho_Chi_Minh pinned — see `e2e/README.md`).
+
 ## Process
 
 Planning-doc-before-code (mirrors the backend rules): every feature/fix gets a doc
