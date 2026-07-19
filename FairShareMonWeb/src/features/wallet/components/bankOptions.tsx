@@ -6,28 +6,38 @@ import { BankLogo } from "./BankLogo";
 import styles from "./bankOptions.module.css";
 
 /**
+ * Dedupe a bank directory by BIN, FIRST-wins. The directory can list two entries
+ * under one caiValue (e.g. 970452 UMEE then KLB), but the stored value is only the
+ * BIN, so a single canonical bank per BIN is correct. This is the ONE dedup rule —
+ * both the picker (`buildBankOptions`) and the accounts-table lookup must derive
+ * from it so the logo/legal-name they show for a duplicate BIN can never diverge.
+ */
+export function dedupeBanksByBin(banks: VietqrBank[]): VietqrBank[] {
+  const seen = new Set<string>();
+  const deduped: VietqrBank[] = [];
+  for (const bank of banks) {
+    if (seen.has(bank.bin)) continue;
+    seen.add(bank.bin);
+    deduped.push(bank);
+  }
+  return deduped;
+}
+
+/**
  * Combobox options for the bank directory: `value = bin`, `label = shortName`,
  * `keywords = [name, bin, code]` (so "techcom" / "ky thuong" / "970407" / "tcb"
- * all match), `meta = bank`. Deduped by BIN — the directory can list two entries
- * under one caiValue (e.g. 970452 KienLongBank), and the stored value is only the
- * BIN, so a single option per BIN is correct.
+ * all match), `meta = bank`. Deduped by BIN (FIRST-wins via `dedupeBanksByBin`),
+ * so a single option per BIN is correct.
  */
 export function buildBankOptions(
   banks: VietqrBank[],
 ): ComboboxOption<VietqrBank>[] {
-  const seen = new Set<string>();
-  const options: ComboboxOption<VietqrBank>[] = [];
-  for (const bank of banks) {
-    if (seen.has(bank.bin)) continue;
-    seen.add(bank.bin);
-    options.push({
-      value: bank.bin,
-      label: bank.shortName,
-      keywords: [bank.name, bank.bin, bank.code],
-      meta: bank,
-    });
-  }
-  return options;
+  return dedupeBanksByBin(banks).map((bank) => ({
+    value: bank.bin,
+    label: bank.shortName,
+    keywords: [bank.name, bank.bin, bank.code],
+    meta: bank,
+  }));
 }
 
 /**

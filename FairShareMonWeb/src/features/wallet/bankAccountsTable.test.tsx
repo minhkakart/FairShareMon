@@ -4,6 +4,9 @@ import { renderWithProviders } from "@/test/utils";
 import { setActiveLocale } from "@/lib/api/runtime";
 import i18n from "@/i18n";
 import { BankAccountsTable } from "./components/BankAccountsTable";
+import { buildBankOptions } from "./components/bankOptions";
+import { bankLogoUrl } from "./api/vietqrDirectoryApi";
+import { VIETQR_BANKS_SNAPSHOT } from "./data/vietqrBanks";
 import type { BankAccountResponse } from "./api/types";
 
 /**
@@ -69,6 +72,40 @@ describe("BankAccountsTable bank re-derivation", () => {
     ).not.toBeInTheDocument();
     // The BIN secondary line is preserved.
     expect(screen.getByText("BIN 970407")).toBeInTheDocument();
+  });
+
+  it("BankAccountsTable_DuplicateBin_MatchesPickerFirstWins", () => {
+    // 970452 is listed TWICE in the snapshot (UMEE then KLB). The picker dedupes
+    // first-wins; the table must re-derive the SAME bank so its logo/name can't
+    // diverge from what the picker shows for the one BIN.
+    const DUP: BankAccountResponse = {
+      uuid: "ba-dup",
+      bankBin: "970452",
+      bankName: "KienLongBank",
+      accountNumber: "0123456789",
+      accountHolderName: "LE THI C",
+      isDefault: false,
+      createdAt: "2026-01-03T00:00:00+00:00",
+    };
+    const { container } = renderWithProviders(
+      <BankAccountsTable
+        accounts={[DUP]}
+        mode="free"
+        onSetDefault={noop}
+        onEdit={noop}
+        onDelete={noop}
+      />,
+    );
+
+    const pickerMeta = buildBankOptions(VIETQR_BANKS_SNAPSHOT).find(
+      (o) => o.value === "970452",
+    )?.meta;
+    if (!pickerMeta) throw new Error("expected a picker option for BIN 970452");
+
+    // The table's logo is sourced from the SAME first-wins bank entry the picker
+    // resolves — asserted via the logo image URL (which carries the imageId).
+    const logo = container.querySelector("img");
+    expect(logo?.getAttribute("src")).toBe(bankLogoUrl(pickerMeta.imageId));
   });
 
   it("BankAccountsTable_UnknownBin_FallsBackToStoredBankName", () => {

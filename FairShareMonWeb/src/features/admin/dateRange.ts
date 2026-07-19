@@ -67,6 +67,15 @@ export function isCustomRangeInvalid(value: RangeValue): boolean {
 }
 
 /**
+ * True while a custom range is still missing a bound. An empty bound would
+ * otherwise resolve to an all-time request and flash all-time figures until both
+ * dates are picked — so the query stays disabled until the range is set.
+ */
+export function isCustomRangeIncomplete(value: RangeValue): boolean {
+  return value.preset === "custom" && (value.from === "" || value.to === "");
+}
+
+/**
  * Resolve a `RangeValue` to the dashboard request (`{ from?, to?, bucket }`).
  * All-time omits both bounds; every other preset (and custom) → inclusive ISO
  * bounds. An empty custom bound is omitted (matching the optional-bound contract).

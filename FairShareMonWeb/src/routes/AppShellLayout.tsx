@@ -5,6 +5,7 @@ import {
   Button,
   LanguageToggle,
   NavItem,
+  Skeleton,
   ThemeToggle,
 } from "@/components/ui";
 import type { Locale, ThemePreference } from "@/components/ui";
@@ -31,6 +32,13 @@ export function AppShellLayout() {
     "vi-VN": t("common:locale.vi"),
     "en-US": t("common:locale.en"),
   };
+
+  // Before `/auth/me` resolves on boot-rehydrate the username is still null —
+  // show a subtle placeholder rather than flash the generic "Account" word, and
+  // give the /settings link an accessible name while its text is a skeleton.
+  const accountName = user?.username;
+  const accountContent = accountName ?? <Skeleton width="4.5rem" />;
+  const accountLinkLabel = accountName ? undefined : t("common:account");
 
   return (
     <AppShell
@@ -65,8 +73,8 @@ export function AppShellLayout() {
             groupLabel={t("common:theme.label")}
           />
           <Button asChild variant="ghost" size="sm">
-            <Link to="/settings">
-              {user?.username ?? t("common:account")}
+            <Link to="/settings" aria-label={accountLinkLabel}>
+              {accountContent}
             </Link>
           </Button>
           <Button
@@ -94,8 +102,8 @@ export function AppShellLayout() {
             groupLabel={t("common:theme.label")}
           />
           <Button asChild variant="ghost" size="sm" fullWidth>
-            <Link to="/settings">
-              {user?.username ?? t("common:account")}
+            <Link to="/settings" aria-label={accountLinkLabel}>
+              {accountContent}
             </Link>
           </Button>
           <Button

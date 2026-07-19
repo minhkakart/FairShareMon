@@ -89,7 +89,7 @@
     "submitAdd": "Thêm",
     "submitEdit": "Lưu",
     "ownerRepLock": "Đại diện · khóa",
-    "ownerRepNote": "Phần gánh của thành viên đại diện chủ sổ luôn có mặt ở mức 0đ và không thể xóa.",
+    "ownerRepNote": "Phần gánh của thành viên đại diện chủ sổ luôn có mặt (mặc định 0đ) và không thể xóa.",
     "ownerRepEditHint": "Không thể đổi thành viên của phần gánh thuộc đại diện chủ sổ.",
     "runningTotal": "Tổng (tạm tính)",
     "runningTotalHint": "tổng chính thức do hệ thống tính khi lưu",

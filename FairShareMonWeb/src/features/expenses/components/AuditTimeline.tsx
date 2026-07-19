@@ -184,7 +184,7 @@ export function AuditTimeline({ entries }: AuditTimelineProps) {
               <div className={styles.timelineHead}>
                 <Badge tone={tone}>{actionLabel}</Badge>
                 <span className={styles.timelineEntity}>{entityLabel}</span>
-                <time className={styles.timelineTime}>
+                <time className={styles.timelineTime} dateTime={entry.createdAt}>
                   {formatDateTime(entry.createdAt)}
                 </time>
               </div>

@@ -149,8 +149,37 @@ describe("ExpenseCreatePage owner-rep share row", () => {
     ).not.toBeInTheDocument();
     // The explanatory note is present.
     expect(
-      screen.getByText(/luôn có mặt ở mức 0đ và không thể xóa/),
+      screen.getByText(/luôn có mặt \(mặc định 0đ\) và không thể xóa/),
     ).toBeInTheDocument();
+  });
+
+  it("ExpenseCreatePage_OwnerRepRow_AmountIsEditableAndAcceptsTypedValue", async () => {
+    const user = userEvent.setup();
+    renderCreate();
+    await waitForForm();
+
+    // The owner-rep amount input is ENABLED (defaults to 0, user may type). The
+    // backend honours a client-supplied owner-rep amount when the row is present.
+    const amount = screen.getByRole("textbox", {
+      name: "Số tiền — Bạn (chủ sổ)",
+    });
+    expect(amount).toBeEnabled();
+
+    await user.type(amount, "60000");
+    // The typed amount is reflected in the display-only running total.
+    await waitFor(() =>
+      expect(screen.getAllByText(/60\.000/).length).toBeGreaterThanOrEqual(1),
+    );
+
+    // The member picker stays locked (no combobox) and the row has no remove control.
+    expect(
+      screen.queryByRole("combobox", { name: /Bạn \(chủ sổ\)/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", {
+        name: "Xóa phần gánh của Bạn (chủ sổ)",
+      }),
+    ).not.toBeInTheDocument();
   });
 });
 

@@ -74,8 +74,11 @@ test("WalletBankPicker_CreateViaCombobox_AddsAccountWithPickedBank", async ({
     .getByRole("button", { name: copy.wallet.form.submitCreate })
     .click();
 
-  // Success toast fires and the dialog closes.
-  await expect(page.getByText(copy.wallet.toast.created)).toBeVisible();
+  // Success toast fires and the dialog closes. Radix Toast mirrors the title text
+  // into a duplicated aria-live announce region, so the copy can match TWO nodes
+  // under parallel load — scope to the first (the visible toast) so it resolves
+  // deterministically instead of tripping Playwright strict mode.
+  await expect(page.getByText(copy.wallet.toast.created).first()).toBeVisible();
   await expect(dialog).toBeHidden();
 
   // The new row appears in the accounts table — a second Techcombank, showing the

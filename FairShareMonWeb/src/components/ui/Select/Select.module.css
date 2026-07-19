@@ -107,8 +107,12 @@
 }
 
 /* == Popover content ======================================================= */
+/* Radix Select portals this to <body>, so its z-index competes at the document
+   root — not inside whatever opened it. It must sit ABOVE the modal layer or a
+   Select opened from within a Dialog is buried under the dialog overlay and its
+   items become unclickable (the overlay intercepts the pointer). */
 .content {
-  z-index: var(--fs-z-dropdown);
+  z-index: var(--fs-z-popover);
   min-width: var(--radix-select-trigger-width);
   max-height: var(--radix-select-content-available-height);
   overflow: hidden;

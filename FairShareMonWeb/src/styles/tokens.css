@@ -301,6 +301,9 @@
   --fs-z-dropdown: 200; /* menus, comboboxes */
   --fs-z-overlay: 300; /* dialog backdrop */
   --fs-z-modal: 310; /* dialog content */
+  --fs-z-popover: 320; /* portalled popovers (Radix Select) — above the modal so a
+                          picker portalled to <body> is not buried under a Dialog's
+                          overlay when it opens from inside a modal */
   --fs-z-toast: 400; /* notifications above everything */
 
   /* == LAYOUT =============================================================== */

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { server } from "@/test/msw/server";
@@ -191,6 +191,67 @@ describe("QrDialog premium ready", () => {
     expect(copied).toContain("Vietcombank");
     // The button confirms the copy.
     expect(await screen.findByText("Đã sao chép")).toBeInTheDocument();
+  });
+
+  it("QrDialog_CopyDetails_WriteRejects_DoesNotConfirmCopy", async () => {
+    seedSession("PREMIUM");
+    server.use(
+      http.get("*/api/v1/bank-accounts", () => ok(ACCOUNTS)),
+      http.get("*/api/v1/expenses/:uuid/qr", () => pngResponse()),
+    );
+    const user = userEvent.setup();
+    // The clipboard write rejects (e.g. permission denied). Handled by the
+    // component's `.catch`, so no unhandled rejection.
+    vi.spyOn(navigator.clipboard, "writeText").mockRejectedValue(
+      new Error("clipboard denied"),
+    );
+    renderQr();
+    await screen.findByRole("img", { name: /VietQR/ });
+
+    await user.click(screen.getByRole("button", { name: "Sao chép thông tin" }));
+
+    // No false success: the copied state must NOT appear when the write failed.
+    await new Promise((r) => setTimeout(r, 30));
+    expect(screen.queryByText("Đã sao chép")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Sao chép thông tin" }),
+    ).toBeInTheDocument();
+  });
+
+  it("QrDialog_CopyDetails_ClipboardUnavailable_DoesNotConfirmCopy", async () => {
+    seedSession("PREMIUM");
+    server.use(
+      http.get("*/api/v1/bank-accounts", () => ok(ACCOUNTS)),
+      http.get("*/api/v1/expenses/:uuid/qr", () => pngResponse()),
+    );
+    // Simulate an insecure origin / older browser where `navigator.clipboard`
+    // is absent. Click via fireEvent so userEvent's setup doesn't re-stub it.
+    const prev = Object.getOwnPropertyDescriptor(navigator, "clipboard");
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: undefined,
+    });
+    try {
+      renderQr();
+      await screen.findByRole("img", { name: /VietQR/ });
+
+      fireEvent.click(
+        screen.getByRole("button", { name: "Sao chép thông tin" }),
+      );
+
+      // Clipboard API absent → the button never flips to the copied state.
+      await new Promise((r) => setTimeout(r, 30));
+      expect(screen.queryByText("Đã sao chép")).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Sao chép thông tin" }),
+      ).toBeInTheDocument();
+    } finally {
+      if (prev) {
+        Object.defineProperty(navigator, "clipboard", prev);
+      } else {
+        delete (navigator as unknown as Record<string, unknown>).clipboard;
+      }
+    }
   });
 
   it("QrDialog_Unmount_RevokesTheObjectUrl", async () => {

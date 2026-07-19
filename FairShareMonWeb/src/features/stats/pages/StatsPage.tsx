@@ -4,7 +4,12 @@ import { useT } from "@/i18n/useT";
 import { ErrorCodes, isApiError } from "@/lib/api/errors";
 import { resolveErrorMessage } from "@/lib/api/http-error-handling";
 import type { AppTFunction } from "@/i18n/useT";
-import { DEFAULT_RANGE, isCustomRangeInvalid, presetToRequest } from "../dateRange";
+import {
+  DEFAULT_RANGE,
+  isCustomRangeIncomplete,
+  isCustomRangeInvalid,
+  presetToRequest,
+} from "../dateRange";
 import type { RangeValue } from "../dateRange";
 import { useByCategoryQuery, useOverviewQuery } from "../hooks/useStats";
 import { OverviewKpiRow } from "../components/OverviewKpiRow";
@@ -36,10 +41,13 @@ export function StatsPage() {
   const [range, setRange] = useState<RangeValue>(DEFAULT_RANGE);
 
   const invalidRange = isCustomRangeInvalid(range);
+  // Disable while a custom range is inverted OR still missing a bound — an empty
+  // bound resolves to the all-time key and would flash all-time figures.
+  const queryEnabled = !invalidRange && !isCustomRangeIncomplete(range);
   const request = presetToRequest(range);
 
-  const overviewQuery = useOverviewQuery(request, !invalidRange);
-  const byCategoryQuery = useByCategoryQuery(request, !invalidRange);
+  const overviewQuery = useOverviewQuery(request, queryEnabled);
+  const byCategoryQuery = useByCategoryQuery(request, queryEnabled);
 
   const overviewTotal = overviewQuery.data?.totalSpending ?? 0;
   const overviewCount = overviewQuery.data?.expenseCount;
@@ -64,7 +72,7 @@ export function StatsPage() {
 
       <OverviewKpiRow
         data={overviewQuery.data}
-        loading={overviewQuery.isPending && !invalidRange}
+        loading={overviewQuery.isPending && queryEnabled}
         error={panelError(overviewQuery.error, t)}
         onRetry={() => void overviewQuery.refetch()}
       />
@@ -77,7 +85,7 @@ export function StatsPage() {
               data={byCategoryQuery.data}
               overviewTotal={overviewTotal}
               overviewCount={overviewCount}
-              loading={byCategoryQuery.isPending && !invalidRange}
+              loading={byCategoryQuery.isPending && queryEnabled}
               error={panelError(byCategoryQuery.error, t)}
               onRetry={() => void byCategoryQuery.refetch()}
             />

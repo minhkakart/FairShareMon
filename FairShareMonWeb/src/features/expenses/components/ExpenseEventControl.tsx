@@ -34,9 +34,12 @@ export function ExpenseEventControl({ expense }: ExpenseEventControlProps) {
   const closed = expense.eventIsClosed === true;
   const eventsQuery = useEventsQuery({ closed: false });
 
-  // Assignable targets are open events only (a closed owning event renders the
-  // read-only branch below, so it never needs to appear in this Select).
-  const openEvents = (eventsQuery.data ?? []).filter((e) => !e.isClosed);
+  // Assignable targets are open events only, excluding the expense's current
+  // event (a closed owning event renders the read-only branch below, so it never
+  // needs to appear in this Select).
+  const openEvents = (eventsQuery.data ?? []).filter(
+    (e) => !e.isClosed && e.uuid !== expense.eventUuid,
+  );
   const options: SelectOption[] = openEvents.map((e) => ({
     value: e.uuid,
     label: e.name,

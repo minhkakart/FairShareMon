@@ -3,7 +3,12 @@ import { Button, ErrorState, Stack } from "@/components/ui";
 import { useT } from "@/i18n/useT";
 import { ErrorCodes, isApiError } from "@/lib/api/errors";
 import { resolveErrorMessage } from "@/lib/api/http-error-handling";
-import { DEFAULT_RANGE, isCustomRangeInvalid, rangeToRequest } from "../dateRange";
+import {
+  DEFAULT_RANGE,
+  isCustomRangeIncomplete,
+  isCustomRangeInvalid,
+  rangeToRequest,
+} from "../dateRange";
 import type { RangeValue } from "../dateRange";
 import { useRevenueQuery } from "../hooks/useAdminDashboard";
 import { AdminRangeControl } from "../components/dashboard/AdminRangeControl";
@@ -26,8 +31,11 @@ export function AdminRevenuePage() {
   const [range, setRange] = useState<RangeValue>(DEFAULT_RANGE);
 
   const invalidRange = isCustomRangeInvalid(range);
+  // Disable while a custom range is inverted OR still missing a bound — an empty
+  // bound resolves to the all-time key and would flash all-time figures.
+  const queryEnabled = !invalidRange && !isCustomRangeIncomplete(range);
   const request = rangeToRequest(range);
-  const query = useRevenueQuery(request, !invalidRange);
+  const query = useRevenueQuery(request, queryEnabled);
 
   const apiRangeMessage =
     isBadRange(query.error) && query.error
@@ -39,7 +47,7 @@ export function AdminRevenuePage() {
       : undefined;
 
   const data = query.data;
-  const loading = query.isPending && !invalidRange;
+  const loading = query.isPending && queryEnabled;
 
   return (
     <Stack gap="5">

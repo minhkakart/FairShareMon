@@ -355,13 +355,20 @@ function CopyDetailsButton({ account }: { account?: BankAccountResponse }) {
   const [copied, setCopied] = useState(false);
 
   function onCopy() {
-    if (account && navigator.clipboard) {
-      void navigator.clipboard.writeText(
+    // Only confirm the copy on a SUCCESSFUL write. If the Clipboard API is
+    // unavailable (insecure origin / older browser) or `writeText` rejects, the
+    // copied state must NOT appear — otherwise we'd claim success on a no-op.
+    if (!account || !navigator.clipboard) return;
+    Promise.resolve(
+      navigator.clipboard.writeText(
         `${account.accountHolderName}\n${account.accountNumber}\n${account.bankName}`,
-      );
-    }
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1600);
+      ),
+    )
+      .then(() => {
+        setCopied(true);
+        window.setTimeout(() => setCopied(false), 1600);
+      })
+      .catch(() => {});
   }
 
   return (

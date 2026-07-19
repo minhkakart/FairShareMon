@@ -31,11 +31,14 @@ export type ShareEditorProps = {
 
 /**
  * The atomic-create share editor (OQ4a/OQ5a). RHF `useFieldArray` over `shares`.
- * The owner-representative row is seeded by the parent (amount 0), pinned first,
- * its member locked, its amount fixed at 0, and it has no remove control (mirrors
- * the backend auto-inject + `7002`). "Thêm phần gánh" appends a row whose member
- * `Select` excludes members already chosen (mirrors `7003`). A live, display-only
- * "Tổng (tạm tính)" sums the rows — the authoritative total comes from the API.
+ * The owner-representative row is seeded by the parent (amount defaults to 0),
+ * pinned first, its member locked, and it has no remove control. Its amount is
+ * editable, though — the backend uses the client-supplied owner-rep amount when
+ * the row is present and only auto-injects 0 when the row is OMITTED entirely
+ * (`7002` guards deletion/member-reassignment, not the create-time amount).
+ * "Thêm phần gánh" appends a row whose member `Select` excludes members already
+ * chosen (mirrors `7003`). A live, display-only "Tổng (tạm tính)" sums the rows —
+ * the authoritative total comes from the API.
  */
 export function ShareEditor({
   control,
@@ -123,7 +126,6 @@ export function ShareEditor({
                     hideLabelVisually
                     value={f.value ?? null}
                     onChange={f.onChange}
-                    disabled={locked}
                     placeholder="0"
                     format={formatMoneyVnd}
                     unit={null}

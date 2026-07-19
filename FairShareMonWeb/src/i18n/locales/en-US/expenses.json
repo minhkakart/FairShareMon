@@ -89,7 +89,7 @@
     "submitAdd": "Add",
     "submitEdit": "Save",
     "ownerRepLock": "Representative · locked",
-    "ownerRepNote": "The ledger owner's representative always has a 0đ share that can't be removed.",
+    "ownerRepNote": "The ledger owner's representative always has a share (defaults to 0đ) that can't be removed.",
     "ownerRepEditHint": "The member of the owner-representative's share can't be changed.",
     "runningTotal": "Total (estimate)",
     "runningTotalHint": "the official total is computed on save",

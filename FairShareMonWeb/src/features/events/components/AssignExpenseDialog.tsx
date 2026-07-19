@@ -76,6 +76,10 @@ export function AssignExpenseDialog({
   const filtered = search
     ? all.filter((e) => e.name.toLocaleLowerCase().includes(search))
     : all;
+  // A selection the search filter has hidden must not be confirmable — otherwise
+  // "Gán" would assign an expense the caller can no longer see.
+  const selectedVisible =
+    selected !== null && filtered.some((e) => e.uuid === selected);
 
   async function onConfirm() {
     if (!selected) return;
@@ -202,7 +206,7 @@ export function AssignExpenseDialog({
           <Button
             type="button"
             variant="primary"
-            disabled={selected === null}
+            disabled={!selectedVisible}
             loading={assign.isPending}
             onClick={() => void onConfirm()}
           >

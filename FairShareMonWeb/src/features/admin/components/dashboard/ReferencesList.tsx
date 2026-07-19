@@ -20,8 +20,8 @@ export function ReferencesList({ references }: ReferencesListProps) {
           <EmptyState title={t("admin:revenue.references.empty")} />
         ) : (
           <ul className={styles.refList}>
-            {references.map((ref) => (
-              <li key={ref} className={styles.refItem}>
+            {references.map((ref, i) => (
+              <li key={`${ref}-${i}`} className={styles.refItem}>
                 <span className={styles.refText}>{ref}</span>
               </li>
             ))}
