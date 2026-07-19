@@ -43,6 +43,13 @@ event QR (no amount; per-member amounts remain under each member's QR).
 - Field labels localized (vi default + en), drawn in the request's culture.
 - `format=payload` path unchanged (no image, no directory/header cost).
 - Keep `QrImageService` pure/synchronous — no localization or directory deps in it.
+- **Bank fields shown intact (refinement, 2026-07-20):** the bank name, account
+  holder, and account number must NOT be truncated — the image width grows from
+  the `BaseImageWidth` (380) baseline to fit the widest of those fields
+  (`+ 2*HeaderPadding`), clamped to `MaxImageWidth` (1600) as a safety valve. Only
+  if the cap is hit is a field ellipsized (unreachable for the validation-bounded
+  ≤100-char inputs). The title still wraps to ≤2 lines within the resolved width;
+  it does NOT drive width growth. The QR stays a centered 280px square.
 
 ## Open Questions
 
@@ -190,6 +197,44 @@ single-line ellipsized field values, ≤2-line wrapped title, inset gray divider
   `RenderComposite_MoreMembers_ProducesTallerLargerImage`, dimension guards) all still pass —
   no test asserts exact label text, only render-without-throw + dimensions, so the wrapping
   change is transparent to them. No product bug surfaced; product code not modified by tests.
+
+### 2026-07-20 (bank fields shown intact — dynamic width)
+- User refinement: keep bank name / account holder / account number intact, widening the image
+  as needed. `QrImageService`: replaced the fixed `ImageWidth`(380) constant with `BaseImageWidth`(380)
+  + `MaxImageWidth`(1600). `BuildHeaderLayout` now composes the bank fields (+ amount) WITHOUT
+  ellipsizing, measures the widest, and returns `Width = clamp(widestField + 2*HeaderPadding,
+  BaseImageWidth, MaxImageWidth)`; fields are ellipsized only if the cap is hit (unreachable for the
+  ≤100-char validation-bounded inputs). The title still wraps to ≤2 lines within the resolved width and
+  does NOT drive width. Both renderers now size the canvas / centre the QR / centre member labels /
+  place the divider off `layout.Width`. QR stays a centered 280px square.
+- Product project builds clean (0 errors). Test-engineer follow-up: add widened-image coverage
+  (long holder/bank name grows width and renders intact) + re-run the suite.
+
+### 2026-07-20 (tests — dynamic-width regression coverage)
+- Added 6 pure-unit tests to `QrImageServiceTests.cs` (no DB); mirrored a new `MaxImageWidth`(1600)
+  constant and a `RenderedWidth` helper; long-field headers built via `with { AccountHolderName / BankName }`
+  on the existing `SampleHeader()` (no new product surface exposed, no product code changed):
+  - `RenderSingle_LongAccountHolder_GrowsWidthWithinCap` — a ~70-char Vietnamese holder name grows the
+    single-QR width strictly above the 380 baseline and stays ≤ 1600 cap; header band still above the QR.
+  - `RenderSingle_LongerHolderName_ProducesStrictlyWiderImageThanShort` — monotonic growth: identical
+    headers differing only in holder-name length yield a strictly wider image (proves the field is intact,
+    not truncated to a fixed width); short header stays at 380; both render without throwing.
+  - `RenderSingle_LongBankName_GrowsWidth` — a long BANK NAME (holder/number short) also grows width,
+    proving width is driven by the widest of ALL bank fields, not just the holder.
+  - `RenderSingle_ShortFields_StayAtBaselineWidth` — explicit guard that both the no-amount and
+    with-amount short-field headers stay at the 380 baseline (short fields never trigger growth).
+  - `RenderSingle_PathologicallyLongField_CapsAtMaxWidthAndRenders` — a ~440-char field (well past the
+    ≤100-char validation bound) clamps the width to exactly `MaxImageWidth`(1600) and still renders (the
+    field is ellipsized only when the cap is hit); deterministic since the clamp target is a hard constant.
+  - `RenderComposite_LongBankField_GrowsWidthAndRenders` — the shared header band widens the composite
+    canvas too; QR + member labels still render (PNG magic) without throwing, width > 380 and ≤ 1600.
+- Coverage note: exact grown pixel widths are asserted RELATIONALLY (monotonic growth + the hard 380/1600
+  clamp bounds), not as measured pixel counts — the field paint's typeface is loaded from a private
+  embedded resource and isn't reproducible in the test project, and font metrics vary by platform.
+- Result: `dotnet test .\FairShareMonApi.sln` → 728 passed, 0 failed, 486 skipped (DB-unreachable
+  integration tests skip cleanly). +6 vs the prior 722. All pre-existing `Width == 380` short-field
+  assertions still hold. No product bug surfaced (width grows as specified, fields kept intact below the
+  cap); no product code modified.
 
 ## Final Outcome
 

@@ -53,7 +53,11 @@ public sealed class QrImageService : IQrImageService
     private const int SinglePixelsPerModule = 20;
 
     // Composite layout constants (device pixels).
-    private const int ImageWidth = 380;
+    // The image width is the baseline unless the header's bank fields need more room: the destination
+    // bank name / account holder / account number are always shown intact, so the width grows to fit
+    // the widest of them (clamped to MaxImageWidth as a safety valve for pathological inputs).
+    private const int BaseImageWidth = 380;
+    private const int MaxImageWidth = 1600;
     private const int CellPadding = 24;
     private const int QrSize = 280;
     private const int LabelGap = 12;
@@ -88,21 +92,20 @@ public sealed class QrImageService : IQrImageService
         using var fieldPaint = CreateHeaderPaint(typeface, HeaderFieldTextSize);
         using var dividerPaint = new SKPaint { Color = DividerColor, StrokeWidth = DividerThickness, IsAntialias = true };
 
-        var maxHeaderTextWidth = ImageWidth - (2 * HeaderPadding);
-        var layout = BuildHeaderLayout(header, titlePaint, fieldPaint, maxHeaderTextWidth);
+        var layout = BuildHeaderLayout(header, titlePaint, fieldPaint);
 
         // One QR cell below the band: CellPadding, the QrSize square, CellPadding (no label under the QR).
         var totalHeight = layout.Height + CellPadding + QrSize + CellPadding;
 
         using var qrBitmap = SKBitmap.Decode(RenderQrPng(payload));
-        var info = new SKImageInfo(ImageWidth, totalHeight);
+        var info = new SKImageInfo(layout.Width, totalHeight);
         using var surface = SKSurface.Create(info);
         var canvas = surface.Canvas;
         canvas.Clear(SKColors.White);
 
         DrawHeaderBand(canvas, layout, titlePaint, fieldPaint, dividerPaint);
 
-        var qrLeft = (ImageWidth - QrSize) / 2f;
+        var qrLeft = (layout.Width - QrSize) / 2f;
         var qrTop = layout.Height + CellPadding;
         var dest = new SKRect(qrLeft, qrTop, qrLeft + QrSize, qrTop + QrSize);
         canvas.DrawBitmap(qrBitmap, dest);
@@ -132,9 +135,9 @@ public sealed class QrImageService : IQrImageService
         using var fieldPaint = CreateHeaderPaint(typeface, HeaderFieldTextSize);
         using var dividerPaint = new SKPaint { Color = DividerColor, StrokeWidth = DividerThickness, IsAntialias = true };
 
-        var maxTextWidth = ImageWidth - (2 * CellPadding);
-        var maxHeaderTextWidth = ImageWidth - (2 * HeaderPadding);
-        var layout = BuildHeaderLayout(header, titlePaint, fieldPaint, maxHeaderTextWidth);
+        // The header may widen the image to keep the bank fields intact; member labels wrap to that width.
+        var layout = BuildHeaderLayout(header, titlePaint, fieldPaint);
+        var maxTextWidth = layout.Width - (2 * CellPadding);
 
         // Pre-render each QR bitmap and wrap each label so total height is known before drawing.
         var qrBitmaps = new List<SKBitmap>(items.Count);
@@ -153,7 +156,7 @@ public sealed class QrImageService : IQrImageService
                 totalHeight += CellHeight(lines.Count);
             }
 
-            var info = new SKImageInfo(ImageWidth, totalHeight);
+            var info = new SKImageInfo(layout.Width, totalHeight);
             using var surface = SKSurface.Create(info);
             var canvas = surface.Canvas;
             canvas.Clear(SKColors.White);
@@ -165,7 +168,7 @@ public sealed class QrImageService : IQrImageService
             {
                 var lines = wrappedLabels[i];
 
-                var qrLeft = (ImageWidth - QrSize) / 2f;
+                var qrLeft = (layout.Width - QrSize) / 2f;
                 var qrTop = cellTop + CellPadding;
                 var dest = new SKRect(qrLeft, qrTop, qrLeft + QrSize, qrTop + QrSize);
                 canvas.DrawBitmap(qrBitmaps[i], dest);
@@ -173,7 +176,7 @@ public sealed class QrImageService : IQrImageService
                 var textY = qrTop + QrSize + LabelGap + LabelTextSize;
                 foreach (var line in lines)
                 {
-                    canvas.DrawText(line, ImageWidth / 2f, textY, labelPaint);
+                    canvas.DrawText(line, layout.Width / 2f, textY, labelPaint);
                     textY += LabelLineHeight;
                 }
 
@@ -212,25 +215,36 @@ public sealed class QrImageService : IQrImageService
         TextAlign = SKTextAlign.Left
     };
 
-    /// <summary>The wrapped/ellipsized header text plus the computed band height.</summary>
-    private sealed record HeaderLayout(IReadOnlyList<string> TitleLines, IReadOnlyList<string> FieldLines, int Height);
+    /// <summary>The resolved image width, the wrapped title / bank-field lines, and the band height.</summary>
+    private sealed record HeaderLayout(int Width, IReadOnlyList<string> TitleLines, IReadOnlyList<string> FieldLines, int Height);
 
     /// <summary>
-    /// Wraps the title to <see cref="MaxTitleLines"/> lines, composes each bank field as
-    /// <c>"{label}: {value}"</c> ellipsized to a single line, then measures the total band height.
+    /// Composes each bank field as <c>"{label}: {value}"</c> and sizes the image so those fields fit
+    /// INTACT — the width grows from <see cref="BaseImageWidth"/> to the widest field (+ padding),
+    /// clamped at <see cref="MaxImageWidth"/>. Only if that cap is hit is a field ellipsized. The title
+    /// still wraps to <see cref="MaxTitleLines"/> lines within the resolved width. Returns the width so
+    /// both renderers size the canvas, centre the QR, and place the divider consistently.
     /// </summary>
-    private static HeaderLayout BuildHeaderLayout(QrHeader header, SKPaint titlePaint, SKPaint fieldPaint, float maxWidth)
+    private static HeaderLayout BuildHeaderLayout(QrHeader header, SKPaint titlePaint, SKPaint fieldPaint)
     {
-        var titleLines = WrapText(header.Title, titlePaint, maxWidth, MaxTitleLines);
-
-        var fieldLines = new List<string>(4)
+        // The bank fields must render in full; compose them first, then grow the image to fit them.
+        var fields = new List<string>(4)
         {
-            Ellipsize($"{header.BankLabel}: {header.BankName}", fieldPaint, maxWidth),
-            Ellipsize($"{header.HolderLabel}: {header.AccountHolderName}", fieldPaint, maxWidth),
-            Ellipsize($"{header.NumberLabel}: {header.AccountNumber}", fieldPaint, maxWidth)
+            $"{header.BankLabel}: {header.BankName}",
+            $"{header.HolderLabel}: {header.AccountHolderName}",
+            $"{header.NumberLabel}: {header.AccountNumber}"
         };
         if (header.AmountLabel is not null && header.AmountText is not null)
-            fieldLines.Add(Ellipsize($"{header.AmountLabel}: {header.AmountText}", fieldPaint, maxWidth));
+            fields.Add($"{header.AmountLabel}: {header.AmountText}");
+
+        var widestField = fields.Max(field => fieldPaint.MeasureText(field));
+        var contentWidth = (int)Math.Ceiling(widestField) + (2 * HeaderPadding);
+        var width = Math.Clamp(contentWidth, BaseImageWidth, MaxImageWidth);
+        var maxTextWidth = width - (2 * HeaderPadding);
+
+        // Intact by construction unless we hit MaxImageWidth (then Ellipsize trims to fit); a no-op otherwise.
+        var fieldLines = fields.Select(field => Ellipsize(field, fieldPaint, maxTextWidth)).ToList();
+        var titleLines = WrapText(header.Title, titlePaint, maxTextWidth, MaxTitleLines);
 
         var height = HeaderPadding
             + (int)(titleLines.Count * TitleLineHeight)
@@ -238,7 +252,7 @@ public sealed class QrImageService : IQrImageService
             + (int)(fieldLines.Count * HeaderFieldLineHeight)
             + (int)HeaderBottomGap;
 
-        return new HeaderLayout(titleLines, fieldLines, height);
+        return new HeaderLayout(width, titleLines, fieldLines, height);
     }
 
     /// <summary>Draws the left-aligned header band (title then bank fields) with an inset divider at its bottom.</summary>
@@ -261,7 +275,7 @@ public sealed class QrImageService : IQrImageService
         }
 
         var dividerY = layout.Height - (DividerThickness / 2f);
-        canvas.DrawLine(HeaderPadding, dividerY, ImageWidth - HeaderPadding, dividerY, dividerPaint);
+        canvas.DrawLine(HeaderPadding, dividerY, layout.Width - HeaderPadding, dividerY, dividerPaint);
     }
 
     /// <summary>Word-wraps <paramref name="text"/> to fit <paramref name="maxWidth"/>, capped at <see cref="MaxLabelLines"/> lines (last line ellipsised if it overflows).</summary>
