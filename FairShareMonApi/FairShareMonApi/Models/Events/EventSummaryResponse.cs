@@ -22,5 +22,11 @@ public class EventSummaryResponse
     /// <summary>Số lượng phiếu chi tiêu thuộc đợt (suy ra khi đọc).</summary>
     public int ExpenseCount { get; set; }
 
+    /// <summary>Tổng tiền đã ứng của đợt (tổng tất cả phiếu chi tiêu thuộc đợt = tổng các phần gánh). 0 khi đợt chưa có phiếu.</summary>
+    public decimal TotalAdvanced { get; set; }
+
     public DateTime CreatedAt { get; set; }
+
+    /// <summary>Thời điểm hoạt động gần nhất của đợt (UTC): lớn nhất giữa thời điểm cập nhật đợt và thời điểm cập nhật của mọi phiếu/phần gánh thuộc đợt (suy ra khi đọc).</summary>
+    public DateTime UpdatedAt { get; set; }
 }

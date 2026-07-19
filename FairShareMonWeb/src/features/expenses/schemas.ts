@@ -70,7 +70,11 @@ export type ShareRowValues = z.infer<ReturnType<typeof shareRowSchema>>;
  */
 export function createExpenseSchema(t: AppTFunction, ownerRepUuid?: string) {
   return expenseGeneralSchema(t)
-    .extend({ shares: z.array(shareRowSchema(t)) })
+    .extend({
+      shares: z.array(shareRowSchema(t)),
+      /** Create-only: empty string → loose expense; else the OPEN event to join. */
+      eventUuid: z.string().optional(),
+    })
     .superRefine((values, ctx) => {
       const seen = new Set<string>();
       values.shares.forEach((share, index) => {

@@ -48,6 +48,8 @@
     "categoryEmpty": "No spending this month",
     "recentActivity": "Recent activity",
     "recentExpensesEmpty": "No expenses yet",
+    "recentEvents": "Recent events",
+    "recentEventsEmpty": "No events yet",
     "viewAll": "View all",
     "quickActions": "Quick actions",
     "addExpense": "Add expense",

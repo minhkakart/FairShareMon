@@ -10,6 +10,7 @@ import { queryClient } from "@/lib/query/queryClient";
 import { setActiveLocale } from "@/lib/api/runtime";
 import i18n from "@/i18n";
 import { ExpenseCreatePage } from "./pages/ExpenseCreatePage";
+import type { EventSummaryResponse } from "@/features/events/api/types";
 
 /**
  * ExpenseCreatePage integration — the REAL create page + share editor + general
@@ -439,5 +440,198 @@ describe("ExpenseCreatePage per-row member picker", () => {
     expect(
       screen.queryByRole("option", { name: /Bạn \(chủ sổ\)/ }),
     ).not.toBeInTheDocument();
+  });
+});
+
+// ─── F1: optional OPEN-event picker ──────────────────────────────────────────
+function openEvent(
+  overrides: Partial<EventSummaryResponse> = {},
+): EventSummaryResponse {
+  return {
+    uuid: "ev-open-1",
+    name: "Đà Lạt",
+    startDate: "2026-07-01T00:00:00+07:00",
+    endDate: "2026-12-31T23:59:59+07:00",
+    isClosed: false,
+    closedAt: null,
+    expenseCount: 0,
+    createdAt: "2026-07-01T00:00:00+00:00",
+    totalAdvanced: 0,
+    updatedAt: "2026-07-01T00:00:00+00:00",
+    ...overrides,
+  };
+}
+
+async function typeName(user: ReturnType<typeof userEvent.setup>) {
+  await user.type(screen.getByRole("textbox", { name: "Tên phiếu" }), "Thuê xe");
+}
+
+describe("ExpenseCreatePage event picker (F1)", () => {
+  it("ExpenseCreatePage_OpenEventsExist_RendersPickerWithLooseOptionAndEvents", async () => {
+    server.use(
+      http.get("*/api/v1/events", () =>
+        ok([
+          openEvent({ uuid: "ev-open-1", name: "Đà Lạt" }),
+          openEvent({ uuid: "ev-open-2", name: "Nha Trang" }),
+        ]),
+      ),
+    );
+    const user = userEvent.setup();
+    renderCreate();
+    await waitForForm();
+
+    // The optional picker is present (a searchable Combobox trigger)…
+    const trigger = await screen.findByRole("button", {
+      name: /Đợt \(tùy chọn\)/,
+    });
+    await user.click(trigger);
+    // …offering the explicit "loose" clear option plus each OPEN event.
+    expect(
+      await screen.findByRole("option", {
+        name: "Không thuộc đợt (phiếu lẻ)",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Đà Lạt" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Nha Trang" })).toBeInTheDocument();
+  });
+
+  it("ExpenseCreatePage_NoOpenEvents_ShowsMutedHintAndCreatesLooseExpense", async () => {
+    // The seeded per-user events store is empty → the real GET /events returns [].
+    let body: { eventUuid?: string } | null = null;
+    server.use(
+      http.post("*/api/v1/expenses", async ({ request }) => {
+        body = (await request.json()) as typeof body;
+        return ok(createdExpense());
+      }),
+    );
+    const user = userEvent.setup();
+    renderCreate();
+    await waitForForm();
+
+    // Empty OPEN-events list → the muted hint replaces the control (never an error).
+    expect(
+      await screen.findByText("Chưa có đợt nào đang mở"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Đợt \(tùy chọn\)/ }),
+    ).not.toBeInTheDocument();
+
+    // Creation still works as a loose expense — no eventUuid in the body.
+    await typeName(user);
+    await user.click(screen.getByRole("button", { name: "Thêm phiếu" }));
+    expect(await screen.findByTestId("detail-stub")).toBeInTheDocument();
+    expect(body).not.toBeNull();
+    expect(body!.eventUuid).toBeUndefined();
+  });
+
+  it("ExpenseCreatePage_SelectEvent_IncludesEventUuidInSubmittedBody", async () => {
+    let body: { eventUuid?: string } | null = null;
+    server.use(
+      http.get("*/api/v1/events", () =>
+        ok([openEvent({ uuid: "ev-open-1", name: "Đà Lạt" })]),
+      ),
+      http.post("*/api/v1/expenses", async ({ request }) => {
+        body = (await request.json()) as typeof body;
+        return ok(createdExpense());
+      }),
+    );
+    const user = userEvent.setup();
+    renderCreate();
+    await waitForForm();
+
+    await user.click(await screen.findByRole("button", { name: /Đợt \(tùy chọn\)/ }));
+    await user.click(await screen.findByRole("option", { name: "Đà Lạt" }));
+    await typeName(user);
+    await user.click(screen.getByRole("button", { name: "Thêm phiếu" }));
+
+    await waitFor(() => expect(body).not.toBeNull());
+    expect(body!.eventUuid).toBe("ev-open-1");
+  });
+
+  it("ExpenseCreatePage_ChooseLooseAfterSelecting_ClearsEventUuidFromBody", async () => {
+    let body: { eventUuid?: string } | null = null;
+    server.use(
+      http.get("*/api/v1/events", () =>
+        ok([openEvent({ uuid: "ev-open-1", name: "Đà Lạt" })]),
+      ),
+      http.post("*/api/v1/expenses", async ({ request }) => {
+        body = (await request.json()) as typeof body;
+        return ok(createdExpense());
+      }),
+    );
+    const user = userEvent.setup();
+    renderCreate();
+    await waitForForm();
+
+    // Pick an event…
+    await user.click(await screen.findByRole("button", { name: /Đợt \(tùy chọn\)/ }));
+    await user.click(await screen.findByRole("option", { name: "Đà Lạt" }));
+    // …then clear back to "no event" via the loose option.
+    await user.click(screen.getByRole("button", { name: /Đợt \(tùy chọn\)/ }));
+    await user.click(
+      await screen.findByRole("option", { name: "Không thuộc đợt (phiếu lẻ)" }),
+    );
+
+    await typeName(user);
+    await user.click(screen.getByRole("button", { name: "Thêm phiếu" }));
+
+    await waitFor(() => expect(body).not.toBeNull());
+    expect(body!.eventUuid).toBeUndefined();
+  });
+
+  it("ExpenseCreatePage_9002_MapsOntoExpenseTimeField", async () => {
+    server.use(
+      http.get("*/api/v1/events", () =>
+        ok([openEvent({ uuid: "ev-open-1", name: "Đà Lạt" })]),
+      ),
+      http.post("*/api/v1/expenses", () =>
+        fail(
+          9002,
+          "Thời điểm chi của phiếu nằm ngoài khoảng thời gian của đợt.",
+          400,
+        ),
+      ),
+    );
+    const user = userEvent.setup();
+    renderCreate();
+    await waitForForm();
+
+    await user.click(await screen.findByRole("button", { name: /Đợt \(tùy chọn\)/ }));
+    await user.click(await screen.findByRole("option", { name: "Đà Lạt" }));
+    await typeName(user);
+    await user.click(screen.getByRole("button", { name: "Thêm phiếu" }));
+
+    // 9002 is the most actionable as a field error on the expense time.
+    expect(
+      await screen.findByText(
+        "Thời điểm chi của phiếu nằm ngoài khoảng thời gian của đợt.",
+      ),
+    ).toBeInTheDocument();
+    // No navigation — the create page stays put so the user can fix the time.
+    expect(screen.queryByTestId("detail-stub")).not.toBeInTheDocument();
+  });
+
+  it("ExpenseCreatePage_9001_SurfacesFormLevelErrorOnThePage", async () => {
+    // On the create page there is no onEventUnavailable handler, so a since-closed
+    // (9001) / vanished (9000) event surfaces as a form-level error (no toast/close).
+    server.use(
+      http.get("*/api/v1/events", () =>
+        ok([openEvent({ uuid: "ev-open-1", name: "Đà Lạt" })]),
+      ),
+      http.post("*/api/v1/expenses", () =>
+        fail(9001, "Đợt chi tiêu đã chốt.", 400),
+      ),
+    );
+    const user = userEvent.setup();
+    renderCreate();
+    await waitForForm();
+
+    await user.click(await screen.findByRole("button", { name: /Đợt \(tùy chọn\)/ }));
+    await user.click(await screen.findByRole("option", { name: "Đà Lạt" }));
+    await typeName(user);
+    await user.click(screen.getByRole("button", { name: "Thêm phiếu" }));
+
+    expect(await screen.findByText("Đợt chi tiêu đã chốt.")).toBeInTheDocument();
+    expect(screen.queryByTestId("detail-stub")).not.toBeInTheDocument();
   });
 });

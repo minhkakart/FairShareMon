@@ -32,6 +32,7 @@
   },
   "detail": {
     "back": "Về danh sách",
+    "addExpense": "Thêm phiếu",
     "edit": "Sửa",
     "delete": "Xóa",
     "close": "Chốt đợt",
@@ -95,6 +96,9 @@
     "emptyClosedBody": "Đợt này đã chốt và không có phiếu nào.",
     "closedNote": "Đợt đã chốt — không thể thêm hoặc gỡ phiếu.",
     "errorTitle": "Không tải được danh sách phiếu của đợt"
+  },
+  "addExpense": {
+    "title": "Thêm phiếu vào đợt “{{name}}”"
   },
   "assign": {
     "title": "Gán phiếu vào đợt “{{name}}”",

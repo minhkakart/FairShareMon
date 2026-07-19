@@ -61,10 +61,22 @@ function invalidateExpense(uuid?: string) {
   }
 }
 
+/**
+ * Create an expense (+ its shares). Invalidates the expenses caches; when the
+ * created expense joined an event, also invalidates `eventsKeys.all` so the
+ * event detail's `expenseCount` (`eventsKeys.detail`) and balance
+ * (`eventsKeys.balance`) refresh — mirrors `useAssignExpenseEvent`. Loose
+ * creates skip the events refetch.
+ */
 export function useCreateExpense() {
   return useMutation({
     mutationFn: (body: CreateExpenseRequest) => expensesApi.create(body),
-    onSuccess: (expense) => invalidateExpense(expense.uuid),
+    onSuccess: (expense) => {
+      invalidateExpense(expense.uuid);
+      if (expense.eventUuid) {
+        void queryClient.invalidateQueries({ queryKey: eventsKeys.all });
+      }
+    },
   });
 }
 

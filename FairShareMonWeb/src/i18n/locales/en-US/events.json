@@ -32,6 +32,7 @@
   },
   "detail": {
     "back": "Back to list",
+    "addExpense": "Add expense",
     "edit": "Edit",
     "delete": "Delete",
     "close": "Close event",
@@ -95,6 +96,9 @@
     "emptyClosedBody": "This event is closed and has no expenses.",
     "closedNote": "The event is closed — expenses can't be added or removed.",
     "errorTitle": "Couldn't load the event's expenses"
+  },
+  "addExpense": {
+    "title": "Add an expense to “{{name}}”"
   },
   "assign": {
     "title": "Assign an expense to “{{name}}”",

@@ -63,6 +63,8 @@ function makeSummary(
     closedAt: null,
     expenseCount: 3,
     createdAt: "2026-07-01T00:00:00+00:00",
+    totalAdvanced: 1500000,
+    updatedAt: "2026-07-12T00:00:00+00:00",
     ...overrides,
   };
 }

@@ -19,10 +19,10 @@ namespace FairShareMonApi.Repositories;
 /// </summary>
 public interface IEventRepository : IBaseRepository, IQueryRepository<Event>
 {
-    /// <summary>Resource-owned list; optional closed filter; sorted start_date DESC then created_at DESC (OQ10). Includes Expenses for the derived expenseCount.</summary>
+    /// <summary>Resource-owned list; optional closed filter; sorted start_date DESC then created_at DESC (OQ10). Includes Expenses (+ their Shares) for the derived expenseCount, totalAdvanced and effective updatedAt.</summary>
     Task<IReadOnlyList<Event>> ListByUserAsync(string userUuid, EventFilter filter, CancellationToken cancellationToken = default);
 
-    /// <summary>Resource-owned lookup by UUID (includes Expenses for the derived expenseCount). Null on an ownership miss.</summary>
+    /// <summary>Resource-owned lookup by UUID (includes Expenses + their Shares for the derived expenseCount, totalAdvanced and effective updatedAt). Null on an ownership miss.</summary>
     Task<Event?> GetByUuidAsync(string userUuid, string eventUuid, CancellationToken cancellationToken = default);
 
     /// <summary>Atomic create; normalizes the range (OQ1); is_closed = false. Unknown user -&gt; EventNotFound.</summary>
@@ -57,6 +57,8 @@ public sealed class EventRepository(AppDbContext dbContext) : BaseRepository(dbC
 
             var events = await query
                 .Include(evt => evt.Expenses)
+                    .ThenInclude(exp => exp.Shares)
+                .AsSplitQuery()
                 .OrderByDescending(evt => evt.StartDate)
                 .ThenByDescending(evt => evt.CreatedAt)
                 .ToListAsync(ct);
@@ -66,6 +68,7 @@ public sealed class EventRepository(AppDbContext dbContext) : BaseRepository(dbC
     public Task<Event?> GetByUuidAsync(string userUuid, string eventUuid, CancellationToken cancellationToken = default) =>
         ExecuteQueryAsync((_, ct) => Query()
             .Include(evt => evt.Expenses)
+                .ThenInclude(exp => exp.Shares)
             .FirstOrDefaultAsync(evt => evt.Uuid == eventUuid && evt.User.Uuid == userUuid, ct), cancellationToken);
 
     public Task<int> CountOpenByUserAsync(string userUuid, CancellationToken cancellationToken = default) =>

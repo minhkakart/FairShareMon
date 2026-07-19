@@ -6,6 +6,7 @@ import { useNavEntries } from "@/routes/navConfig";
 import { DashboardOverview } from "../components/DashboardOverview";
 import { DashboardCategoryBreakdown } from "../components/DashboardCategoryBreakdown";
 import { RecentActivityCard } from "../components/RecentActivityCard";
+import { RecentEventsCard } from "../components/RecentEventsCard";
 import styles from "../components/dashboard.module.css";
 
 /**
@@ -40,6 +41,8 @@ export function DashboardPage() {
         <DashboardCategoryBreakdown />
         <RecentActivityCard />
       </div>
+
+      <RecentEventsCard />
 
       <section>
         <h2 className={styles.quickAccessTitle}>{t("common:home.quickAccess")}</h2>

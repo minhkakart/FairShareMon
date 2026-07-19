@@ -537,6 +537,8 @@ interface EventRecord {
   isClosed: boolean;
   closedAt: string | null;
   createdAt: string;
+  /** Last-updated timestamp; bumped on event write (create/update/close). */
+  updatedAt: string;
 }
 
 /** Free-tier open-event cap enforced by this mock so 13001 is demonstrable. */
@@ -568,6 +570,26 @@ function dayBounds(iso: string): { start: string; end: string } {
   return { start: `${day}T00:00:00.000Z`, end: `${day}T23:59:59.999Z` };
 }
 
+/** Event-level total advanced: sum of all expense amounts assigned to the event. */
+function eventTotalAdvanced(username: string, uuid: string): number {
+  return getExpenses(username)
+    .filter((e) => e.eventUuid === uuid)
+    .reduce((sum, e) => sum + expenseTotal(e), 0);
+}
+
+/**
+ * Effective last-activity: max of the event's own `updatedAt` and the latest
+ * `createdAt` of any expense assigned to it — mirrors the backend's composite
+ * `updatedAt` so the dashboard sort is meaningful in the mock.
+ */
+function eventEffectiveUpdatedAt(username: string, ev: EventRecord): string {
+  let latest = ev.updatedAt;
+  for (const e of getExpenses(username)) {
+    if (e.eventUuid === ev.uuid && e.createdAt > latest) latest = e.createdAt;
+  }
+  return latest;
+}
+
 function eventSummaryResponse(username: string, ev: EventRecord) {
   return {
     uuid: ev.uuid,
@@ -578,6 +600,8 @@ function eventSummaryResponse(username: string, ev: EventRecord) {
     closedAt: ev.closedAt,
     expenseCount: eventExpenseCount(username, ev.uuid),
     createdAt: ev.createdAt,
+    totalAdvanced: eventTotalAdvanced(username, ev.uuid),
+    updatedAt: eventEffectiveUpdatedAt(username, ev),
   };
 }
 
@@ -1571,6 +1595,7 @@ export const handlers = [
       categoryUuid?: string;
       tagUuids?: string[];
       shares?: { memberUuid: string; amount: number; note?: string | null }[];
+      eventUuid?: string;
     };
     const name = typeof body.name === "string" ? body.name.trim() : "";
     if (name.length === 0 || name.length > 200) {
@@ -1613,6 +1638,28 @@ export const handlers = [
     if (ownerRep && !seen.has(ownerRep.uuid)) {
       inputShares.unshift({ memberUuid: ownerRep.uuid, amount: 0, note: null });
     }
+    // Optional create-time event linkage — honour a submitted `eventUuid` and
+    // enforce ownership + open + within-range, mapping to the same codes the
+    // assign-to-event flow uses (9000/9001/9002). Empty/absent → loose expense.
+    let resolvedEventUuid: string | null = null;
+    const rawEventUuid =
+      typeof body.eventUuid === "string" ? body.eventUuid.trim() : "";
+    if (rawEventUuid) {
+      const target = eventByUuid(username, rawEventUuid);
+      if (!target) return fail(9000, "Không tìm thấy đợt chi tiêu.", 404);
+      if (target.isClosed) return fail(9001, "Đợt chi tiêu đã chốt.", 400);
+      if (
+        body.expenseTime < target.startDate ||
+        body.expenseTime > target.endDate
+      ) {
+        return fail(
+          9002,
+          "Thời điểm chi của phiếu nằm ngoài khoảng thời gian của đợt.",
+          400,
+        );
+      }
+      resolvedEventUuid = target.uuid;
+    }
     const now = new Date().toISOString();
     const record: ExpenseRecord = {
       uuid: `e-${rand()}`,
@@ -1634,7 +1681,7 @@ export const handlers = [
         note: s.note ?? null,
         createdAt: now,
       })),
-      eventUuid: null,
+      eventUuid: resolvedEventUuid,
       createdAt: now,
     };
     getExpenses(username).push(record);
@@ -2011,6 +2058,7 @@ export const handlers = [
       isClosed: false,
       closedAt: null,
       createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
     list.push(record);
     return ok(eventResponse(username, record));
@@ -2075,6 +2123,7 @@ export const handlers = [
     if (ev.isClosed) return fail(9001, "Đợt chi tiêu đã chốt.", 400);
     ev.isClosed = true;
     ev.closedAt = new Date().toISOString();
+    ev.updatedAt = ev.closedAt;
     return ok({ message: "Đã chốt đợt chi tiêu." });
   }),
 
@@ -2143,6 +2192,7 @@ export const handlers = [
         : null;
     ev.startDate = start.start;
     ev.endDate = end.end;
+    ev.updatedAt = new Date().toISOString();
     return ok(eventResponse(username, ev));
   }),
 

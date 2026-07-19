@@ -310,3 +310,47 @@ describe("EventDetailPage settlement QR action (M7-MOD)", () => {
     ).toBeInTheDocument();
   });
 });
+
+describe("EventDetailPage add-expense affordance (F2, R4)", () => {
+  it("EventDetailPage_OpenEvent_ShowsAddExpenseButton", async () => {
+    stubDetail(makeEvent());
+    renderDetail();
+    await screen.findByRole("heading", { level: 1, name: "Đà Lạt" });
+
+    expect(screen.getByRole("button", { name: "Thêm phiếu" })).toBeEnabled();
+  });
+
+  it("EventDetailPage_ClosedEvent_HidesAddExpenseButton", async () => {
+    stubDetail(
+      makeEvent({ isClosed: true, closedAt: "2026-07-20T10:00:00+00:00" }),
+      true,
+    );
+    renderDetail();
+    await screen.findByRole("heading", { level: 1, name: "Đà Lạt" });
+
+    // OPEN-only (read-only closed rule) — no add-expense affordance when closed.
+    expect(
+      screen.queryByRole("button", { name: "Thêm phiếu" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("EventDetailPage_ClickAddExpense_OpensDialogWithEventLocked", async () => {
+    stubDetail(makeEvent());
+    const user = userEvent.setup();
+    renderDetail();
+    await screen.findByRole("heading", { level: 1, name: "Đà Lạt" });
+
+    await user.click(screen.getByRole("button", { name: "Thêm phiếu" }));
+
+    // The dialog opens with the current event pre-selected + locked (read-only),
+    // and its create form loads (members/categories/tags via the seeded store).
+    const dialog = await screen.findByRole("dialog");
+    await within(dialog).findByRole("textbox", { name: "Tên phiếu" });
+    expect(within(dialog).getByText("Đợt")).toBeInTheDocument();
+    expect(within(dialog).getByText("khóa")).toBeInTheDocument();
+    // No editable event control in the locked dialog.
+    expect(
+      within(dialog).queryByRole("combobox", { name: /Đợt/ }),
+    ).not.toBeInTheDocument();
+  });
+});

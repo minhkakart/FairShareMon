@@ -1,0 +1,16 @@
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-4);
+}
+.sectionHeading {
+  margin: 0;
+  font-size: var(--fs-text-base);
+  font-weight: var(--fs-weight-semibold);
+  color: var(--fs-color-text);
+}
+.muted {
+  margin: 0;
+  font-size: var(--fs-text-sm);
+  color: var(--fs-color-text-secondary);
+}

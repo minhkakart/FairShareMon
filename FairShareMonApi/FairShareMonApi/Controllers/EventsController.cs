@@ -25,7 +25,7 @@ public class EventsController(IEventsService eventsService, IStatsService statsS
     [HttpGet]
     [SwaggerOperation(
         Summary = "Danh sách đợt chi tiêu",
-        Description = "Trả về các đợt chi tiêu của tài khoản, sắp xếp theo ngày bắt đầu giảm dần rồi thời điểm tạo giảm dần. Lọc theo trạng thái đã chốt bằng tham số closed (tùy chọn).")]
+        Description = "Trả về các đợt chi tiêu của tài khoản, sắp xếp theo ngày bắt đầu giảm dần rồi thời điểm tạo giảm dần. Mỗi đợt kèm số lượng phiếu, tổng tiền đã ứng và thời điểm hoạt động gần nhất (suy ra khi đọc). Lọc theo trạng thái đã chốt bằng tham số closed (tùy chọn).")]
     [SwaggerResponse(StatusCodes.Status200OK, "Lấy danh sách đợt chi tiêu thành công.", typeof(ApiResult<IReadOnlyList<EventSummaryResponse>>))]
     [SwaggerResponse(StatusCodes.Status401Unauthorized, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", typeof(ApiResult))]
     public async Task<IActionResult> ListAsync([FromQuery] EventFilter filter, CancellationToken cancellationToken) =>
@@ -35,7 +35,7 @@ public class EventsController(IEventsService eventsService, IStatsService statsS
     [HttpGet("{uuid}")]
     [SwaggerOperation(
         Summary = "Chi tiết một đợt chi tiêu",
-        Description = "Trả về thông tin một đợt chi tiêu (kèm số lượng phiếu suy ra) theo UUID. Không nhúng danh sách phiếu - dùng GET /expenses?eventUuid=… để lấy các phiếu của đợt.")]
+        Description = "Trả về thông tin một đợt chi tiêu (kèm số lượng phiếu, tổng tiền đã ứng và thời điểm hoạt động gần nhất, đều suy ra khi đọc) theo UUID. Không nhúng danh sách phiếu - dùng GET /expenses?eventUuid=… để lấy các phiếu của đợt.")]
     [SwaggerResponse(StatusCodes.Status200OK, "Lấy thông tin đợt chi tiêu thành công.", typeof(ApiResult<EventResponse>))]
     [SwaggerResponse(StatusCodes.Status404NotFound, "Không tìm thấy đợt chi tiêu.", typeof(ApiResult))]
     public async Task<IActionResult> GetAsync([FromRoute] string uuid, CancellationToken cancellationToken) =>

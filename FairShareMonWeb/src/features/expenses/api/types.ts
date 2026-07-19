@@ -78,6 +78,8 @@ export interface CreateExpenseRequest {
   payerMemberUuid?: string;
   /** Omit → backend defaults to the default category. */
   categoryUuid?: string;
+  /** Omit → loose expense; else the OPEN event this expense joins at creation. */
+  eventUuid?: string;
   tagUuids?: string[];
   shares?: CreateShareInput[];
 }

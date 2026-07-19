@@ -1,4 +1,7 @@
+using AutoMapper;
 using FairShareMonApi.Database.Entities;
+using FairShareMonApi.Mappings;
+using FairShareMonApi.Models.Events;
 using FairShareMonApi.Repositories;
 using FairShareMonApi.Tests.Infrastructure;
 using Microsoft.EntityFrameworkCore;
@@ -39,6 +42,23 @@ public class EventRepositoryTests(DatabaseFixture fixture) : ExpenseDbTestBase(f
         await using var context = CreateContext();
         return await context.Events.CountAsync(evt => evt.UserId == userId);
     }
+
+    // The real EventProfile - the repository returns entities; the derived totalAdvanced/updatedAt are
+    // produced by AutoMapper from the Included Expenses.Shares graph (same as the service does). Mapping
+    // here proves the Include(Expenses).ThenInclude(Shares) + AsSplitQuery actually materialized the graph.
+    private static readonly IMapper Mapper =
+        new MapperConfiguration(config => config.AddProfile<EventProfile>()).CreateMapper();
+
+    private StatsRepository CreateStatsRepository() => new(CreateContext());
+
+    private static readonly DateTime On15 = new(2026, 7, 15, 12, 0, 0, DateTimeKind.Utc);
+
+    /// <summary>Creates an expense inside <paramref name="eventUuid"/> with the given (memberUuid, amount) shares.</summary>
+    private Task CreateExpenseInEventAsync(string userUuid, string eventUuid, string payerMemberUuid, params (string MemberUuid, decimal Amount)[] shares) =>
+        CreateExpenseRepository().CreateAsync(userUuid, new CreateExpenseData(
+            "Phiếu", null, On15, payerMemberUuid, null, [],
+            shares.Select(share => new CreateShareData(share.MemberUuid, share.Amount, null)).ToList(),
+            eventUuid));
 
     // ---- Create + range normalization --------------------------------------------------------------
 
@@ -192,6 +212,163 @@ public class EventRepositoryTests(DatabaseFixture fixture) : ExpenseDbTestBase(f
         var list = await CreateEventRepository().ListByUserAsync(ledger.User.Uuid, new());
 
         Assert.Single(Assert.Single(list).Expenses);
+    }
+
+    // ---- Derived totalAdvanced + effective updatedAt (event-summary-advanced-and-updated.md) --------
+
+    [SkippableFact]
+    public async Task ListByUserAsync_ProjectsTotalAdvanced_AsSumOfEventExpenseShares()
+    {
+        var ledger = await SeedLedgerAsync();
+        var an = await SeedMemberAsync(ledger.User.Id, "An");
+        var binh = await SeedMemberAsync(ledger.User.Id, "Bình");
+        var evt = await CreateEventRepository().CreateAsync(ledger.User.Uuid, CreateData(startDate: Day14, endDate: Day16));
+        // Expense A (payer = owner-rep): 200 + 200 + 200 = 600. Distinct members (unique share per member).
+        await CreateExpenseInEventAsync(ledger.User.Uuid, evt.Entity!.Uuid, ledger.OwnerRep.Uuid,
+            (ledger.OwnerRep.Uuid, 200m), (an.Uuid, 200m), (binh.Uuid, 200m));
+        // Expense B (payer = An): 150 + 150 = 300. Total across the event = 900.
+        await CreateExpenseInEventAsync(ledger.User.Uuid, evt.Entity.Uuid, an.Uuid,
+            (ledger.OwnerRep.Uuid, 150m), (an.Uuid, 150m));
+
+        var listed = Assert.Single(await CreateEventRepository().ListByUserAsync(ledger.User.Uuid, new()));
+        var summary = Mapper.Map<EventSummaryResponse>(listed);
+
+        Assert.Equal(900m, summary.TotalAdvanced);
+
+        // §3.7 identity: Σ Share.Amount == Σ per-member Advanced from the M7 balance for the same event.
+        var eventId = (await ReloadEventAsync(evt.Entity.Uuid))!.Id;
+        var balance = await CreateStatsRepository().GetEventBalanceAsync(ledger.User.Uuid, eventId);
+        Assert.Equal(summary.TotalAdvanced, balance.Sum(row => row.Advanced));
+    }
+
+    [SkippableFact]
+    public async Task ListByUserAsync_TotalAdvanced_ExcludesOtherEventsAndLooseExpenses()
+    {
+        var ledger = await SeedLedgerAsync();
+        var target = await CreateEventRepository().CreateAsync(ledger.User.Uuid, CreateData(name: "Mục tiêu", startDate: Day14, endDate: Day16));
+        var other = await CreateEventRepository().CreateAsync(ledger.User.Uuid, CreateData(name: "Đợt khác", startDate: Day14.AddDays(-3), endDate: Day16));
+
+        await CreateExpenseInEventAsync(ledger.User.Uuid, target.Entity!.Uuid, ledger.OwnerRep.Uuid, (ledger.OwnerRep.Uuid, 500m));
+        await CreateExpenseInEventAsync(ledger.User.Uuid, other.Entity!.Uuid, ledger.OwnerRep.Uuid, (ledger.OwnerRep.Uuid, 700m));
+        // A loose expense (EventUuid = null) for the same user must not leak into any event's total.
+        await CreateExpenseRepository().CreateAsync(ledger.User.Uuid, new CreateExpenseData(
+            "Lẻ", null, On15, ledger.OwnerRep.Uuid, null, [],
+            [new CreateShareData(ledger.OwnerRep.Uuid, 999m, null)], null));
+
+        var list = await CreateEventRepository().ListByUserAsync(ledger.User.Uuid, new());
+        var byName = list.ToDictionary(evt => evt.Name, evt => Mapper.Map<EventSummaryResponse>(evt).TotalAdvanced);
+
+        Assert.Equal(500m, byName["Mục tiêu"]);
+        Assert.Equal(700m, byName["Đợt khác"]);
+    }
+
+    [SkippableFact]
+    public async Task ListByUserAsync_TotalAdvanced_ResourceOwned_OtherUsersExpensesNeverContribute()
+    {
+        var owner = await SeedLedgerAsync();
+        var stranger = await SeedLedgerAsync();
+        var ownerEvent = await CreateEventRepository().CreateAsync(owner.User.Uuid, CreateData(name: "Của tôi", startDate: Day14, endDate: Day16));
+        var strangerEvent = await CreateEventRepository().CreateAsync(stranger.User.Uuid, CreateData(name: "Của người khác", startDate: Day14, endDate: Day16));
+        await CreateExpenseInEventAsync(owner.User.Uuid, ownerEvent.Entity!.Uuid, owner.OwnerRep.Uuid, (owner.OwnerRep.Uuid, 300m));
+        await CreateExpenseInEventAsync(stranger.User.Uuid, strangerEvent.Entity!.Uuid, stranger.OwnerRep.Uuid, (stranger.OwnerRep.Uuid, 800m));
+
+        var ownerSummary = Mapper.Map<EventSummaryResponse>(Assert.Single(await CreateEventRepository().ListByUserAsync(owner.User.Uuid, new())));
+
+        Assert.Equal(300m, ownerSummary.TotalAdvanced); // the stranger's 800 never contributes
+    }
+
+    [SkippableFact]
+    public async Task ListByUserAsync_EffectiveUpdatedAt_BubblesFromChildActivity()
+    {
+        var ledger = await SeedLedgerAsync();
+        var created = await CreateEventRepository().CreateAsync(ledger.User.Uuid, CreateData(startDate: Day14, endDate: Day16));
+        var eventUpdatedAtCreate = (await ReloadEventAsync(created.Entity!.Uuid))!.UpdatedAt;
+        // Adding an expense/shares is later child activity; the event row itself is NOT bumped (Option B is read-side).
+        await CreateExpenseInEventAsync(ledger.User.Uuid, created.Entity.Uuid, ledger.OwnerRep.Uuid, (ledger.OwnerRep.Uuid, 100m));
+
+        var listed = Assert.Single(await CreateEventRepository().ListByUserAsync(ledger.User.Uuid, new()));
+        var summary = Mapper.Map<EventSummaryResponse>(listed);
+
+        // Effective updatedAt = max over the event row + every child expense/share updated_at.
+        var expected = new[] { listed.UpdatedAt }
+            .Concat(listed.Expenses.Select(exp => exp.UpdatedAt))
+            .Concat(listed.Expenses.SelectMany(exp => exp.Shares).Select(share => share.UpdatedAt))
+            .Max();
+        Assert.Equal(expected, summary.UpdatedAt);
+        Assert.True(summary.UpdatedAt >= eventUpdatedAtCreate); // child activity bubbles the event up (never earlier)
+        Assert.True(summary.UpdatedAt >= listed.CreatedAt);
+    }
+
+    [SkippableFact]
+    public async Task ListByUserAsync_ExposesUpdatedAt_AfterInfoEdit_ReflectsBumpAndIsAtLeastCreatedAt()
+    {
+        var owner = await SeedUserAsync();
+        var created = await CreateEventRepository().CreateAsync(owner.Uuid, CreateData(startDate: Day14, endDate: Day16));
+        var createdAt = (await ReloadEventAsync(created.Entity!.Uuid))!.CreatedAt;
+
+        await CreateEventRepository().UpdateAsync(owner.Uuid, created.Entity.Uuid,
+            new UpdateEventData("Đà Lạt (sửa)", null, Day14, Day16, TimeZoneInfo.Utc));
+
+        var summary = Mapper.Map<EventSummaryResponse>(Assert.Single(await CreateEventRepository().ListByUserAsync(owner.Uuid, new())));
+
+        Assert.True(summary.UpdatedAt >= createdAt); // the info edit bumped the row's updated_at
+    }
+
+    [SkippableFact]
+    public async Task ListByUserAsync_ReturnsCorrectTotalsForMultipleEventsInOneCall()
+    {
+        // Behavioral no-N+1 proof: two events, each with several expenses/shares, resolved in ONE
+        // ListByUserAsync call (the aggregate is derived from the single Included graph, not per-event).
+        var ledger = await SeedLedgerAsync();
+        var an = await SeedMemberAsync(ledger.User.Id, "An");
+        var first = await CreateEventRepository().CreateAsync(ledger.User.Uuid, CreateData(name: "Đợt 1", startDate: Day14, endDate: Day16));
+        var second = await CreateEventRepository().CreateAsync(ledger.User.Uuid, CreateData(name: "Đợt 2", startDate: Day14.AddDays(-2), endDate: Day16));
+
+        await CreateExpenseInEventAsync(ledger.User.Uuid, first.Entity!.Uuid, ledger.OwnerRep.Uuid, (ledger.OwnerRep.Uuid, 100m), (an.Uuid, 100m));
+        await CreateExpenseInEventAsync(ledger.User.Uuid, first.Entity.Uuid, an.Uuid, (ledger.OwnerRep.Uuid, 100m), (an.Uuid, 100m)); // event 1 = 400
+        await CreateExpenseInEventAsync(ledger.User.Uuid, second.Entity!.Uuid, ledger.OwnerRep.Uuid, (ledger.OwnerRep.Uuid, 250m), (an.Uuid, 250m)); // event 2 = 500
+
+        var totals = (await CreateEventRepository().ListByUserAsync(ledger.User.Uuid, new()))
+            .ToDictionary(evt => evt.Name, evt => Mapper.Map<EventSummaryResponse>(evt).TotalAdvanced);
+
+        Assert.Equal(400m, totals["Đợt 1"]);
+        Assert.Equal(500m, totals["Đợt 2"]);
+    }
+
+    [SkippableFact]
+    public async Task ListByUserAsync_OrderingUnchanged_StartDateThenCreatedAtDescending()
+    {
+        // Regression guard for the ordering constraint (D3): same start_date rows tie-break on created_at
+        // DESC, and the Include(Shares)/AsSplitQuery change must not disturb it.
+        var owner = await SeedUserAsync();
+        var earlier = await CreateEventRepository().CreateAsync(owner.Uuid, CreateData(name: "Tạo trước", startDate: Day14, endDate: Day16));
+        var later = await CreateEventRepository().CreateAsync(owner.Uuid, CreateData(name: "Tạo sau", startDate: Day14, endDate: Day16));
+
+        var list = await CreateEventRepository().ListByUserAsync(owner.Uuid, new());
+
+        // Both share Day14 as start_date; the one created later sorts first (created_at DESC).
+        Assert.Equal(["Tạo sau", "Tạo trước"], list.Select(evt => evt.Name));
+        _ = earlier; _ = later;
+    }
+
+    [SkippableFact]
+    public async Task GetByUuidAsync_ProjectsTotalAdvancedAndEffectiveUpdatedAt()
+    {
+        var ledger = await SeedLedgerAsync();
+        var an = await SeedMemberAsync(ledger.User.Id, "An");
+        var evt = await CreateEventRepository().CreateAsync(ledger.User.Uuid, CreateData(startDate: Day14, endDate: Day16));
+        await CreateExpenseInEventAsync(ledger.User.Uuid, evt.Entity!.Uuid, ledger.OwnerRep.Uuid, (ledger.OwnerRep.Uuid, 400m), (an.Uuid, 100m));
+
+        var loaded = await CreateEventRepository().GetByUuidAsync(ledger.User.Uuid, evt.Entity.Uuid);
+        Assert.NotNull(loaded);
+        var response = Mapper.Map<EventResponse>(loaded!);
+
+        Assert.Equal(500m, response.TotalAdvanced);
+        var expected = new[] { loaded!.UpdatedAt }
+            .Concat(loaded.Expenses.Select(exp => exp.UpdatedAt))
+            .Concat(loaded.Expenses.SelectMany(exp => exp.Shares).Select(share => share.UpdatedAt))
+            .Max();
+        Assert.Equal(expected, response.UpdatedAt);
     }
 
     // ---- One-way close -----------------------------------------------------------------------------

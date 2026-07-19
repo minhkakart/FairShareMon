@@ -80,6 +80,68 @@ public class EventsEndpointTests(WebApplicationFactory<Program> factory, Databas
     }
 
     [SkippableFact]
+    public async Task CreateAndGetEvent_WithNoExpenses_TotalAdvancedZeroAndUpdatedAtPresent()
+    {
+        using var client = await CreateAuthorizedClientAsync();
+        var created = await CreateEventAsync(client, new { name = "Đà Lạt", startDate = Day14, endDate = Day16 });
+
+        var evt = await GetEventAsync(client, Uuid(created));
+
+        Assert.Equal(0m, evt.GetProperty("totalAdvanced").GetDecimal());
+        // updatedAt is exposed (the event's own row timestamp when there is no child activity).
+        Assert.Equal(JsonValueKind.String, evt.GetProperty("updatedAt").ValueKind);
+        Assert.True(evt.GetProperty("updatedAt").GetDateTime() >= evt.GetProperty("createdAt").GetDateTime());
+    }
+
+    [SkippableFact]
+    public async Task GetEvent_WithExpenses_ExposesTotalAdvancedAndEffectiveUpdatedAt()
+    {
+        using var client = await CreateAuthorizedClientAsync();
+        var ownerRep = await OwnerRepUuidAsync(client);
+        var an = await CreateMemberAsync(client, "An");
+        var evt = await CreateEventUuidAsync(client, "Đà Lạt", Day14, Day16);
+        await CreateExpenseAsync(client, new
+        {
+            name = "Ăn tối",
+            expenseTime = new DateTime(2026, 7, 15, 12, 0, 0, DateTimeKind.Utc),
+            eventUuid = evt,
+            shares = new[]
+            {
+                new { memberUuid = an, amount = 100_000m },
+                new { memberUuid = ownerRep, amount = 50_000m }
+            }
+        });
+
+        var data = await GetEventAsync(client, evt);
+
+        Assert.Equal(150_000m, data.GetProperty("totalAdvanced").GetDecimal());
+        // Adding the expense/shares bubbles the effective updatedAt to at least the event's createdAt.
+        Assert.True(data.GetProperty("updatedAt").GetDateTime() >= data.GetProperty("createdAt").GetDateTime());
+    }
+
+    [SkippableFact]
+    public async Task ListEvents_ExposesTotalAdvancedPerEvent()
+    {
+        using var client = await CreateAuthorizedClientAsync();
+        var ownerRep = await OwnerRepUuidAsync(client);
+        var withExpense = await CreateEventUuidAsync(client, "Có phiếu", Day14, Day16);
+        await CreateEventUuidAsync(client, "Rỗng", Day14.AddDays(-3), Day16);
+        await CreateExpenseAsync(client, new
+        {
+            name = "Ăn tối",
+            expenseTime = new DateTime(2026, 7, 15, 12, 0, 0, DateTimeKind.Utc),
+            eventUuid = withExpense,
+            shares = new[] { new { memberUuid = ownerRep, amount = 250_000m } }
+        });
+
+        var byName = (await ListEventsAsync(client))
+            .ToDictionary(evt => evt.GetProperty("name").GetString()!, evt => evt.GetProperty("totalAdvanced").GetDecimal());
+
+        Assert.Equal(250_000m, byName["Có phiếu"]);
+        Assert.Equal(0m, byName["Rỗng"]);
+    }
+
+    [SkippableFact]
     public async Task ListEvents_SortsByStartDateDescending()
     {
         using var client = await CreateAuthorizedClientAsync();

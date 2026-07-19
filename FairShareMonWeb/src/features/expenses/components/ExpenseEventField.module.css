@@ -1,0 +1,30 @@
+.locked {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-1);
+}
+.label {
+  font-size: var(--fs-text-sm);
+  font-weight: var(--fs-weight-medium);
+  color: var(--fs-color-text);
+}
+.lockedValue {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--fs-space-2);
+  padding: var(--fs-space-2) var(--fs-space-3);
+  background-color: var(--fs-color-surface-sunken);
+  border: 1px solid var(--fs-color-border-subtle);
+  border-radius: var(--fs-radius-md);
+}
+.lockedName {
+  font-weight: var(--fs-weight-medium);
+  color: var(--fs-color-text);
+  overflow-wrap: anywhere;
+}
+.hint {
+  margin: 0;
+  font-size: var(--fs-text-sm);
+  color: var(--fs-color-text-secondary);
+}

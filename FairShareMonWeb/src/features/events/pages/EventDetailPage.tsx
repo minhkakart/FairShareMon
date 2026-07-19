@@ -28,10 +28,12 @@ import { DeleteEventDialog } from "../components/DeleteEventDialog";
 import { CloseEventDialog } from "../components/CloseEventDialog";
 import { QrDialog } from "@/features/wallet/components/QrDialog";
 import { QrIcon } from "@/features/wallet/components/icons";
+import { AddExpenseDialog } from "../components/AddExpenseDialog";
 import {
   DownloadIcon,
   LockIcon,
   PencilIcon,
+  PlusIcon,
   TrashIcon,
 } from "../components/icons";
 import styles from "./EventDetailPage.module.css";
@@ -56,6 +58,7 @@ function DetailView({ event }: { event: EventResponse }) {
   const toast = useToast();
   const exportEvent = useExportEvent();
   const [editOpen, setEditOpen] = useState(false);
+  const [addExpenseOpen, setAddExpenseOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [closeOpen, setCloseOpen] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
@@ -87,14 +90,24 @@ function DetailView({ event }: { event: EventResponse }) {
         </div>
         <div className={styles.detailActions}>
           {!closed ? (
-            <Button
-              variant="secondary"
-              size="sm"
-              iconStart={<PencilIcon />}
-              onClick={() => setEditOpen(true)}
-            >
-              {t("events:detail.edit")}
-            </Button>
+            <>
+              <Button
+                variant="primary"
+                size="sm"
+                iconStart={<PlusIcon />}
+                onClick={() => setAddExpenseOpen(true)}
+              >
+                {t("events:detail.addExpense")}
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                iconStart={<PencilIcon />}
+                onClick={() => setEditOpen(true)}
+              >
+                {t("events:detail.edit")}
+              </Button>
+            </>
           ) : null}
           <Button
             variant="secondary"
@@ -180,6 +193,13 @@ function DetailView({ event }: { event: EventResponse }) {
 
       <EventExpensesSection event={event} />
 
+      {!closed ? (
+        <AddExpenseDialog
+          event={event}
+          open={addExpenseOpen}
+          onOpenChange={setAddExpenseOpen}
+        />
+      ) : null}
       <EventFormDialog event={event} open={editOpen} onOpenChange={setEditOpen} />
       <DeleteEventDialog
         uuid={event.uuid}

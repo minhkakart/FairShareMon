@@ -41,17 +41,37 @@ public class EventsServiceTests
     private static readonly DateTime Start = new(2026, 7, 14, 0, 0, 0, DateTimeKind.Utc);
     private static readonly DateTime End = new(2026, 7, 16, 23, 59, 59, DateTimeKind.Utc);
 
+    // Effective-updatedAt timestamps for the derived fields (planning/event-summary-advanced-and-updated.md,
+    // Option B): the event row's own bump vs. the latest child activity. LatestChildActivity is after
+    // EventUpdated so StoredEvent() exercises the "a child is newer than the event row" branch.
+    private static readonly DateTime EventUpdated = new(2026, 7, 16, 8, 0, 0, DateTimeKind.Utc);
+    private static readonly DateTime LatestChildActivity = new(2026, 7, 17, 10, 0, 0, DateTimeKind.Utc);
+
     private static CreateEventRequest CreateRequest(string name = "Đà Lạt") =>
         new() { Name = name, StartDate = Start, EndDate = End };
 
     private static UpdateEventRequest UpdateRequest(string name = "Đà Lạt 2") =>
         new() { Name = name, StartDate = Start, EndDate = End };
 
+    // Two expenses whose shares sum to 900 (800 + 100), with child timestamps that peak at
+    // LatestChildActivity (later than the event row's EventUpdated). ExpenseCount stays 2 so the existing
+    // assertions keep passing; the added share data + timestamps feed the derived totalAdvanced/updatedAt.
     private static Event StoredEvent()
     {
-        var evt = new Event { Name = "Đà Lạt", StartDate = Start, EndDate = End };
-        evt.Expenses.Add(new Expense { Name = "Ăn tối", ExpenseTime = Start });
-        evt.Expenses.Add(new Expense { Name = "Cà phê", ExpenseTime = Start });
+        var evt = new Event { Name = "Đà Lạt", StartDate = Start, EndDate = End, UpdatedAt = EventUpdated };
+
+        var dinner = new Expense { Name = "Ăn tối", ExpenseTime = Start, UpdatedAt = EventUpdated };
+        dinner.Shares.Add(new Share { Amount = 200m, UpdatedAt = EventUpdated });
+        dinner.Shares.Add(new Share { Amount = 200m, UpdatedAt = EventUpdated });
+        dinner.Shares.Add(new Share { Amount = 200m, UpdatedAt = EventUpdated });
+        dinner.Shares.Add(new Share { Amount = 200m, UpdatedAt = LatestChildActivity }); // newest child
+        evt.Expenses.Add(dinner);
+
+        var coffee = new Expense { Name = "Cà phê", ExpenseTime = Start, UpdatedAt = EventUpdated };
+        coffee.Shares.Add(new Share { Amount = 50m, UpdatedAt = EventUpdated });
+        coffee.Shares.Add(new Share { Amount = 50m, UpdatedAt = EventUpdated });
+        evt.Expenses.Add(coffee);
+
         return evt;
     }
 
@@ -154,6 +174,30 @@ public class EventsServiceTests
 
         Assert.Equal(evt.Uuid, response.Uuid);
         Assert.Equal(2, response.ExpenseCount);
+    }
+
+    [Fact]
+    public async Task GetAsync_MapsTotalAdvancedAndEffectiveUpdatedAt()
+    {
+        var evt = StoredEvent(); // 900; newest child at LatestChildActivity
+        _events.StoredEvent = evt;
+
+        var response = await CreateService().GetAsync(UserUuid, evt.Uuid);
+
+        Assert.Equal(900m, response.TotalAdvanced);
+        Assert.Equal(LatestChildActivity, response.UpdatedAt);
+    }
+
+    [Fact]
+    public async Task GetAsync_TotalAdvancedZeroAndUpdatedAtFromEvent_WhenNoExpenses()
+    {
+        var evt = new Event { Name = "Rỗng", StartDate = Start, EndDate = End, UpdatedAt = EventUpdated };
+        _events.StoredEvent = evt;
+
+        var response = await CreateService().GetAsync(UserUuid, evt.Uuid);
+
+        Assert.Equal(0m, response.TotalAdvanced);
+        Assert.Equal(EventUpdated, response.UpdatedAt);
     }
 
     // ---- Update ------------------------------------------------------------------------------------
@@ -285,6 +329,62 @@ public class EventsServiceTests
         var summary = Assert.Single(list);
         Assert.Equal("Đà Lạt", summary.Name);
         Assert.Equal(2, summary.ExpenseCount);
+    }
+
+    [Fact]
+    public async Task ListAsync_MapsTotalAdvanced_FromSumOfSharesAcrossEventExpenses()
+    {
+        _events.StoredEvent = StoredEvent(); // 800 + 100
+
+        var summary = Assert.Single(await CreateService().ListAsync(UserUuid, new EventFilter()));
+
+        Assert.Equal(900m, summary.TotalAdvanced);
+    }
+
+    [Fact]
+    public async Task ListAsync_TotalAdvanced_IsZero_WhenNoExpenses()
+    {
+        _events.StoredEvent = new Event { Name = "Rỗng", StartDate = Start, EndDate = End, UpdatedAt = EventUpdated };
+
+        var summary = Assert.Single(await CreateService().ListAsync(UserUuid, new EventFilter()));
+
+        Assert.Equal(0m, summary.TotalAdvanced);
+        Assert.Equal(0, summary.ExpenseCount);
+    }
+
+    [Fact]
+    public async Task ListAsync_TotalAdvanced_IsZero_WhenAllSharesZero()
+    {
+        var evt = new Event { Name = "Toàn 0đ", StartDate = Start, EndDate = End, UpdatedAt = EventUpdated };
+        var expense = new Expense { Name = "Ăn tối", ExpenseTime = Start, UpdatedAt = EventUpdated };
+        expense.Shares.Add(new Share { Amount = 0m, UpdatedAt = EventUpdated });
+        expense.Shares.Add(new Share { Amount = 0m, UpdatedAt = EventUpdated });
+        evt.Expenses.Add(expense);
+        _events.StoredEvent = evt;
+
+        var summary = Assert.Single(await CreateService().ListAsync(UserUuid, new EventFilter()));
+
+        Assert.Equal(0m, summary.TotalAdvanced);
+    }
+
+    [Fact]
+    public async Task ListAsync_MapsEffectiveUpdatedAt_FromLatestChildActivity()
+    {
+        _events.StoredEvent = StoredEvent(); // a share bumped to LatestChildActivity, later than the event row
+
+        var summary = Assert.Single(await CreateService().ListAsync(UserUuid, new EventFilter()));
+
+        Assert.Equal(LatestChildActivity, summary.UpdatedAt);
+    }
+
+    [Fact]
+    public async Task ListAsync_UpdatedAt_FallsBackToEventTimestamp_WhenNoChildren()
+    {
+        _events.StoredEvent = new Event { Name = "Rỗng", StartDate = Start, EndDate = End, UpdatedAt = EventUpdated };
+
+        var summary = Assert.Single(await CreateService().ListAsync(UserUuid, new EventFilter()));
+
+        Assert.Equal(EventUpdated, summary.UpdatedAt);
     }
 
     private sealed class FakeEventRepository : IEventRepository

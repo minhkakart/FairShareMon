@@ -20,6 +20,10 @@ export interface EventSummaryResponse {
   /** Derived count of expenses in the event. */
   expenseCount: number;
   createdAt: string;
+  /** Event-level total advanced (sum of expense amounts), VND. Rendered verbatim (R3). */
+  totalAdvanced: number;
+  /** ISO-8601 last-updated timestamp (sort key for the dashboard card). */
+  updatedAt: string;
 }
 
 /** Full event detail (`EventResponse`) — adds `description`. Does not embed expenses (backend OQ15). */
