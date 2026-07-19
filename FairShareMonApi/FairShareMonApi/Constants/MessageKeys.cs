@@ -61,6 +61,17 @@ public static class MessageKeys
         public const string Qr = "Feature.Qr";
     }
 
+    public static class Qr
+    {
+        public static class Header
+        {
+            public const string Bank = "Qr.Header.Bank";
+            public const string AccountHolder = "Qr.Header.AccountHolder";
+            public const string AccountNumber = "Qr.Header.AccountNumber";
+            public const string Amount = "Qr.Header.Amount";
+        }
+    }
+
     public static class Envelope
     {
         public const string ValidationFailed = "Envelope.ValidationFailed";

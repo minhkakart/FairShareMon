@@ -177,11 +177,37 @@ public class LocalizationResourceTests
     }
 
     [Fact]
-    public void MessageKeys_CoversAllOneHundredTwentyThreeKeys()
+    public void MessageKeys_CoversAllOneHundredTwentySevenKeys()
     {
-        // Sanity anchor on the documented key count (123, per the planning doc's final outcome) so an
-        // accidental key deletion/addition surfaces here rather than as a silent gap.
-        Assert.Equal(123, CollectMessageKeyConstants().Count);
+        // Sanity anchor on the documented key count (127 = the prior 123 + the 4 Qr.Header.* keys added by
+        // the QR-image-header feature) so an accidental key deletion/addition surfaces here rather than as a
+        // silent gap.
+        Assert.Equal(127, CollectMessageKeyConstants().Count);
+    }
+
+    // ---- QR-image-header labels: present in both resx and culture-distinct ------------------------
+
+    [Fact]
+    public void Localizer_QrHeaderLabels_ResolvePerCulture_ViDiffersFromEn()
+    {
+        // The 4 Qr.Header.* keys (Bank/AccountHolder/AccountNumber/Amount) are drawn onto the QR image in
+        // the request culture; each must resolve to the pinned vi value and a distinct en value (proving
+        // the en-US satellite carries them, not a silent Vietnamese fallback).
+        using (new CultureScope("vi-VN"))
+        {
+            Assert.Equal("Ngân hàng", Localizer[MessageKeys.Qr.Header.Bank]);
+            Assert.Equal("Chủ tài khoản", Localizer[MessageKeys.Qr.Header.AccountHolder]);
+            Assert.Equal("Số tài khoản", Localizer[MessageKeys.Qr.Header.AccountNumber]);
+            Assert.Equal("Số tiền", Localizer[MessageKeys.Qr.Header.Amount]);
+        }
+
+        using (new CultureScope("en-US"))
+        {
+            Assert.Equal("Bank", Localizer[MessageKeys.Qr.Header.Bank]);
+            Assert.Equal("Account holder", Localizer[MessageKeys.Qr.Header.AccountHolder]);
+            Assert.Equal("Account number", Localizer[MessageKeys.Qr.Header.AccountNumber]);
+            Assert.Equal("Amount", Localizer[MessageKeys.Qr.Header.Amount]);
+        }
     }
 
     /// <summary>Recursively collects every <c>public const string</c> value declared under <see cref="MessageKeys"/>.</summary>

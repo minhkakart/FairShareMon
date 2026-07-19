@@ -69,6 +69,18 @@
   <data name="Feature.Qr" xml:space="preserve">
     <value>tạo mã QR</value>
   </data>
+  <data name="Qr.Header.Bank" xml:space="preserve">
+    <value>Ngân hàng</value>
+  </data>
+  <data name="Qr.Header.AccountHolder" xml:space="preserve">
+    <value>Chủ tài khoản</value>
+  </data>
+  <data name="Qr.Header.AccountNumber" xml:space="preserve">
+    <value>Số tài khoản</value>
+  </data>
+  <data name="Qr.Header.Amount" xml:space="preserve">
+    <value>Số tiền</value>
+  </data>
   <data name="Error.UsernameTaken" xml:space="preserve">
     <value>Tên đăng nhập đã tồn tại.</value>
   </data>

@@ -3,12 +3,15 @@ using DiDecoration.Attributes;
 using FairShareMonApi.Constants;
 using FairShareMonApi.Database.Entities;
 using FairShareMonApi.Exceptions;
+using FairShareMonApi.Localization;
+using FairShareMonApi.Localization.Resources;
 using FairShareMonApi.Models.Wallet;
 using FairShareMonApi.Repositories;
 using FairShareMonApi.Services.Api.Banks;
 using FairShareMonApi.Services.Api.Expenses;
 using FairShareMonApi.Services.Api.Stats;
 using FairShareMonApi.Services.Api.Tiers;
+using Microsoft.Extensions.Localization;
 
 namespace FairShareMonApi.Services.Api.Wallet;
 
@@ -38,10 +41,16 @@ public sealed class WalletQrService(
     IStatsService statsService,
     ITierService tierService,
     IQrContentProviderResolver qrContentResolver,
-    IQrImageService qrImageService) : IWalletQrService
+    IQrImageService qrImageService,
+    IBankDirectoryService bankDirectory,
+    IStringLocalizer<StringResources>? localizer = null) : IWalletQrService
 {
     private const string PayloadFormat = "payload";
     private const string PngContentType = "image/png";
+
+    // DI supplies the localizer; unit-test construction (new WalletQrService(...)) falls back to the shared
+    // localizer, which resolves the same resx family and honours the request CurrentUICulture (mirrors TierService).
+    private readonly IStringLocalizer<StringResources> _localizer = localizer ?? SharedStringLocalizer.Instance;
 
     public async Task<ExpenseQrResult> GenerateExpenseQrAsync(string userUuid, string expenseUuid, string? bankAccountUuid, string? format, CancellationToken cancellationToken = default)
     {
@@ -60,7 +69,9 @@ public sealed class WalletQrService(
         if (IsPayloadFormat(format))
             return ExpenseQrResult.FromPayload(payload);
 
-        var image = qrImageService.RenderSingle(payload);
+        // Build the header only on the image path so the payload short-circuit does no directory lookup.
+        var header = await BuildHeaderAsync(account, expense.Name, expense.Total, cancellationToken);
+        var image = qrImageService.RenderSingle(payload, header);
         return ExpenseQrResult.FromImage(new QrImageResult(image, PngContentType, $"expense-qr-{expense.Uuid}.png"));
     }
 
@@ -94,7 +105,9 @@ public sealed class WalletQrService(
             items.Add(new QrCompositeItem(label, payload));
         }
 
-        var image = qrImageService.RenderComposite(items);
+        // Event header carries no amount (per-member amounts stay under each member's QR).
+        var header = await BuildHeaderAsync(account, balance.EventName, amount: null, cancellationToken);
+        var image = qrImageService.RenderComposite(items, header);
         return new QrImageResult(image, PngContentType, $"event-qr-{balance.EventUuid}.png");
     }
 
@@ -116,6 +129,52 @@ public sealed class WalletQrService(
 
     private static bool IsPayloadFormat(string? format) =>
         !string.IsNullOrWhiteSpace(format) && format.Trim().Equals(PayloadFormat, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Builds the QR-image header from the destination account: the branded bank name (VietQR directory
+    /// ShortName -&gt; Name -&gt; the account's saved BankName on a miss/blank), the localized field labels
+    /// (request culture), and the amount (only when <paramref name="amount"/> is non-null - the event header
+    /// passes <c>null</c>). Labels are resolved on the request thread so they match the response culture.
+    /// </summary>
+    private async Task<QrHeader> BuildHeaderAsync(BankAccount account, string title, decimal? amount, CancellationToken cancellationToken)
+    {
+        var bankName = await ResolveBankNameAsync(account, cancellationToken);
+
+        string? amountLabel = null;
+        string? amountText = null;
+        if (amount.HasValue)
+        {
+            amountLabel = _localizer[MessageKeys.Qr.Header.Amount].Value;
+            amountText = FormatMoney(amount.Value);
+        }
+
+        return new QrHeader(
+            Title: title,
+            BankLabel: _localizer[MessageKeys.Qr.Header.Bank].Value,
+            BankName: bankName,
+            HolderLabel: _localizer[MessageKeys.Qr.Header.AccountHolder].Value,
+            AccountHolderName: account.AccountHolderName,
+            NumberLabel: _localizer[MessageKeys.Qr.Header.AccountNumber].Value,
+            AccountNumber: account.AccountNumber,
+            AmountLabel: amountLabel,
+            AmountText: amountText);
+    }
+
+    /// <summary>Resolves the branded bank name by BIN from the shared directory: ShortName -&gt; Name -&gt; the account's saved BankName.</summary>
+    private async Task<string> ResolveBankNameAsync(BankAccount account, CancellationToken cancellationToken)
+    {
+        var banks = await bankDirectory.ListAsync(cancellationToken);
+        var bank = banks.FirstOrDefault(b => b.Bin == account.BankBin);
+        if (bank is not null)
+        {
+            if (!string.IsNullOrWhiteSpace(bank.ShortName))
+                return bank.ShortName;
+            if (!string.IsNullOrWhiteSpace(bank.Name))
+                return bank.Name;
+        }
+
+        return account.BankName;
+    }
 
     /// <summary>Formats a VND amount for the composite label, e.g. 500000 -&gt; "500.000đ".</summary>
     private static string FormatMoney(decimal amount)

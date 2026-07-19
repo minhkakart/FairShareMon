@@ -2,6 +2,7 @@ using FairShareMonApi.Constants;
 using FairShareMonApi.Database;
 using FairShareMonApi.Database.Entities;
 using FairShareMonApi.Exceptions;
+using FairShareMonApi.Models.Banks;
 using FairShareMonApi.Models.Expenses;
 using FairShareMonApi.Models.Stats;
 using FairShareMonApi.Repositories;
@@ -35,11 +36,26 @@ public class WalletQrServiceTests
     // Pass-through tier double for the orchestration tests; the Premium QR gate is proved separately
     // (below + at the endpoint level).
     private readonly FakeTierService _tier = new();
+    // Directory seeded with the default test account's BIN (970436) -> a distinct branded ShortName, so a
+    // hit resolves to the ShortName (branding proven against the account's own saved BankName).
+    private readonly FakeBankDirectoryService _bankDirectory = new()
+    {
+        Banks =
+        {
+            new BankResponse
+            {
+                Bin = "970436", Code = "VCB",
+                Name = "Ngân hàng TMCP Ngoại thương Việt Nam", ShortName = "Vietcombank", LogoUrl = ""
+            }
+        }
+    };
 
+    // The localizer ctor param is optional (falls back to SharedStringLocalizer.Instance), so it is omitted
+    // here - header label text is asserted in LocalizationResourceTests; these tests assert header structure.
     private WalletQrService CreateService() =>
         new(_accounts, _expenses, _stats, _tier,
             new StubQrContentProviderResolver(new LocalQrContentProvider(new VietQrPayloadBuilder())),
-            _images);
+            _images, _bankDirectory);
 
     private BankAccount AddDefaultAccount(string bin = "970436", string number = "0123456789")
     {
@@ -232,6 +248,117 @@ public class WalletQrServiceTests
         Assert.Equal(ErrorCodes.EventNotFound, exception.Code);
     }
 
+    // ---- QR image header (bank info + title; amount on the expense header only) -------------------
+
+    [Fact]
+    public async Task GenerateExpenseQr_Image_HeaderCarriesTitleBrandedBankHolderNumberAndAmount()
+    {
+        AddDefaultAccount(bin: "970436", number: "0123456789"); // BankName "Vietcombank", holder "Nguyen Van A"
+        _expenses.Expense = new ExpenseResponse { Uuid = ExpenseUuid, Name = "Ăn tối", Total = 750_000m };
+
+        await CreateService().GenerateExpenseQrAsync(UserUuid, ExpenseUuid, null, null);
+
+        var header = Assert.Single(_images.SingleHeaders);
+        Assert.Equal("Ăn tối", header.Title);                 // title = expense name
+        Assert.Equal("Vietcombank", header.BankName);         // branded directory ShortName by BIN
+        Assert.Equal("Nguyen Van A", header.AccountHolderName);
+        Assert.Equal("0123456789", header.AccountNumber);
+        // Expense header shows the amount = FormatMoney(expense.Total).
+        Assert.NotNull(header.AmountLabel);
+        Assert.Equal("750.000đ", header.AmountText);
+    }
+
+    [Fact]
+    public async Task GenerateExpenseQr_FormatPayload_BuildsNoHeader()
+    {
+        AddDefaultAccount();
+        _expenses.Expense = new ExpenseResponse { Uuid = ExpenseUuid, Name = "Ăn tối", Total = 500_000m };
+
+        await CreateService().GenerateExpenseQrAsync(UserUuid, ExpenseUuid, null, "payload");
+
+        // The header is built only on the image path (after the payload short-circuit): no header captured.
+        Assert.Empty(_images.SingleHeaders);
+    }
+
+    [Fact]
+    public async Task GenerateEventQr_Image_HeaderCarriesEventNameAndNoAmount()
+    {
+        AddDefaultAccount();
+        _stats.Balance = new EventBalanceResponse
+        {
+            EventUuid = EventUuid, EventName = "Đà Lạt", IsClosed = true,
+            Rows = [Row("Cường", -500_000m), Row("Dũng", -125_000m)]
+        };
+
+        await CreateService().GenerateEventQrAsync(UserUuid, EventUuid, null);
+
+        var header = Assert.Single(_images.CompositeHeaders);
+        Assert.Equal("Đà Lạt", header.Title);        // title = event name
+        Assert.Equal("Vietcombank", header.BankName); // branded directory ShortName
+        // Event header omits the amount entirely (per-member amounts live under each member's QR).
+        Assert.Null(header.AmountLabel);
+        Assert.Null(header.AmountText);
+    }
+
+    [Fact]
+    public async Task GenerateExpenseQr_BinInDirectory_HeaderUsesBrandedShortNameOverSavedBankName()
+    {
+        // Account's own saved BankName differs from the directory ShortName -> ShortName must win (branding).
+        var account = new BankAccount
+        {
+            BankBin = "970436", BankName = "Ngoai Thuong (saved)", AccountNumber = "0123456789",
+            AccountHolderName = "Nguyen Van A", IsDefault = true
+        };
+        _accounts.Accounts.Add(account);
+        _expenses.Expense = new ExpenseResponse { Uuid = ExpenseUuid, Name = "Ăn tối", Total = 100_000m };
+
+        await CreateService().GenerateExpenseQrAsync(UserUuid, ExpenseUuid, null, null);
+
+        var header = Assert.Single(_images.SingleHeaders);
+        Assert.Equal("Vietcombank", header.BankName); // ShortName, not "Ngoai Thuong (saved)"
+    }
+
+    [Fact]
+    public async Task GenerateExpenseQr_BinNotInDirectory_HeaderFallsBackToSavedBankName()
+    {
+        // A BIN the directory doesn't carry -> fall back to the account's saved BankName.
+        var account = new BankAccount
+        {
+            BankBin = "999999", BankName = "My Saved Bank", AccountNumber = "5554443332",
+            AccountHolderName = "Tran Thi B", IsDefault = true
+        };
+        _accounts.Accounts.Add(account);
+        _expenses.Expense = new ExpenseResponse { Uuid = ExpenseUuid, Name = "Ăn tối", Total = 100_000m };
+
+        await CreateService().GenerateExpenseQrAsync(UserUuid, ExpenseUuid, null, null);
+
+        var header = Assert.Single(_images.SingleHeaders);
+        Assert.Equal("My Saved Bank", header.BankName);
+    }
+
+    [Fact]
+    public async Task GenerateExpenseQr_BinInDirectoryButShortNameBlank_HeaderFallsBackToDirectoryName()
+    {
+        // Directory hit whose ShortName is blank -> fall through to the directory Name (not the saved name).
+        _bankDirectory.Banks.Clear();
+        _bankDirectory.Banks.Add(new BankResponse
+        {
+            Bin = "970999", Code = "XYZ", Name = "Ngân hàng Đầy Đủ", ShortName = "", LogoUrl = ""
+        });
+        var account = new BankAccount
+        {
+            BankBin = "970999", BankName = "Saved Name", AccountNumber = "1112223334",
+            AccountHolderName = "Le Van C", IsDefault = true
+        };
+        _accounts.Accounts.Add(account);
+        _expenses.Expense = new ExpenseResponse { Uuid = ExpenseUuid, Name = "Ăn tối", Total = 100_000m };
+
+        await CreateService().GenerateExpenseQrAsync(UserUuid, ExpenseUuid, null, null);
+
+        var header = Assert.Single(_images.SingleHeaders);
+        Assert.Equal("Ngân hàng Đầy Đủ", header.BankName); // Name, not "Saved Name"
+    }
+
     // ---- M10 Premium feature-gate (both QR ops gated, fires before anything is resolved) ----------
 
     [Fact]
@@ -346,18 +473,32 @@ public class WalletQrServiceTests
     private sealed class CapturingQrImageService : IQrImageService
     {
         public List<string> SinglePayloads { get; } = [];
+        public List<QrHeader> SingleHeaders { get; } = [];
         public List<IReadOnlyList<QrCompositeItem>> CompositeBatches { get; } = [];
+        public List<QrHeader> CompositeHeaders { get; } = [];
 
-        public byte[] RenderSingle(string payload)
+        public byte[] RenderSingle(string payload, QrHeader header)
         {
             SinglePayloads.Add(payload);
+            SingleHeaders.Add(header);
             return [0x89, 0x50, 0x4E, 0x47];
         }
 
-        public byte[] RenderComposite(IReadOnlyList<QrCompositeItem> items)
+        public byte[] RenderComposite(IReadOnlyList<QrCompositeItem> items, QrHeader header)
         {
             CompositeBatches.Add(items);
+            CompositeHeaders.Add(header);
             return [0x89, 0x50, 0x4E, 0x47];
         }
+    }
+
+    // Serves a mutable in-memory bank list (mirrors the fake in VietQrRemoteQrContentProviderTests); never
+    // caches, never throws - just what WalletQrService.ResolveBankNameAsync reads by BIN.
+    private sealed class FakeBankDirectoryService : IBankDirectoryService
+    {
+        public List<BankResponse> Banks { get; } = [];
+
+        public Task<IReadOnlyList<BankResponse>> ListAsync(CancellationToken cancellationToken) =>
+            Task.FromResult<IReadOnlyList<BankResponse>>(Banks);
     }
 }
