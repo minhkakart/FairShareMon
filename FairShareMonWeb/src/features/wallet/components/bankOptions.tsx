@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import type { ComboboxOption } from "@/components/ui";
 import type { AppTFunction } from "@/i18n/useT";
-import type { VietqrBank } from "../api/vietqrDirectoryApi";
+import type { Bank } from "../api/banksApi";
 import { BankLogo } from "./BankLogo";
 import styles from "./bankOptions.module.css";
 
@@ -12,9 +12,9 @@ import styles from "./bankOptions.module.css";
  * both the picker (`buildBankOptions`) and the accounts-table lookup must derive
  * from it so the logo/legal-name they show for a duplicate BIN can never diverge.
  */
-export function dedupeBanksByBin(banks: VietqrBank[]): VietqrBank[] {
+export function dedupeBanksByBin(banks: Bank[]): Bank[] {
   const seen = new Set<string>();
-  const deduped: VietqrBank[] = [];
+  const deduped: Bank[] = [];
   for (const bank of banks) {
     if (seen.has(bank.bin)) continue;
     seen.add(bank.bin);
@@ -30,8 +30,8 @@ export function dedupeBanksByBin(banks: VietqrBank[]): VietqrBank[] {
  * so a single option per BIN is correct.
  */
 export function buildBankOptions(
-  banks: VietqrBank[],
-): ComboboxOption<VietqrBank>[] {
+  banks: Bank[],
+): ComboboxOption<Bank>[] {
   return dedupeBanksByBin(banks).map((bank) => ({
     value: bank.bin,
     label: bank.shortName,
@@ -49,14 +49,14 @@ export function buildBankOptions(
  */
 export function makeRenderBankOption(t: AppTFunction) {
   return function renderBankOption(
-    option: ComboboxOption<VietqrBank>,
+    option: ComboboxOption<Bank>,
   ): ReactNode {
     const meta = option.meta;
     const bin = meta?.bin ?? option.value;
     const binText = t("wallet:table.bin", { bin });
     return (
       <span className={styles.row}>
-        <BankLogo imageId={meta?.imageId} name={option.label} alt="" size="md" />
+        <BankLogo logoUrl={meta?.logoUrl} name={option.label} alt="" size="md" />
         <span className={styles.text}>
           <span className={styles.primary}>{option.label}</span>
           <span className={styles.secondary}>

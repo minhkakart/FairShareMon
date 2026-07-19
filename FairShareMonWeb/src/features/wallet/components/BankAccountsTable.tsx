@@ -13,7 +13,7 @@ import {
 } from "@/components/ui";
 import type { BankAccountResponse } from "../api/types";
 import { maskAccount, groupAccount } from "../format";
-import { useVietqrBanks } from "../hooks/useVietqrBanks";
+import { useBanks } from "../hooks/useBanks";
 import { dedupeBanksByBin } from "./bankOptions";
 import { BankLogo } from "./BankLogo";
 import {
@@ -55,7 +55,7 @@ export function BankAccountsTable({
   const isPremium = mode === "premium";
   // Re-derive logo + short name from the stored BIN via the cached directory
   // query (one lookup map — never a hook per row).
-  const { data: banks } = useVietqrBanks();
+  const { data: banks } = useBanks();
   // FIRST-wins dedupe (same rule as the picker's `buildBankOptions`) so a
   // duplicate BIN (e.g. 970452 UMEE/KLB) resolves to the SAME bank in both — the
   // table can't show a different logo/legal-name than the picker for one BIN.
@@ -95,7 +95,7 @@ export function BankAccountsTable({
                 <TableHeaderCell scope="row">
                   <span className={styles.bankCell}>
                     <BankLogo
-                      imageId={bank?.imageId}
+                      logoUrl={bank?.logoUrl}
                       name={displayName}
                       alt=""
                       size="sm"

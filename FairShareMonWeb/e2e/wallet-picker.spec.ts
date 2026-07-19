@@ -5,11 +5,10 @@ import { login } from "./fixtures/session";
  * Bank-picker create flow (bank-picker-vietqr): drive the REAL searchable
  * `Combobox` end-to-end to add a bank account. The wallet mutation is Premium, so
  * this logs in as the PREMIUM seed user `admin` (seeded with Vietcombank default +
- * Techcombank). The VietQR directory is served to the browser MSW worker by the
- * absolute-URL handler in `src/test/msw/handlers.ts` (VCB 970436 + TCB 970407 +
- * BIDV + MB), so filtering + picking resolves against a mocked list; the committed
- * snapshot is the fallback and also contains Techcombank, so the pick round-trip is
- * deterministic either way.
+ * Techcombank). The bank directory is served to the browser MSW worker by the
+ * relative `/api/v1/banks` handler in `src/test/msw/handlers.ts` (VCB 970436 +
+ * TCB 970407 + BIDV + MB) through our own centralized client, so filtering +
+ * picking resolves against a deterministic mocked list.
  *
  * VIEWPORT: no `-responsive` suffix, so this runs under BOTH the desktop
  * `chromium` project (the create loop the coordinator asked for) AND the `mobile`
@@ -19,7 +18,7 @@ import { login } from "./fixtures/session";
  * so the in-page MSW store keeps its deterministic seed.
  */
 
-// Techcombank (BIN 970407) is in the mocked VietQR directory AND the snapshot.
+// Techcombank (BIN 970407) is served by the mocked `/v1/banks` directory.
 const BANK_SHORT_NAME = "Techcombank";
 // A distinctive holder so the newly-created row is unambiguous (the seed already
 // has one Techcombank account).

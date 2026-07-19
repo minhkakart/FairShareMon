@@ -3,26 +3,27 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { BankLogo } from "./components/BankLogo";
 
 /**
- * BankLogo — a presentational logo plate: lazy `<img>` at the VietQR image URL
- * that swaps to an initials/glyph fallback on error, or renders the fallback
- * directly when `imageId` is absent (the synthetic unknown-BIN option). No network,
- * no i18n lookups (strings arrive as props); the `error` event is fired directly.
+ * BankLogo — a presentational logo plate: lazy `<img>` at the given `logoUrl`
+ * (built server-side) that swaps to an initials/glyph fallback on error, or
+ * renders the fallback directly when `logoUrl` is absent (the synthetic
+ * unknown-BIN option). No network, no i18n lookups (strings arrive as props); the
+ * `error` event is fired directly.
  */
 
+const LOGO_VCB = "https://vietqr.vn/api/vietqr/images/img-vcb";
+const LOGO_TCB = "https://vietqr.vn/api/vietqr/images/img-tcb";
+
 describe("BankLogo", () => {
-  it("BankLogo_WithImageId_RendersLazyImgAtDerivedUrl", () => {
-    render(<BankLogo imageId="img-vcb" name="Vietcombank" alt="Vietcombank logo" />);
+  it("BankLogo_WithLogoUrl_RendersLazyImgAtUrl", () => {
+    render(<BankLogo logoUrl={LOGO_VCB} name="Vietcombank" alt="Vietcombank logo" />);
 
     const img = screen.getByRole("img", { name: "Vietcombank logo" });
-    expect(img).toHaveAttribute(
-      "src",
-      "https://vietqr.vn/api/vietqr/images/img-vcb",
-    );
+    expect(img).toHaveAttribute("src", LOGO_VCB);
     expect(img).toHaveAttribute("loading", "lazy");
   });
 
   it("BankLogo_ImgError_SwapsToInitialsFallback", () => {
-    render(<BankLogo imageId="img-tcb" name="Techcombank" alt="Techcombank logo" />);
+    render(<BankLogo logoUrl={LOGO_TCB} name="Techcombank" alt="Techcombank logo" />);
 
     const img = screen.getByRole("img", { name: "Techcombank logo" });
     fireEvent.error(img);
@@ -34,7 +35,7 @@ describe("BankLogo", () => {
     expect(screen.getByText("TE")).toBeInTheDocument();
   });
 
-  it("BankLogo_NoImageId_RendersInitialsFallbackDirectly", () => {
+  it("BankLogo_NoLogoUrl_RendersInitialsFallbackDirectly", () => {
     // Diacritics preserved for display (initials are shown, not searched).
     const { container } = render(<BankLogo name="Đông Á" alt="" />);
 
@@ -43,7 +44,7 @@ describe("BankLogo", () => {
     expect(container.querySelector("img")).toBeNull();
   });
 
-  it("BankLogo_NoImageIdNoName_RendersGlyphFallback", () => {
+  it("BankLogo_NoLogoUrlNoName_RendersGlyphFallback", () => {
     const { container } = render(<BankLogo alt="" />);
 
     // No img and no initials — the neutral bank glyph (an svg) stands in.

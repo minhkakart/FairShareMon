@@ -716,6 +716,11 @@ area — no edit needed.
    NAPAS `A000000727` + BIN + account + `QRIBFTTA`, 53 = 704, 54 = amount, 62-08 = memo, 63 =
    CRC-16/CCITT-FALSE); no payload library. *Reason:* precisely specified + fully unit-testable, keeps the
    dependency surface to the image libs only (the M8 hand-rolled-CSV ethos).
+   > **Later extended (2026-07-19, `planning/bank-directory-provider.md`):** OQ1c ("do NOT call an
+   > external VietQR service") is partially reversed — the payload content becomes provider-selectable
+   > (`Banks:QrProvider`), with an OPT-IN `VietQr` provider that calls `/api/vietqr/generate`. The
+   > hand-rolled builder stays the DEFAULT (`Local` provider) and the always-on fallback, so QR never
+   > breaks; the M9 behavior is unchanged out of the box.
 2. **OQ2 — QRCoder 1.6.0 (a):** add **`QRCoder` 1.6.0 (MIT)**, `PngByteQRCode` (no `System.Drawing`) —
    the project's first new runtime dependency. *Reason:* MIT (no split-license trap), sibling-proven,
    cross-platform.
@@ -725,6 +730,11 @@ area — no edit needed.
    client (§3.10 "gửi vào nhóm chat"), which the no-dep SVG could not guarantee; still license-clean.
 4. **OQ4 — BIN on the account, no banks table (a).** *Reason:* the client renders the bank picker; avoids
    a data-heavy NAPAS reference table to maintain.
+   > **Later extended (2026-07-19, `planning/bank-directory-provider.md`):** the "the client renders the
+   > bank picker (talks to VietQR directly)" part is reversed — the backend now serves the directory via
+   > `GET /api/v1/banks` behind a provider abstraction (VietQR = one provider), cached + committed static
+   > fallback. Still NO DB banks table (this decision's core holds); `bank_accounts` still stores BIN +
+   > display name.
 5. **OQ5 — Fields/validation (a):** `bank_bin ^\d{6}$`, `bank_name` req ≤100, `account_number ^\d{6,19}$`,
    `account_holder_name` req ≤100, `is_default`. *Reason:* catches typos while covering the vast majority
    of (numeric) Vietnamese accounts.

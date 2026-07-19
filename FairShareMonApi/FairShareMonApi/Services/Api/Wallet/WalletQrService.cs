@@ -5,6 +5,7 @@ using FairShareMonApi.Database.Entities;
 using FairShareMonApi.Exceptions;
 using FairShareMonApi.Models.Wallet;
 using FairShareMonApi.Repositories;
+using FairShareMonApi.Services.Api.Banks;
 using FairShareMonApi.Services.Api.Expenses;
 using FairShareMonApi.Services.Api.Stats;
 using FairShareMonApi.Services.Api.Tiers;
@@ -36,7 +37,7 @@ public sealed class WalletQrService(
     IExpensesService expensesService,
     IStatsService statsService,
     ITierService tierService,
-    IVietQrPayloadBuilder payloadBuilder,
+    IQrContentProviderResolver qrContentResolver,
     IQrImageService qrImageService) : IWalletQrService
 {
     private const string PayloadFormat = "payload";
@@ -51,7 +52,10 @@ public sealed class WalletQrService(
         // Resource-owned expense (miss -> ExpenseNotFound 6000); Total is the derived SUM(shares) (M5).
         var expense = await expensesService.GetAsync(userUuid, expenseUuid, cancellationToken);
 
-        var payload = payloadBuilder.Build(account.BankBin, account.AccountNumber, expense.Total, expense.Name);
+        var provider = qrContentResolver.Resolve();
+        var payload = await provider.BuildContentAsync(
+            new QrContentRequest(account.BankBin, account.AccountNumber, account.AccountHolderName, expense.Total, expense.Name),
+            cancellationToken);
 
         if (IsPayloadFormat(format))
             return ExpenseQrResult.FromPayload(payload);
@@ -78,16 +82,17 @@ public sealed class WalletQrService(
         if (owing.Count == 0)
             throw new ErrorException(ErrorCodes.NoOutstandingDebtForQr, MessageKeys.Error.NoOutstandingDebtForQr);
 
-        var items = owing
-            .Select(row =>
-            {
-                var amount = -row.Balance;
-                var payload = payloadBuilder.Build(
-                    account.BankBin, account.AccountNumber, amount, $"{balance.EventName} - {row.MemberName}");
-                var label = $"{row.MemberName}: {FormatMoney(amount)}";
-                return new QrCompositeItem(label, payload);
-            })
-            .ToList();
+        var provider = qrContentResolver.Resolve();
+        var items = new List<QrCompositeItem>(owing.Count);
+        foreach (var row in owing)
+        {
+            var amount = -row.Balance;
+            var payload = await provider.BuildContentAsync(
+                new QrContentRequest(account.BankBin, account.AccountNumber, account.AccountHolderName, amount, $"{balance.EventName} - {row.MemberName}"),
+                cancellationToken);
+            var label = $"{row.MemberName}: {FormatMoney(amount)}";
+            items.Add(new QrCompositeItem(label, payload));
+        }
 
         var image = qrImageService.RenderComposite(items);
         return new QrImageResult(image, PngContentType, $"event-qr-{balance.EventUuid}.png");

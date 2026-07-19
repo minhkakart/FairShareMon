@@ -4,22 +4,19 @@ import { renderWithProviders } from "@/test/utils";
 import { setActiveLocale } from "@/lib/api/runtime";
 import i18n from "@/i18n";
 import { BankAccountsTable } from "./components/BankAccountsTable";
-import { buildBankOptions } from "./components/bankOptions";
-import { bankLogoUrl } from "./api/vietqrDirectoryApi";
-import { VIETQR_BANKS_SNAPSHOT } from "./data/vietqrBanks";
 import type { BankAccountResponse } from "./api/types";
 
 /**
  * BankAccountsTable — the display re-derivation (R5). The bank cell shows the
- * short name re-derived from the stored BIN via the cached VietQR directory
- * (seeded instantly by the committed snapshot), falling back to the stored
- * `bankName` for a BIN not in the directory. Rendered against the real
- * `useVietqrBanks` query (snapshot as initialData → no network wait). vi-VN pinned.
+ * short name re-derived from the stored BIN via the cached `/v1/banks` directory
+ * query, falling back to the stored `bankName` for a BIN not in the directory.
+ * Rendered against the real `useBanks` query (mocked at the client boundary by the
+ * shared MSW `/api/v1/banks` handler → 970436/970407/970418/970422). vi-VN pinned.
  */
 
 const noop = () => {};
 
-/** 970407 is in the snapshot (→ "Techcombank"); the stored name is deliberately stale. */
+/** 970407 is in the directory (→ "Techcombank"); the stored name is deliberately stale. */
 const KNOWN: BankAccountResponse = {
   uuid: "ba-known",
   bankBin: "970407",
@@ -52,7 +49,7 @@ afterEach(async () => {
 });
 
 describe("BankAccountsTable bank re-derivation", () => {
-  it("BankAccountsTable_KnownBin_ShowsReDerivedShortName", () => {
+  it("BankAccountsTable_KnownBin_ShowsReDerivedShortName", async () => {
     renderWithProviders(
       <BankAccountsTable
         accounts={[KNOWN]}
@@ -63,52 +60,18 @@ describe("BankAccountsTable bank re-derivation", () => {
       />,
     );
 
-    // Re-derived short name (from the directory), NOT the stale stored bankName.
+    // Once the directory query resolves, the re-derived short name replaces the
+    // stale stored bankName (the BIN secondary line is preserved).
     expect(
-      screen.getByRole("rowheader", { name: /Techcombank/ }),
+      await screen.findByRole("rowheader", { name: /Techcombank/ }),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("rowheader", { name: /TÊN CŨ ĐÃ LƯU/ }),
     ).not.toBeInTheDocument();
-    // The BIN secondary line is preserved.
     expect(screen.getByText("BIN 970407")).toBeInTheDocument();
   });
 
-  it("BankAccountsTable_DuplicateBin_MatchesPickerFirstWins", () => {
-    // 970452 is listed TWICE in the snapshot (UMEE then KLB). The picker dedupes
-    // first-wins; the table must re-derive the SAME bank so its logo/name can't
-    // diverge from what the picker shows for the one BIN.
-    const DUP: BankAccountResponse = {
-      uuid: "ba-dup",
-      bankBin: "970452",
-      bankName: "KienLongBank",
-      accountNumber: "0123456789",
-      accountHolderName: "LE THI C",
-      isDefault: false,
-      createdAt: "2026-01-03T00:00:00+00:00",
-    };
-    const { container } = renderWithProviders(
-      <BankAccountsTable
-        accounts={[DUP]}
-        mode="free"
-        onSetDefault={noop}
-        onEdit={noop}
-        onDelete={noop}
-      />,
-    );
-
-    const pickerMeta = buildBankOptions(VIETQR_BANKS_SNAPSHOT).find(
-      (o) => o.value === "970452",
-    )?.meta;
-    if (!pickerMeta) throw new Error("expected a picker option for BIN 970452");
-
-    // The table's logo is sourced from the SAME first-wins bank entry the picker
-    // resolves — asserted via the logo image URL (which carries the imageId).
-    const logo = container.querySelector("img");
-    expect(logo?.getAttribute("src")).toBe(bankLogoUrl(pickerMeta.imageId));
-  });
-
-  it("BankAccountsTable_UnknownBin_FallsBackToStoredBankName", () => {
+  it("BankAccountsTable_UnknownBin_FallsBackToStoredBankName", async () => {
     renderWithProviders(
       <BankAccountsTable
         accounts={[UNKNOWN]}
@@ -121,7 +84,7 @@ describe("BankAccountsTable bank re-derivation", () => {
 
     // No directory match → the stored bankName is shown as-is.
     expect(
-      screen.getByRole("rowheader", { name: /Ngân hàng Cũ/ }),
+      await screen.findByRole("rowheader", { name: /Ngân hàng Cũ/ }),
     ).toBeInTheDocument();
     expect(screen.getByText("BIN 999999")).toBeInTheDocument();
   });

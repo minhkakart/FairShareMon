@@ -1,12 +1,11 @@
 import type { CSSProperties } from "react";
 import { useState } from "react";
 import { cx } from "@/components/ui";
-import { bankLogoUrl } from "../api/vietqrDirectoryApi";
 import styles from "./BankLogo.module.css";
 
 export type BankLogoProps = {
-  /** VietQR imageId; falsy → the fallback tile is rendered directly (no network). */
-  imageId?: string;
+  /** Fully-built bank logo URL; falsy → the fallback tile is rendered directly (no network). */
+  logoUrl?: string;
   /**
    * i18n alt text. Pass `""` when a sibling already labels the bank (option rows,
    * table cells) so the row is not announced twice; pass the meaningful string
@@ -45,16 +44,16 @@ function initialsOf(name: string): string {
 }
 
 /**
- * A small square logo plate for a bank. Lazy-loads the VietQR logo and, on error
- * (or when `imageId` is absent — the synthetic unknown-BIN option), swaps to a
+ * A small square logo plate for a bank. Lazy-loads the bank logo and, on error
+ * (or when `logoUrl` is absent — the synthetic unknown-BIN option), swaps to a
  * neutral initials tile (or a bank glyph when no name is available). The loaded
  * plate is a FIXED light background in both themes (bank artwork is drawn for
  * light grounds), with a theme-aware hairline border; the fallback tile is fully
  * theme-aware. Presentational only — strings arrive as props (OQ-D2).
  */
-export function BankLogo({ imageId, alt, name, size = "md", className }: BankLogoProps) {
+export function BankLogo({ logoUrl, alt, name, size = "md", className }: BankLogoProps) {
   const [errored, setErrored] = useState(false);
-  const showFallback = !imageId || errored;
+  const showFallback = !logoUrl || errored;
   const style = { "--bank-logo-size": SIZES[size] } as CSSProperties;
 
   if (showFallback) {
@@ -81,7 +80,7 @@ export function BankLogo({ imageId, alt, name, size = "md", className }: BankLog
     <span className={cx(styles.plate, styles[size], className)} style={style}>
       <img
         className={styles.img}
-        src={bankLogoUrl(imageId)}
+        src={logoUrl}
         alt={alt}
         loading="lazy"
         onError={() => setErrored(true)}

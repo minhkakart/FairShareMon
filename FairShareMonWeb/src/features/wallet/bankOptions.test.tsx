@@ -1,35 +1,35 @@
 import { describe, expect, it } from "vitest";
 import { buildBankOptions } from "./components/bankOptions";
-import type { VietqrBank } from "./api/vietqrDirectoryApi";
+import type { Bank } from "./api/banksApi";
 
 /**
- * buildBankOptions — maps VietqrBank[] → ComboboxOption<VietqrBank>[]
- * (value=bin, label=shortName, keywords=[name, bin, code]) and DEDUPES by BIN. The
- * live directory can list two entries under one caiValue (e.g. 970452 KienLongBank)
- * while the stored value is only the BIN, so one option per BIN is correct. Pure
- * function — no network, no i18n.
+ * buildBankOptions — maps Bank[] → ComboboxOption<Bank>[] (value=bin,
+ * label=shortName, keywords=[name, bin, code]) and DEDUPES by BIN. The directory
+ * can list two entries under one BIN (e.g. 970452 KienLongBank) while the stored
+ * value is only the BIN, so one option per BIN is correct (defensive — a no-op
+ * when the server already dedupes). Pure function — no network, no i18n.
  */
 
-const KLB: VietqrBank = {
+const KLB: Bank = {
   bin: "970452",
   code: "KLB",
   name: "Ngân hàng TMCP Kiên Long",
   shortName: "KienLongBank",
-  imageId: "img-klb",
+  logoUrl: "https://vietqr.vn/api/vietqr/images/img-klb",
 };
-const KLB_DUP: VietqrBank = {
+const KLB_DUP: Bank = {
   bin: "970452",
   code: "UMEE",
   name: "Ngân hàng số Umee – Kiên Long Bank",
   shortName: "KienLongBank",
-  imageId: "img-umee",
+  logoUrl: "https://vietqr.vn/api/vietqr/images/img-umee",
 };
-const TCB: VietqrBank = {
+const TCB: Bank = {
   bin: "970407",
   code: "TCB",
   name: "Ngân hàng TMCP Kỹ thương Việt Nam",
   shortName: "Techcombank",
-  imageId: "img-tcb",
+  logoUrl: "https://vietqr.vn/api/vietqr/images/img-tcb",
 };
 
 describe("buildBankOptions", () => {
@@ -39,7 +39,9 @@ describe("buildBankOptions", () => {
     const dup = options.filter((o) => o.value === "970452");
     expect(dup).toHaveLength(1);
     // The first-seen entry wins.
-    expect(dup[0].meta?.imageId).toBe("img-klb");
+    expect(dup[0].meta?.logoUrl).toBe(
+      "https://vietqr.vn/api/vietqr/images/img-klb",
+    );
   });
 
   it("BuildBankOptions_MapsValueLabelKeywordsAndMeta", () => {

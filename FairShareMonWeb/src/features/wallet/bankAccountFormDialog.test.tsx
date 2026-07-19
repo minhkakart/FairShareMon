@@ -102,7 +102,7 @@ async function pickBank(
 }
 
 async function fillValid(user: ReturnType<typeof userEvent.setup>, dialog: HTMLElement) {
-  // Techcombank (970407) is in the MSW VietQR directory + the committed snapshot.
+  // Techcombank (970407) is served by the MSW `/v1/banks` directory handler.
   await pickBank(user, dialog, "techcom", /Techcombank/);
   await user.type(
     within(dialog).getByRole("textbox", { name: "Số tài khoản" }),

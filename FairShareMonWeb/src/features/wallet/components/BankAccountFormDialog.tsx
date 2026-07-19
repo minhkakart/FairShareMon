@@ -25,12 +25,12 @@ import {
 import { bankAccountFormSchema } from "../schemas";
 import type { BankAccountFormValues } from "../schemas";
 import type { BankAccountResponse } from "../api/types";
-import type { VietqrBank } from "../api/vietqrDirectoryApi";
+import type { Bank } from "../api/banksApi";
 import {
   useCreateBankAccount,
   useUpdateBankAccount,
 } from "../hooks/useBankAccounts";
-import { useVietqrBanks } from "../hooks/useVietqrBanks";
+import { useBanks } from "../hooks/useBanks";
 import { buildBankOptions, makeRenderBankOption } from "./bankOptions";
 
 export type BankAccountFormDialogProps = {
@@ -75,7 +75,7 @@ export function BankAccountFormDialog({
   const [formError, setFormError] = useState<string | null>(null);
   const [gateMessage, setGateMessage] = useState<string | null>(null);
 
-  const banks = useVietqrBanks();
+  const banks = useBanks();
   const renderBankOption = makeRenderBankOption(t);
 
   const {
@@ -177,7 +177,7 @@ export function BankAccountFormDialog({
                 const known =
                   !field.value ||
                   baseOptions.some((o) => o.value === field.value);
-                const options: ComboboxOption<VietqrBank>[] = known
+                const options: ComboboxOption<Bank>[] = known
                   ? baseOptions
                   : [
                       {
@@ -188,7 +188,7 @@ export function BankAccountFormDialog({
                       ...baseOptions,
                     ];
                 return (
-                  <Combobox<VietqrBank>
+                  <Combobox<Bank>
                     label={t("wallet:form.bankPicker.label")}
                     placeholder={t("wallet:form.bankPicker.placeholder")}
                     searchPlaceholder={t(

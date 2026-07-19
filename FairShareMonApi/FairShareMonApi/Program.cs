@@ -89,6 +89,17 @@ builder.Services.RegisterDecorators(builder.Configuration, typeof(Program).Assem
 builder.Services.AddAutoMapper(typeof(Program).Assembly);
 builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly);
 
+// Bank directory + QR content provider (planning/bank-directory-provider.md). Standard .NET wiring
+// (Decision 3), NOT the DiDecoration [HttpClientService]/[Option] scanners: the in-process memory cache
+// for the 24h bank directory, the Banks options section, and the typed VietQR HttpClient (the repo's
+// first outbound HTTP call - short timeout so an outage fails fast into the fallback/local path).
+builder.Services.AddMemoryCache();
+builder.Services.Configure<FairShareMonApi.Models.Banks.BanksOptions>(
+    builder.Configuration.GetSection(FairShareMonApi.Models.Banks.BanksOptions.SectionName));
+builder.Services
+    .AddHttpClient<FairShareMonApi.Services.Api.Banks.VietQrApiClient>(client =>
+        client.Timeout = TimeSpan.FromSeconds(10));
+
 // API versioning: routes are api/v{version}/[controller].
 builder.Services
     .AddApiVersioning(options =>

@@ -5,6 +5,7 @@ using FairShareMonApi.Exceptions;
 using FairShareMonApi.Models.Expenses;
 using FairShareMonApi.Models.Stats;
 using FairShareMonApi.Repositories;
+using FairShareMonApi.Services.Api.Banks;
 using FairShareMonApi.Services.Api.Expenses;
 using FairShareMonApi.Services.Api.Stats;
 using FairShareMonApi.Services.Api.Wallet;
@@ -36,7 +37,9 @@ public class WalletQrServiceTests
     private readonly FakeTierService _tier = new();
 
     private WalletQrService CreateService() =>
-        new(_accounts, _expenses, _stats, _tier, new VietQrPayloadBuilder(), _images);
+        new(_accounts, _expenses, _stats, _tier,
+            new StubQrContentProviderResolver(new LocalQrContentProvider(new VietQrPayloadBuilder())),
+            _images);
 
     private BankAccount AddDefaultAccount(string bin = "970436", string number = "0123456789")
     {
@@ -274,6 +277,13 @@ public class WalletQrServiceTests
     }
 
     // ---- Fakes -----------------------------------------------------------------------------------
+
+    // Resolves to a single QR content provider (the Local one over the real VietQrPayloadBuilder), so the
+    // existing byte-for-byte payload assertions are preserved after WalletQrService moved onto the resolver.
+    private sealed class StubQrContentProviderResolver(IQrContentProvider provider) : IQrContentProviderResolver
+    {
+        public IQrContentProvider Resolve() => provider;
+    }
 
     private sealed class FakeBankAccountRepository : IBankAccountRepository
     {

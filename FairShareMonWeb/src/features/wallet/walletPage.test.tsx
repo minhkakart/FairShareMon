@@ -172,8 +172,8 @@ describe("WalletPage premium mutations", () => {
 
     await user.click(screen.getByRole("button", { name: "Thêm tài khoản" }));
     const dialog = await screen.findByRole("dialog");
-    // Pick a bank via the searchable picker — MBBank (970422) is in the MSW
-    // VietQR directory + the snapshot, so the pick→store→row round-trip resolves.
+    // Pick a bank via the searchable picker — MBBank (970422) is served by the
+    // MSW `/v1/banks` directory handler, so the pick→store→row round-trip resolves.
     await user.click(within(dialog).getByRole("button", { name: /Ngân hàng/ }));
     await user.type(await within(dialog).findByRole("combobox"), "mbbank");
     await user.click(await within(dialog).findByRole("option", { name: /MBBank/ }));
