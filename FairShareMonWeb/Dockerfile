@@ -57,6 +57,11 @@ server {
     location = /index.html {
         add_header Cache-Control "no-cache";
     }
+
+    # PWA manifest — force the correct content-type regardless of mime.types.
+    location = /manifest.webmanifest {
+        default_type application/manifest+json;
+    }
 }
 NGINX
 

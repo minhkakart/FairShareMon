@@ -1,0 +1,17 @@
+{
+  "name": "FairShareMon",
+  "short_name": "FairShareMon",
+  "description": "Sổ ghi nợ chi tiêu",
+  "lang": "vi",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#863bff",
+  "background_color": "#ffffff",
+  "icons": [
+    { "src": "/pwa-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/pwa-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/maskable-icon-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
