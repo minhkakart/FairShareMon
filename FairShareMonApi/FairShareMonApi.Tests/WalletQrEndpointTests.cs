@@ -15,12 +15,12 @@ namespace FairShareMonApi.Tests;
 /// End-to-end HTTP tests for the QR routes <c>GET api/v1/expenses/{uuid}/qr</c> and
 /// <c>GET api/v1/events/{uuid}/qr</c> via WebApplicationFactory (real MariaDB/Redis - skippable).
 /// Proves the M8 file-response bypass: the success path streams RAW PNG bytes (magic 89 50 4E 47), NOT
-/// an ApiResult envelope; <c>?format=payload</c> returns a wrapped VietQR string whose CRC re-validates
-/// (independent check) and whose amount equals the expense total; the event route returns the composite
-/// PNG (attachment) for a closed event with debtors; and the error/edge paths return the wrapped
-/// envelope with the right codes (12001 no account, 12002 open event, 12003 nobody owes, 6000/9000
-/// resource-owned, 401 anonymous). Note: account resolution precedes the resource check, so foreign-
-/// resource tests give the requester their own account (matching the shipped behaviour).
+/// an ApiResult envelope; both routes return the composite PNG (attachment) - the expense billing one QR
+/// per still-owing member (an unsettled, non-zero share owed by a non-payer), the event one per
+/// negative-balance member; and the error/edge paths return the wrapped envelope with the right codes
+/// (12001 no account, 12002 open event, 12003 nobody owes, 6000/9000 resource-owned, 401 anonymous).
+/// Note: account resolution precedes the resource check, so foreign-resource tests give the requester
+/// their own account (matching the shipped behaviour).
 /// </summary>
 [Collection("AuthIntegration")]
 public class WalletQrEndpointTests(WebApplicationFactory<Program> factory, DatabaseFixture fixture)
@@ -55,6 +55,8 @@ public class WalletQrEndpointTests(WebApplicationFactory<Program> factory, Datab
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
+    /// <summary>An expense Bình paid in full for An: An (non-payer) owes the whole total, Bình 0đ - so the
+    /// per-member QR bills exactly one member (An).</summary>
     private async Task<string> CreateSimpleExpenseUuidAsync(HttpClient client, decimal total = 500_000m)
     {
         var an = await OwnerRepUuidAsync(client);
@@ -66,9 +68,24 @@ public class WalletQrEndpointTests(WebApplicationFactory<Program> factory, Datab
             payerMemberUuid = binh,
             shares = new[]
             {
-                new { memberUuid = an, amount = 0m },
-                new { memberUuid = binh, amount = total }
+                new { memberUuid = an, amount = total },
+                new { memberUuid = binh, amount = 0m }
             }
+        });
+        return Uuid(data);
+    }
+
+    /// <summary>An expense where nobody owes: Bình paid and holds the only non-zero share (the auto-added
+    /// 0đ owner-rep share isn't billable) - the per-member QR must report 12003.</summary>
+    private async Task<string> CreateNoDebtorExpenseUuidAsync(HttpClient client, decimal total = 500_000m)
+    {
+        var binh = await CreateMemberAsync(client, "Bình");
+        var data = await CreateExpenseAsync(client, new
+        {
+            name = "Ăn tối",
+            expenseTime = Day15Noon,
+            payerMemberUuid = binh,
+            shares = new[] { new { memberUuid = binh, amount = total } }
         });
         return Uuid(data);
     }
@@ -115,25 +132,16 @@ public class WalletQrEndpointTests(WebApplicationFactory<Program> factory, Datab
     }
 
     [SkippableFact]
-    public async Task ExpenseQr_FormatPayload_Returns200JsonVietQrStringWithValidCrcAndAmount()
+    public async Task ExpenseQr_NobodyOwes_Returns400Code12003()
     {
         using var client = await CreatePremiumClientAsync();
         await CreateBankAccountAsync(client);
-        var expense = await CreateSimpleExpenseUuidAsync(client, total: 500_000m);
+        var expense = await CreateNoDebtorExpenseUuidAsync(client);
 
-        using var response = await client.GetAsync($"api/v1/expenses/{expense}/qr?format=payload");
+        using var response = await client.GetAsync($"api/v1/expenses/{expense}/qr");
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Contains("json", response.Content.Headers.ContentType!.ToString(), StringComparison.OrdinalIgnoreCase);
-
-        using var envelope = await ReadEnvelopeAsync(response);
-        Assert.True(envelope.RootElement.GetProperty("isSuccess").GetBoolean());
-        var payload = envelope.RootElement.GetProperty("data").GetString()!;
-
-        // CRC re-validates with an independent implementation.
-        Assert.Equal(IndependentCrc16CcittFalse(payload[..^4]).ToString("X4"), payload[^4..]);
-        // Amount (field 54) equals the expense total.
-        Assert.Equal("500000", ParseTlv(payload)["54"]);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        AssertErrorEnvelope(await ReadEnvelopeAsync(response), ErrorCodes.NoOutstandingDebtForQr);
     }
 
     // ---- Expense QR: error / edge (wrapped) -------------------------------------------------------
@@ -282,39 +290,6 @@ public class WalletQrEndpointTests(WebApplicationFactory<Program> factory, Datab
     }
 
     // ---- Test-local helpers -----------------------------------------------------------------------
-
-    private static Dictionary<string, string> ParseTlv(string data)
-    {
-        var map = new Dictionary<string, string>();
-        var i = 0;
-        while (i < data.Length)
-        {
-            var id = data.Substring(i, 2);
-            var length = int.Parse(data.Substring(i + 2, 2));
-            map[id] = data.Substring(i + 4, length);
-            i += 4 + length;
-        }
-
-        return map;
-    }
-
-    private static ushort IndependentCrc16CcittFalse(string data)
-    {
-        var table = new ushort[256];
-        for (var n = 0; n < 256; n++)
-        {
-            var entry = (ushort)(n << 8);
-            for (var bit = 0; bit < 8; bit++)
-                entry = (ushort)((entry & 0x8000) != 0 ? (entry << 1) ^ 0x1021 : entry << 1);
-            table[n] = entry;
-        }
-
-        ushort crc = 0xFFFF;
-        foreach (var ch in data)
-            crc = (ushort)((crc << 8) ^ table[((crc >> 8) ^ (byte)ch) & 0xFF]);
-
-        return crc;
-    }
 
     public override async Task DisposeAsync()
     {

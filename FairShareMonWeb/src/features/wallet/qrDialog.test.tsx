@@ -97,7 +97,6 @@ function renderQr(
     kind: QrDialogKind;
     targetUuid: string;
     title: string;
-    amount: number;
     onOpenChange: (open: boolean) => void;
   }> = {},
 ) {
@@ -109,7 +108,6 @@ function renderQr(
       kind={props.kind ?? "expense"}
       targetUuid={props.targetUuid ?? "e-1"}
       title={props.title ?? "Mã QR chuyển khoản"}
-      amount={props.amount}
     />,
     { initialPath: "/expenses/e-1", queryClient },
   );
@@ -141,7 +139,7 @@ describe("QrDialog premium ready", () => {
       http.get("*/api/v1/bank-accounts", () => ok(ACCOUNTS)),
       http.get("*/api/v1/expenses/:uuid/qr", () => pngResponse()),
     );
-    renderQr({ amount: 300000 });
+    renderQr();
 
     const img = await screen.findByRole("img", { name: /VietQR/ });
     // The <img> is sourced from the object URL created off the blob.
@@ -404,6 +402,22 @@ describe("QrDialog error states", () => {
 
     expect(
       await screen.findByText("Không còn ai nợ trong đợt này"),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("img")).not.toBeInTheDocument();
+  });
+
+  it("QrDialog_ExpenseNoDebt12003_ShowsExpenseSpecificAlert", async () => {
+    seedSession("PREMIUM");
+    server.use(
+      http.get("*/api/v1/bank-accounts", () => ok(ACCOUNTS)),
+      http.get("*/api/v1/expenses/:uuid/qr", () =>
+        fail(12003, "Không còn ai nợ trên phiếu này.", 400),
+      ),
+    );
+    renderQr({ kind: "expense", targetUuid: "e-1", title: "Mã QR chuyển khoản" });
+
+    expect(
+      await screen.findByText("Không còn ai nợ trên phiếu này"),
     ).toBeInTheDocument();
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
   });

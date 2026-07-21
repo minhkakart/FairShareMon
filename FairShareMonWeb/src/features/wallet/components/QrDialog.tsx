@@ -10,14 +10,12 @@ import {
   DialogFooter,
   EmptyState,
   ErrorState,
-  Money,
   Select,
   Skeleton,
   UpgradePrompt,
 } from "@/components/ui";
 import { useToast } from "@/app/ToastHost";
 import { ErrorCodes, isApiError } from "@/lib/api/errors";
-import { formatMoneyVnd } from "@/i18n/format";
 import { downloadBlob } from "@/lib/download/downloadBlob";
 import { useCurrentUser } from "@/features/auth/hooks/useAuth";
 import { useBankAccountsQuery } from "../hooks/useBankAccounts";
@@ -37,8 +35,6 @@ export type QrDialogProps = {
   targetUuid: string;
   /** Localized dialog title. */
   title: string;
-  /** Expense total (shown in the account block for the expense QR). */
-  amount?: number;
 };
 
 /**
@@ -62,7 +58,6 @@ export function QrDialog({
   kind,
   targetUuid,
   title,
-  amount,
 }: QrDialogProps) {
   const { t } = useT();
   const toast = useToast();
@@ -166,7 +161,6 @@ export function QrDialog({
             selectedAccount={selectedAccount}
             displayUuid={displayUuid}
             onSelectDestination={setSelectedUuid}
-            amount={amount}
             onRetry={() => void qrQuery.refetch()}
           />
         </div>
@@ -209,7 +203,6 @@ function QrDialogInner({
   selectedAccount,
   displayUuid,
   onSelectDestination,
-  amount,
   onRetry,
 }: {
   kind: QrDialogKind;
@@ -223,7 +216,6 @@ function QrDialogInner({
   selectedAccount?: BankAccountResponse;
   displayUuid?: string;
   onSelectDestination: (uuid: string) => void;
-  amount?: number;
   onRetry: () => void;
 }) {
   const { t } = useT();
@@ -255,11 +247,23 @@ function QrDialogInner({
     );
   }
 
-  // Event: nobody owes (12003) — informational, not an error.
+  // Nobody owes (12003) — informational, not an error. Both kinds can hit this:
+  // an all-settled expense or a fully-cleared event.
   if (errorCode === ErrorCodes.NoOutstandingDebtForQr) {
     return (
-      <Alert tone="info" title={t("wallet:qr.noDebtTitle")}>
-        {t("wallet:qr.noDebtBody")}
+      <Alert
+        tone="info"
+        title={t(
+          kind === "expense"
+            ? "wallet:qr.noDebtTitleExpense"
+            : "wallet:qr.noDebtTitle",
+        )}
+      >
+        {t(
+          kind === "expense"
+            ? "wallet:qr.noDebtBodyExpense"
+            : "wallet:qr.noDebtBody",
+        )}
       </Alert>
     );
   }
@@ -335,14 +339,6 @@ function QrDialogInner({
           <dd className={styles.accountValue}>
             {selectedAccount.accountHolderName}
           </dd>
-          {kind === "expense" && amount != null ? (
-            <>
-              <dt className={styles.accountTerm}>{t("wallet:qr.amount")}</dt>
-              <dd className={styles.accountValue}>
-                <Money amount={amount} size="sm" format={formatMoneyVnd} />
-              </dd>
-            </>
-          ) : null}
         </dl>
       ) : null}
     </>

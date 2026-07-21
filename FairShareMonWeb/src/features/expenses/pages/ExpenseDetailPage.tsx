@@ -250,7 +250,6 @@ function DetailView({ expense }: { expense: ExpenseResponse }) {
         kind="expense"
         targetUuid={expense.uuid}
         title={t("wallet:qr.expenseTitle")}
-        amount={expense.total}
       />
     </Stack>
   );

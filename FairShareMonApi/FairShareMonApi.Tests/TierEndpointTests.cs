@@ -336,9 +336,18 @@ public class TierLimitEndpointTests(TierLimitWebApplicationFactory factory, Data
             new { bankBin = "970436", bankName = "Vietcombank", accountNumber = "0123456789", accountHolderName = "Nguyen Van A" }))
             Assert.Equal(HttpStatusCode.OK, create.StatusCode); // Premium wallet mutation allowed
 
-        var owner = await OwnerRepUuidAsync(client);
+        // Bình (non-payer) holds the billable share so the per-member QR has someone to bill: the payer
+        // defaults to the owner-rep, whose own share is never billed.
+        string binh;
+        using (var member = await PostMemberAsync(client, "Bình"))
+        {
+            Assert.Equal(HttpStatusCode.OK, member.StatusCode);
+            using var env = await ReadEnvelopeAsync(member);
+            binh = env.RootElement.GetProperty("data").GetProperty("uuid").GetString()!;
+        }
+
         string expenseUuid;
-        using (var expense = await PostExpenseAsync(client, owner, ThisMonth))
+        using (var expense = await PostExpenseAsync(client, binh, ThisMonth))
         {
             Assert.Equal(HttpStatusCode.OK, expense.StatusCode);
             using var env = await ReadEnvelopeAsync(expense);

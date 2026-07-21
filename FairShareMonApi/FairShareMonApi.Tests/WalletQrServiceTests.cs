@@ -4,6 +4,8 @@ using FairShareMonApi.Database.Entities;
 using FairShareMonApi.Exceptions;
 using FairShareMonApi.Models.Banks;
 using FairShareMonApi.Models.Expenses;
+using FairShareMonApi.Models.Members;
+using FairShareMonApi.Models.Shares;
 using FairShareMonApi.Models.Stats;
 using FairShareMonApi.Repositories;
 using FairShareMonApi.Services.Api.Banks;
@@ -19,15 +21,17 @@ namespace FairShareMonApi.Tests;
 /// Pure unit tests for <c>WalletQrService</c> over fakes for the wallet repo / expense service / stats
 /// service plus the REAL <see cref="VietQrPayloadBuilder"/> and a capturing fake image service (no DB).
 /// Proves the orchestration: destination resolution (default vs owned override; miss -> 12000; none ->
-/// 12001); expense QR amount = <c>expense.Total</c>; <c>format=payload</c> returns the raw VietQR string;
-/// event QR closed-only (open -> 12002), nobody-owes -> 12003, else exactly one composite entry per
-/// negative-balance member with amount = |Balance| and a label carrying the member name.
+/// 12001); the expense QR composes one entry per still-owing member (an unsettled, non-zero share owed by
+/// a non-payer member; amount = that share) - all cleared -> 12003; event QR closed-only (open -> 12002),
+/// nobody-owes -> 12003, else exactly one composite entry per negative-balance member with amount =
+/// |Balance| and a label carrying the member name. Neither header carries an amount.
 /// </summary>
 public class WalletQrServiceTests
 {
     private const string UserUuid = "0198a5c2-0000-7000-8000-00000000c001";
     private const string ExpenseUuid = "0198a5c2-0000-7000-8000-0000000e0001";
     private const string EventUuid = "0198a5c2-0000-7000-8000-0000000e0002";
+    private const string PayerUuid = "0198a5c2-0000-7000-8000-0000000e00a0";
 
     private readonly FakeBankAccountRepository _accounts = new();
     private readonly FakeExpensesService _expenses = new();
@@ -73,10 +77,10 @@ public class WalletQrServiceTests
     [Fact]
     public async Task GenerateExpenseQr_NoBankAccount_Throws12001()
     {
-        _expenses.Expense = new ExpenseResponse { Uuid = ExpenseUuid, Name = "Ăn tối", Total = 500_000m };
+        _expenses.Expense = ExpenseWith(Share("Cường", 500_000m));
 
         var exception = await Assert.ThrowsAsync<ErrorException>(() =>
-            CreateService().GenerateExpenseQrAsync(UserUuid, ExpenseUuid, null, null));
+            CreateService().GenerateExpenseQrAsync(UserUuid, ExpenseUuid, null));
 
         Assert.Equal(ErrorCodes.NoBankAccountForQr, exception.Code);
     }
@@ -85,10 +89,10 @@ public class WalletQrServiceTests
     public async Task GenerateExpenseQr_OverrideAccountMiss_Throws12000()
     {
         AddDefaultAccount();
-        _expenses.Expense = new ExpenseResponse { Uuid = ExpenseUuid, Name = "Ăn tối", Total = 500_000m };
+        _expenses.Expense = ExpenseWith(Share("Cường", 500_000m));
 
         var exception = await Assert.ThrowsAsync<ErrorException>(() =>
-            CreateService().GenerateExpenseQrAsync(UserUuid, ExpenseUuid, "no-such-account", null));
+            CreateService().GenerateExpenseQrAsync(UserUuid, ExpenseUuid, "no-such-account"));
 
         Assert.Equal(ErrorCodes.BankAccountNotFound, exception.Code);
     }
@@ -103,11 +107,13 @@ public class WalletQrServiceTests
             AccountHolderName = "Tran Thi B", IsDefault = false
         };
         _accounts.Accounts.Add(other);
-        _expenses.Expense = new ExpenseResponse { Uuid = ExpenseUuid, Name = "Ăn tối", Total = 500_000m };
+        _expenses.Expense = ExpenseWith(Share("Cường", 500_000m));
 
-        var result = await CreateService().GenerateExpenseQrAsync(UserUuid, ExpenseUuid, other.Uuid, "payload");
+        await CreateService().GenerateExpenseQrAsync(UserUuid, ExpenseUuid, other.Uuid);
 
-        var beneficiary = ParseTlv(ParseTlv(ParseTlv(result.Payload!)["38"])["01"]);
+        var items = Assert.Single(_images.CompositeBatches);
+        var item = Assert.Single(items);
+        var beneficiary = ParseTlv(ParseTlv(ParseTlv(item.Payload)["38"])["01"]);
         Assert.Equal("970422", beneficiary["00"]); // override BIN, not the default's
         Assert.Equal("9998887776", beneficiary["01"]);
     }
@@ -115,36 +121,61 @@ public class WalletQrServiceTests
     // ---- Expense QR ------------------------------------------------------------------------------
 
     [Fact]
-    public async Task GenerateExpenseQr_Default_AmountEqualsExpenseTotal()
+    public async Task GenerateExpenseQr_Default_ComposesOneQrPerUnsettledNonPayerShare()
     {
         AddDefaultAccount();
-        _expenses.Expense = new ExpenseResponse { Uuid = ExpenseUuid, Name = "Ăn tối", Total = 750_000m };
+        _expenses.Expense = ExpenseWith(
+            Share("Cường", 500_000m),
+            Share("Dũng", 250_000m));
 
-        var result = await CreateService().GenerateExpenseQrAsync(UserUuid, ExpenseUuid, null, null);
+        var result = await CreateService().GenerateExpenseQrAsync(UserUuid, ExpenseUuid, null);
 
-        Assert.False(result.IsPayload);
-        Assert.NotNull(result.Image);
-        Assert.Equal("image/png", result.Image!.ContentType);
-        Assert.Contains(ExpenseUuid, result.Image.FileName);
+        Assert.Equal("image/png", result.ContentType);
+        Assert.Contains(ExpenseUuid, result.FileName);
 
-        // The single rendered payload carries amount = the expense total.
-        var payload = Assert.Single(_images.SinglePayloads);
-        Assert.Equal("750000", ParseTlv(payload)["54"]);
+        var items = Assert.Single(_images.CompositeBatches); // one composite call
+        Assert.Equal(2, items.Count);                        // one per billable share
+
+        // Amount per member = their share; label carries the member name.
+        var cuong = items.Single(item => item.Label.Contains("Cường"));
+        Assert.Equal("500000", ParseTlv(cuong.Payload)["54"]);
+
+        var dung = items.Single(item => item.Label.Contains("Dũng"));
+        Assert.Equal("250000", ParseTlv(dung.Payload)["54"]);
     }
 
     [Fact]
-    public async Task GenerateExpenseQr_FormatPayload_ReturnsRawVietQrStringWithoutRendering()
+    public async Task GenerateExpenseQr_ExcludesSettledZeroAndPayerOwnShares()
+    {
+        // Only Cường's unsettled, non-zero, non-payer share is billed: the settled share, the 0đ share,
+        // and the payer's own share all drop out (mirrors the event's "still owing" filter, per-member).
+        AddDefaultAccount();
+        _expenses.Expense = ExpenseWith(
+            Share("Cường", 500_000m),                // billed
+            Share("Dũng", 250_000m, settled: true),  // settled -> excluded
+            Share("Én", 0m),                          // zero -> excluded
+            PayerShare(300_000m));                    // payer's own share -> excluded
+
+        await CreateService().GenerateExpenseQrAsync(UserUuid, ExpenseUuid, null);
+
+        var items = Assert.Single(_images.CompositeBatches);
+        var only = Assert.Single(items);
+        Assert.Contains("Cường", only.Label);
+        Assert.Equal("500000", ParseTlv(only.Payload)["54"]);
+    }
+
+    [Fact]
+    public async Task GenerateExpenseQr_AllSharesSettledOrPayerOnly_Throws12003()
     {
         AddDefaultAccount();
-        _expenses.Expense = new ExpenseResponse { Uuid = ExpenseUuid, Name = "Ăn tối", Total = 500_000m };
+        _expenses.Expense = ExpenseWith(
+            Share("Cường", 500_000m, settled: true), // settled -> excluded
+            PayerShare(300_000m));                    // payer's own -> excluded
 
-        var result = await CreateService().GenerateExpenseQrAsync(UserUuid, ExpenseUuid, null, "payload");
+        var exception = await Assert.ThrowsAsync<ErrorException>(() =>
+            CreateService().GenerateExpenseQrAsync(UserUuid, ExpenseUuid, null));
 
-        Assert.True(result.IsPayload);
-        Assert.Null(result.Image);
-        Assert.StartsWith("0002010102", result.Payload); // EMVCo format + dynamic point-of-initiation
-        Assert.Empty(_images.SinglePayloads);            // no image was rendered
-        Assert.Equal("500000", ParseTlv(result.Payload!)["54"]);
+        Assert.Equal(ErrorCodes.NoOutstandingDebtForQr, exception.Code);
     }
 
     [Fact]
@@ -154,7 +185,7 @@ public class WalletQrServiceTests
         _expenses.ThrowNotFound = true;
 
         var exception = await Assert.ThrowsAsync<ErrorException>(() =>
-            CreateService().GenerateExpenseQrAsync(UserUuid, ExpenseUuid, null, null));
+            CreateService().GenerateExpenseQrAsync(UserUuid, ExpenseUuid, null));
 
         Assert.Equal(ErrorCodes.ExpenseNotFound, exception.Code);
     }
@@ -291,33 +322,21 @@ public class WalletQrServiceTests
     // ---- QR image header (bank info + title; amount on the expense header only) -------------------
 
     [Fact]
-    public async Task GenerateExpenseQr_Image_HeaderCarriesTitleBrandedBankHolderNumberAndAmount()
+    public async Task GenerateExpenseQr_Image_HeaderCarriesTitleBrandedBankHolderNumberAndNoAmount()
     {
         AddDefaultAccount(bin: "970436", number: "0123456789"); // BankName "Vietcombank", holder "Nguyen Van A"
-        _expenses.Expense = new ExpenseResponse { Uuid = ExpenseUuid, Name = "Ăn tối", Total = 750_000m };
+        _expenses.Expense = ExpenseWith(Share("Cường", 500_000m));
 
-        await CreateService().GenerateExpenseQrAsync(UserUuid, ExpenseUuid, null, null);
+        await CreateService().GenerateExpenseQrAsync(UserUuid, ExpenseUuid, null);
 
-        var header = Assert.Single(_images.SingleHeaders);
+        var header = Assert.Single(_images.CompositeHeaders);
         Assert.Equal("Ăn tối", header.Title);                 // title = expense name
         Assert.Equal("Vietcombank", header.BankName);         // branded directory ShortName by BIN
         Assert.Equal("Nguyen Van A", header.AccountHolderName);
         Assert.Equal("0123456789", header.AccountNumber);
-        // Expense header shows the amount = FormatMoney(expense.Total).
-        Assert.NotNull(header.AmountLabel);
-        Assert.Equal("750.000đ", header.AmountText);
-    }
-
-    [Fact]
-    public async Task GenerateExpenseQr_FormatPayload_BuildsNoHeader()
-    {
-        AddDefaultAccount();
-        _expenses.Expense = new ExpenseResponse { Uuid = ExpenseUuid, Name = "Ăn tối", Total = 500_000m };
-
-        await CreateService().GenerateExpenseQrAsync(UserUuid, ExpenseUuid, null, "payload");
-
-        // The header is built only on the image path (after the payload short-circuit): no header captured.
-        Assert.Empty(_images.SingleHeaders);
+        // Expense header omits the amount (per-member amounts live under each member's QR).
+        Assert.Null(header.AmountLabel);
+        Assert.Null(header.AmountText);
     }
 
     [Fact]
@@ -350,11 +369,11 @@ public class WalletQrServiceTests
             AccountHolderName = "Nguyen Van A", IsDefault = true
         };
         _accounts.Accounts.Add(account);
-        _expenses.Expense = new ExpenseResponse { Uuid = ExpenseUuid, Name = "Ăn tối", Total = 100_000m };
+        _expenses.Expense = ExpenseWith(Share("Cường", 100_000m));
 
-        await CreateService().GenerateExpenseQrAsync(UserUuid, ExpenseUuid, null, null);
+        await CreateService().GenerateExpenseQrAsync(UserUuid, ExpenseUuid, null);
 
-        var header = Assert.Single(_images.SingleHeaders);
+        var header = Assert.Single(_images.CompositeHeaders);
         Assert.Equal("Vietcombank", header.BankName); // ShortName, not "Ngoai Thuong (saved)"
     }
 
@@ -368,11 +387,11 @@ public class WalletQrServiceTests
             AccountHolderName = "Tran Thi B", IsDefault = true
         };
         _accounts.Accounts.Add(account);
-        _expenses.Expense = new ExpenseResponse { Uuid = ExpenseUuid, Name = "Ăn tối", Total = 100_000m };
+        _expenses.Expense = ExpenseWith(Share("Cường", 100_000m));
 
-        await CreateService().GenerateExpenseQrAsync(UserUuid, ExpenseUuid, null, null);
+        await CreateService().GenerateExpenseQrAsync(UserUuid, ExpenseUuid, null);
 
-        var header = Assert.Single(_images.SingleHeaders);
+        var header = Assert.Single(_images.CompositeHeaders);
         Assert.Equal("My Saved Bank", header.BankName);
     }
 
@@ -391,11 +410,11 @@ public class WalletQrServiceTests
             AccountHolderName = "Le Van C", IsDefault = true
         };
         _accounts.Accounts.Add(account);
-        _expenses.Expense = new ExpenseResponse { Uuid = ExpenseUuid, Name = "Ăn tối", Total = 100_000m };
+        _expenses.Expense = ExpenseWith(Share("Cường", 100_000m));
 
-        await CreateService().GenerateExpenseQrAsync(UserUuid, ExpenseUuid, null, null);
+        await CreateService().GenerateExpenseQrAsync(UserUuid, ExpenseUuid, null);
 
-        var header = Assert.Single(_images.SingleHeaders);
+        var header = Assert.Single(_images.CompositeHeaders);
         Assert.Equal("Ngân hàng Đầy Đủ", header.BankName); // Name, not "Saved Name"
     }
 
@@ -409,7 +428,7 @@ public class WalletQrServiceTests
         _tier.PremiumFeatureCode = ErrorCodes.PremiumFeatureRequired;
 
         var exception = await Assert.ThrowsAsync<ErrorException>(() =>
-            CreateService().GenerateExpenseQrAsync(UserUuid, ExpenseUuid, null, null));
+            CreateService().GenerateExpenseQrAsync(UserUuid, ExpenseUuid, null));
 
         Assert.Equal(ErrorCodes.PremiumFeatureRequired, exception.Code);
     }
@@ -424,6 +443,33 @@ public class WalletQrServiceTests
 
         Assert.Equal(ErrorCodes.PremiumFeatureRequired, exception.Code);
     }
+
+    // An expense paid by "An" (PayerUuid); the passed shares are the debtor shares. Total is the SUM.
+    private static ExpenseResponse ExpenseWith(params ShareResponse[] shares) =>
+        new()
+        {
+            Uuid = ExpenseUuid, Name = "Ăn tối",
+            Payer = new MemberResponse { Uuid = PayerUuid, Name = "An" },
+            Total = shares.Sum(share => share.Amount), Shares = shares
+        };
+
+    // A share owed by a distinct (non-payer) member; unsettled unless stated otherwise.
+    private static ShareResponse Share(string name, decimal amount, bool settled = false) =>
+        new()
+        {
+            Uuid = Guid.NewGuid().ToString(),
+            Member = new MemberResponse { Uuid = Guid.NewGuid().ToString(), Name = name },
+            Amount = amount, IsSettled = settled
+        };
+
+    // A share owed by the payer themselves - the QR must exclude it (the payer never transfers to self).
+    private static ShareResponse PayerShare(decimal amount) =>
+        new()
+        {
+            Uuid = Guid.NewGuid().ToString(),
+            Member = new MemberResponse { Uuid = PayerUuid, Name = "An" },
+            Amount = amount
+        };
 
     // Mirrors the StatsService overlay derivation (settled-per-member OQ8a): an unsettled owing member's
     // outstanding is -balance, otherwise 0. The event QR bills on Outstanding > 0 (OQ13a).
