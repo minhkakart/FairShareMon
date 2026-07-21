@@ -146,6 +146,19 @@ public class ExpensesController(IExpensesService expensesService, ISharesService
         return ApiResult.SuccessMessage(localizer[MessageKeys.Success.ShareDeleted].Value);
     }
 
+    [HttpPut("{uuid}/shares/{shareUuid}/settled")]
+    [SwaggerOperation(
+        Summary = "Cập nhật trạng thái đã trả của phần gánh",
+        Description = "Đánh dấu hoặc bỏ đánh dấu một phần gánh là đã trả (đã trả theo từng thành viên - §6). Đây là metadata thanh toán, không thay đổi số tiền và không ghi vào nhật ký thay đổi. Cho phép cả khi đợt đã chốt (ngoại lệ §4.4). Trạng thái đã trả của cả phiếu được đồng bộ lại theo các phần gánh.")]
+    [SwaggerResponse(StatusCodes.Status200OK, "Đã cập nhật trạng thái đã trả của phần gánh.", typeof(ApiResult))]
+    [SwaggerResponse(StatusCodes.Status401Unauthorized, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", typeof(ApiResult))]
+    [SwaggerResponse(StatusCodes.Status404NotFound, "Không tìm thấy phần gánh hoặc phiếu chi tiêu.", typeof(ApiResult))]
+    public async Task<IActionResult> SetShareSettledAsync([FromRoute] string uuid, [FromRoute] string shareUuid, [FromBody] SetSettledRequest request, CancellationToken cancellationToken)
+    {
+        await sharesService.SetSettledAsync(AuthenticatedUser.Id, uuid, shareUuid, request, cancellationToken);
+        return ApiResult.SuccessMessage(localizer[MessageKeys.Success.ShareSettledUpdated].Value);
+    }
+
     [HttpGet("{uuid}/export")]
     [Produces("text/csv", "application/json")]
     [SwaggerOperation(

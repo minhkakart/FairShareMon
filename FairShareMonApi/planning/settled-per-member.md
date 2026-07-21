@@ -656,9 +656,112 @@ message keys.
   Implementation Plan / endpoint tables / DTO section were already synced to option (a). No open questions
   remain — implementation can start.
 
+### 2026-07-21 (implementation)
+
+- Started implementation on branch `feat/settled-per-member` (all 15 OQs locked at option (a)).
+- Environment note: the GitNexus MCP tools were not connected in this session, so `gitnexus_impact` /
+  `gitnexus_detect_changes` could not be run; performed manual upstream impact analysis (grep of callers)
+  on every modified symbol instead (see Impact Analysis / report). No HIGH/CRITICAL blockers found — all
+  edits are additive (new columns/table/DTO fields, one new repo, two new routes) or localized behavior
+  changes already scoped by the doc (expense-settled cascade; event QR outstanding filter).
+- `dotnet-ef` was absent; created `.config/dotnet-tools.json` (local tool manifest) pinning `dotnet-ef`
+  8.0.28 to author the migration offline via the design-time factory (MariaDB 11.7.2). .NET 8 SDK 8.0.414
+  (matches `global.json`).
+
+- Implemented Steps 1-8 in order. Entities (`Share` + new `EventMemberSettlement` state row), migration
+  `AddPerMemberSettlement` (alter `shares` + create `event_member_settlements` + share backfill SQL),
+  15xxx reservation + 2 success message keys (both resx), repositories (`ShareRepository.SetSettledAsync`
+  with reconcile, `ExpenseRepository.SetSettledAsync` cascade, new `EventMemberSettlementRepository`,
+  `StatsRepository` overlay load), aggregate/DTO additions, services + mappings (overlay computed once in
+  `StatsService`), the two new controller routes, and the event-QR `Outstanding > 0` filter.
+- Introduced `Repositories/SettlementReconciler.cs` (internal static) as the single source for the
+  "billable" predicate + reconcile/cascade, shared by the per-share and whole-expense write paths so they
+  cannot drift. (Factoring detail; not a behavior change.)
+- **Deviation from the plan (recorded):** did NOT add `IEventMemberSettlementRepository.GetByEventAsync`.
+  Step 4's `StatsRepository` bullet also specifies loading the settlement flags directly with its own
+  `Query<EventMemberSettlement>()`, which is how the overlay is implemented; a separate `GetByEventAsync`
+  would be unused dead code (repos don't call other repos here). The overlay is fully delivered. Can be
+  added when a second consumer needs it.
+- Kept existing tests green by mechanically updating fakes/anchors for the changed signatures only (new
+  interface members on `IShareRepository`/`IEventsService`, the `MemberBalanceAggregate` positional args,
+  the `EventsService` ctor arg, the MessageKeys count anchor 127->129, and the `WalletQrServiceTests.Row`
+  helper now deriving `Outstanding` like the service does). No new test *logic* authored - the dedicated
+  settled/overlay/QR tests remain the test-engineer's Step 9.
+- `dotnet build .\FairShareMonApi.sln` succeeds (only the pre-existing pinned-AutoMapper NU1903 + one
+  pre-existing test nullability warning). `dotnet test`: 728 passed, 486 skipped (DB-dependent
+  `[SkippableFact]` - MariaDB unreachable in this environment), 0 failed. Migration authored + reviewed;
+  NOT applied to the DB (`database update` is left to orchestrator direction).
+
+### 2026-07-21 (tests)
+
+- Added the Step-9 dedicated test suite (test-engineer). Full run: **739 passed, 522 skipped, 0 failed**
+  (baseline before this work: 728 passed / 486 skipped). The DB-dependent integration + endpoint tests are
+  `[SkippableFact]` and skipped cleanly because MariaDB is unreachable in this environment (same as the
+  implementation run); the 11 new pure-unit tests all pass.
+- **Unit (no DB), +11** — extended the existing service-test classes over their fakes + real
+  AutoMapper/validators:
+  - `SharesServiceTests` (+3): `SetSettledAsync` maps Success (forwards the flag), `ExpenseNotFound`→6000,
+    `ShareNotFound`→7000.
+  - `EventsServiceTests` (+3): `SetMemberSettledAsync` maps Success (forwards the flag),
+    `EventNotFound`→9000, non-participant/foreign `MemberNotFound`→3000.
+  - `StatsServiceTests` (+3): overlay math — `outstanding = -balance` for an uncleared owing member; `0`
+    when that member `isSettled` (with `balance` itself UNCHANGED); `totalOutstanding`/`owingMemberCount`/
+    `settledMemberCount` correct; advanced/owed/balance unperturbed + sum-to-zero preserved (D2 regression).
+  - `WalletQrServiceTests` (+2): a settled owing member (`Outstanding = 0`) is excluded from the composite;
+    all owing members settled → `NoOutstandingDebtForQr` (12003).
+- **Integration (real MariaDB, `[SkippableFact]`), +25** — new files:
+  - `SettledReconciliationRepositoryTests` (12): `ShareRepository.SetSettledAsync` (toggle sets
+    `is_settled`/`settled_at`; reconcile flips `Expense.IsSettled` true when all billable shares settled and
+    back on unsettle; payer-own + 0đ = settled-by-definition so an all-non-billable expense reconciles to
+    settled; no audit; no amount change; CLOSED-event expense succeeds; another user's expense→`ExpenseNotFound`;
+    unknown share→`ShareNotFound`), `ExpenseRepository.SetSettledAsync` cascade (true marks billable shares
+    only, payer-own untouched; false clears; CLOSED-event OK + no audit; another user→`ExpenseNotFound`),
+    and the migration data-backfill SQL (settled expense's shares become settled with `settled_at =
+    expense.settled_at`; unsettled expense untouched; no Layer B backfill).
+  - `EventMemberSettlementRepositoryTests` (9): participant upsert; re-mark idempotent (single composite-PK
+    row); unmark clears flag+`settled_at`; non-participant/foreign member→`MemberNotFound`; foreign
+    event→`EventNotFound`; CLOSED-event succeeds; soft-deleted participant still markable (§4.7); deleting
+    the event cascades away the settlement rows.
+  - `EventBalanceOverlayRepositoryTests` (4): `StatsRepository.GetEventBalanceAsync` surfaces the Layer B
+    flag per member (default false/null with no row), and marking a member settled leaves advanced/owed/
+    balance byte-identical + sum-to-zero (D2 / M7 OQ2 regression); soft-deleted settled participant still
+    appears with its overlay.
+- **Endpoint (WebApplicationFactory, `[SkippableFact]`), +11** — `SettledPerMemberEndpointTests`: per-share
+  toggle (marks the share + reconciles the whole expense; CLOSED-event OK; another user→404/6000; unknown
+  share→404/7000; anonymous→401), per-member toggle (participant OK; non-participant→404/3000; another
+  user's event→404/9000; anonymous→401), the balance overlay fields + marking a member settled zeroes
+  `outstanding`/`totalOutstanding` without touching advanced/owed/balance (byte-for-byte over the wire), and
+  the event QR billing only uncleared owing members (mark one of two debtors → QR still renders; mark both →
+  400/12003).
+- **Extra edge cases beyond the doc's list** (noted): the whole-expense `SetSettledAsync(false)` clear-path
+  and its no-audit-on-closed-event assertion; the per-member re-mark idempotency (composite-PK upsert, not a
+  duplicate row); the event-delete FK cascade for Layer B rows; the `owingMemberCount`/`settledMemberCount`
+  rollup counts; and an explicit "another user's event resolved before the member" 9000-vs-3000 ordering test.
+- No product bug found; only test code was added. One self-inflicted test-data flaw (a fabricated 2-member
+  aggregate that didn't sum to zero) was caught by the D2 regression assertion and corrected in the test.
+
 ## Final Outcome
 
-(pending)
+Both settled layers shipped per the locked D1/D2 decisions and all 15 OQs at option (a):
+
+- **Migration `AddPerMemberSettlement`** (`20260721044335_AddPerMemberSettlement`): adds `shares.is_settled`
+  (`NOT NULL DEFAULT 0`) + `shares.settled_at` (nullable `datetime(6)`); creates `event_member_settlements`
+  (composite PK `(event_id, member_id)`, `event_id` cascade / `member_id` restrict, utf8mb4/unicode_ci);
+  data step backfills per-share settled from already-settled expenses (no Layer B backfill). Model snapshot
+  updated. Not yet applied.
+- **Layer A (per-share settled):** `PUT /expenses/{uuid}/shares/{shareUuid}/settled` -> `SharesService` ->
+  `ShareRepository.SetSettledAsync`; sets the share flag then reconciles `Expense.IsSettled` over billable
+  shares; no guard (closed-event exception), no audit. The whole-expense toggle now cascades to billable
+  shares. Payer-own + 0đ shares are settled-by-definition (OQ6a).
+- **Layer B (per-member net clearance):** `PUT /events/{uuid}/members/{memberUuid}/settled` -> `EventsService`
+  -> `EventMemberSettlementRepository` upsert; participant-only (else 3000), OPEN or CLOSED, no audit.
+- **Overlay (D2 preserved):** `GET /events/{uuid}/balance` gains `outstanding`/`isSettled`/`settledAt` per
+  row + `totalOutstanding`/`owingMemberCount`/`settledMemberCount`; `advanced`/`owed`/`balance` untouched
+  and still sum to zero. `ShareResponse` gains `isSettled`/`settledAt`.
+- **QR (OQ13a):** the event QR bills only members with `outstanding > 0`.
+
+**Limitation (documented, per OQ9a):** while an event is OPEN a stored Layer B flag can go stale if the
+balance later changes - see Future Improvements (drift-aware Layer B).
 
 ## Future Improvements
 

@@ -4,6 +4,7 @@ using FairShareMonApi.Auth;
 using FairShareMonApi.Constants;
 using FairShareMonApi.Exceptions;
 using FairShareMonApi.Models.Events;
+using FairShareMonApi.Models.Expenses;
 using FairShareMonApi.Repositories;
 using FairShareMonApi.Services.Api.Tiers;
 using FluentValidation;
@@ -30,11 +31,15 @@ public interface IEventsService
     Task CloseAsync(string userUuid, string eventUuid, CancellationToken cancellationToken = default);
 
     Task DeleteAsync(string userUuid, string eventUuid, CancellationToken cancellationToken = default);
+
+    /// <summary>Toggles a participating member's net-clearance flag for the event (Layer B, §3.7/§6); allowed on OPEN and CLOSED events (OQ5a); no audit (OQ10a). Event miss -&gt; 9000, non-participant/foreign member -&gt; 3000.</summary>
+    Task SetMemberSettledAsync(string userUuid, string eventUuid, string memberUuid, SetSettledRequest request, CancellationToken cancellationToken = default);
 }
 
 [ScopedService(typeof(IEventsService))]
 public sealed class EventsService(
     IEventRepository eventRepository,
+    IEventMemberSettlementRepository settlementRepository,
     ITierService tierService,
     IRequestTimeZone requestTimeZone,
     IMapper mapper,
@@ -90,6 +95,21 @@ public sealed class EventsService(
     {
         var status = await eventRepository.DeleteAsync(userUuid, eventUuid, cancellationToken);
         ThrowIfFailed(status, MessageKeys.Error.EventClosedDelete);
+    }
+
+    public async Task SetMemberSettledAsync(string userUuid, string eventUuid, string memberUuid, SetSettledRequest request, CancellationToken cancellationToken = default)
+    {
+        var status = await settlementRepository.SetMemberSettledAsync(userUuid, eventUuid, memberUuid, request.IsSettled, cancellationToken);
+
+        switch (status)
+        {
+            case SettlementWriteStatus.Success:
+                return;
+            case SettlementWriteStatus.MemberNotFound:
+                throw new ErrorException(ErrorCodes.MemberNotFound, MessageKeys.Error.MemberNotFound);
+            default:
+                throw NotFound();
+        }
     }
 
     private async Task<EventResponse> LoadResponseAsync(string userUuid, string eventUuid, CancellationToken cancellationToken)

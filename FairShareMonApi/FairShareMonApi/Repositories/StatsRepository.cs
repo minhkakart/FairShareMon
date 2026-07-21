@@ -85,14 +85,28 @@ public sealed class StatsRepository(AppDbContext dbContext) : BaseRepository(dbC
                 .Select(member => new { member.Id, member.Uuid, member.Name, member.IsOwnerRepresentative, member.IsDeleted })
                 .ToListAsync(ct);
 
+            // Layer B overlay flags (settled-per-member OQ8a): additive load, keyed by member_id. This does
+            // NOT touch advanced/owed/balance above - the balance stays pure (D2 / M7 OQ2).
+            var settlements = await Query<EventMemberSettlement>()
+                .Where(settlement => settlement.EventId == eventId)
+                .Select(settlement => new { settlement.MemberId, settlement.IsSettled, settlement.SettledAt })
+                .ToListAsync(ct);
+            var settledMap = settlements.ToDictionary(row => row.MemberId, row => (row.IsSettled, row.SettledAt));
+
             var rows = members
-                .Select(member => new MemberBalanceAggregate(
-                    member.Uuid,
-                    member.Name,
-                    member.IsOwnerRepresentative,
-                    member.IsDeleted,
-                    advancedMap.GetValueOrDefault(member.Id, 0m),
-                    owedMap.GetValueOrDefault(member.Id, 0m)))
+                .Select(member =>
+                {
+                    var settled = settledMap.TryGetValue(member.Id, out var flag) ? flag : (IsSettled: false, SettledAt: (DateTime?)null);
+                    return new MemberBalanceAggregate(
+                        member.Uuid,
+                        member.Name,
+                        member.IsOwnerRepresentative,
+                        member.IsDeleted,
+                        advancedMap.GetValueOrDefault(member.Id, 0m),
+                        owedMap.GetValueOrDefault(member.Id, 0m),
+                        settled.IsSettled,
+                        settled.SettledAt);
+                })
                 .OrderByDescending(row => row.Advanced - row.Owed)
                 .ThenBy(row => row.MemberName)
                 .ToList();

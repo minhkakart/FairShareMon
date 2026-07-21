@@ -13,13 +13,22 @@ namespace FairShareMonApi.Repositories.Stats;
 /// by construction (OQ1). Member display fields are denormalized so a soft-deleted member still shows
 /// (OQ3/§4.7). Balance = <c>Advanced - Owed</c> is derived at map time.
 /// </summary>
+/// <remarks>
+/// <see cref="IsSettled"/> / <see cref="SettledAt"/> are the Layer B per-member-per-event net-clearance
+/// flags (settled-per-member OQ1a/OQ8a), loaded additively from <c>event_member_settlements</c> - they do
+/// NOT change <see cref="Advanced"/>/<see cref="Owed"/>/balance (D2 / M7 OQ2 preserved). Default
+/// false/null for a participant with no settlement row. The derived <c>outstanding</c> overlay is computed
+/// from these + balance in <c>StatsService</c>, not stored here.
+/// </remarks>
 public sealed record MemberBalanceAggregate(
     string MemberUuid,
     string MemberName,
     bool IsOwnerRepresentative,
     bool IsDeleted,
     decimal Advanced,
-    decimal Owed);
+    decimal Owed,
+    bool IsSettled,
+    DateTime? SettledAt);
 
 /// <summary>Overview totals over the owner's whole ledger in a time range (OQ6): total spending (= sum of shares) and the distinct expense count.</summary>
 public sealed record OverviewAggregate(

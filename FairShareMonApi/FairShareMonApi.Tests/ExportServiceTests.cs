@@ -419,6 +419,7 @@ public class ExportServiceTests
         public Task<EventResponse> UpdateAsync(string userUuid, string eventUuid, UpdateEventRequest request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task CloseAsync(string userUuid, string eventUuid, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task DeleteAsync(string userUuid, string eventUuid, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task SetMemberSettledAsync(string userUuid, string eventUuid, string memberUuid, FairShareMonApi.Models.Expenses.SetSettledRequest request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     }
 
     private sealed class CapturingCsvFormatter : IExportFormatter

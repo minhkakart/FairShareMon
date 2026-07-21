@@ -34,6 +34,8 @@ public partial class AppDbContext : DbContext
 
     public DbSet<ExpenseTag> ExpenseTags => Set<ExpenseTag>();
 
+    public DbSet<EventMemberSettlement> EventMemberSettlements => Set<EventMemberSettlement>();
+
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     public DbSet<BankAccount> BankAccounts => Set<BankAccount>();
@@ -57,6 +59,7 @@ public partial class AppDbContext : DbContext
         Expense.ConfigureModel(modelBuilder);
         Share.ConfigureModel(modelBuilder);
         ExpenseTag.ConfigureModel(modelBuilder);
+        EventMemberSettlement.ConfigureModel(modelBuilder);
         AuditLog.ConfigureModel(modelBuilder);
         BankAccount.ConfigureModel(modelBuilder);
         TierGrant.ConfigureModel(modelBuilder);

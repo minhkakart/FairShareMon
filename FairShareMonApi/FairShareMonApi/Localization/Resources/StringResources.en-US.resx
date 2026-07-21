@@ -270,6 +270,12 @@
   <data name="Success.ShareDeleted" xml:space="preserve">
     <value>The share has been deleted.</value>
   </data>
+  <data name="Success.ShareSettledUpdated" xml:space="preserve">
+    <value>Share settled status updated.</value>
+  </data>
+  <data name="Success.MemberSettledUpdated" xml:space="preserve">
+    <value>Member settled status updated.</value>
+  </data>
   <data name="Success.HealthOk" xml:space="preserve">
     <value>The system is operating normally.</value>
   </data>
