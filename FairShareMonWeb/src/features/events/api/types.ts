@@ -77,6 +77,16 @@ export interface MemberBalanceRow {
   advanced: number;
   owed: number;
   balance: number;
+  /**
+   * Net còn nợ (outstanding) overlay (§6), VND, rendered verbatim (D2 — never
+   * client-derived). = -balance when the member still owes (`balance < 0`) and
+   * is not yet marked settled; = 0 once marked settled or when `balance >= 0`.
+   */
+  outstanding: number;
+  /** Layer B: true if the member's net debt in this event is marked đã trả. */
+  isSettled: boolean;
+  /** Timestamp of the most recent net-clearance mark (null if never marked). */
+  settledAt?: string | null;
 }
 
 /**
@@ -89,4 +99,15 @@ export interface EventBalanceResponse {
   eventName: string;
   isClosed: boolean;
   rows: MemberBalanceRow[];
+  /** Sum of `outstanding` across still-owing members (§6), VND, verbatim. */
+  totalOutstanding: number;
+  /** Count of members still owing (`outstanding > 0`). */
+  owingMemberCount: number;
+  /** Count of owing members (`balance < 0`) marked settled on their net debt. */
+  settledMemberCount: number;
+}
+
+/** `SetSettledRequest` — the per-member net-clearance toggle body (OQ10a). */
+export interface SetSettledRequest {
+  isSettled: boolean;
 }

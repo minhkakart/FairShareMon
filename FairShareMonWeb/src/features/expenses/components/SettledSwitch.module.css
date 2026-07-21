@@ -28,6 +28,12 @@
   color: var(--fs-color-text);
 }
 
+/* Compact variant for dense table cells (per-share / per-member rows). */
+.switchSm {
+  padding: 0.2rem var(--fs-space-2) 0.2rem 0.25rem;
+  font-size: var(--fs-text-xs);
+}
+
 .switchTrack {
   position: relative;
   display: inline-block;

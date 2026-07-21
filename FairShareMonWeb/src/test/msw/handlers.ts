@@ -337,6 +337,9 @@ interface ShareRecord {
   memberUuid: string;
   amount: number;
   note: string | null;
+  /** Layer A (§6): per-share settled (đã trả). Payment metadata only. */
+  isSettled: boolean;
+  settledAt: string | null;
   createdAt: string;
 }
 interface ExpenseRecord {
@@ -467,8 +470,31 @@ function shareResponse(username: string, s: ShareRecord) {
     member: memberResponse(username, s.memberUuid),
     amount: s.amount,
     note: s.note,
+    // Layer A settled overlay (§6) — emitted on every ShareResponse.
+    isSettled: s.isSettled,
+    settledAt: s.settledAt,
     createdAt: s.createdAt,
   };
+}
+
+// --- Per-member net-clearance settled store (Layer B, §6) -----------------
+// username → eventUuid → set of member uuids marked settled on their net debt.
+// Keyed separately from the balance derivation so `computeBalance` reads it as an
+// overlay (D2 — never perturbing advanced/owed/balance).
+const memberSettledByUser = new Map<string, Map<string, Set<string>>>();
+
+function getMemberSettledSet(username: string, eventUuid: string): Set<string> {
+  let byEvent = memberSettledByUser.get(username);
+  if (!byEvent) {
+    byEvent = new Map();
+    memberSettledByUser.set(username, byEvent);
+  }
+  let set = byEvent.get(eventUuid);
+  if (!set) {
+    set = new Set();
+    byEvent.set(eventUuid, set);
+  }
+  return set;
 }
 function expenseTotal(e: ExpenseRecord): number {
   return e.shares.reduce((sum, s) => sum + s.amount, 0);
@@ -641,11 +667,19 @@ function computeBalance(username: string, ev: EventRecord) {
   const ownerRep = getMembers(username).find((m) => m.isOwnerRepresentative);
   if (ownerRep && expenses.length > 0) seen.add(ownerRep.uuid);
 
+  // Layer-B (§6) overlay: which members are marked settled on their net debt.
+  const settledSet = getMemberSettledSet(username, ev.uuid);
+
   const rows = [...seen]
     .map((uuid) => {
       const m = memberByUuid(username, uuid);
       const a = advanced.get(uuid) ?? 0;
       const o = owed.get(uuid) ?? 0;
+      const balance = a - o;
+      const isSettled = settledSet.has(uuid);
+      // outstanding = -balance for an uncleared OWING member (balance < 0), else
+      // 0 (owed/zero members, or once marked settled) — backend OQ8a (net-driven).
+      const outstanding = balance < 0 && !isSettled ? -balance : 0;
       return {
         memberUuid: uuid,
         memberName: m?.name ?? "(không rõ)",
@@ -653,7 +687,10 @@ function computeBalance(username: string, ev: EventRecord) {
         isDeleted: m?.isDeleted ?? false,
         advanced: a,
         owed: o,
-        balance: a - o,
+        balance,
+        outstanding,
+        isSettled,
+        settledAt: null as string | null,
       };
     })
     .sort((x, y) => {
@@ -663,11 +700,21 @@ function computeBalance(username: string, ev: EventRecord) {
       return x.memberName.localeCompare(y.memberName, "vi");
     });
 
+  // Event-level rollup, read verbatim by the UI (D2 — never client-derived there).
+  const totalOutstanding = rows.reduce((sum, r) => sum + r.outstanding, 0);
+  const owingMemberCount = rows.filter((r) => r.outstanding > 0).length;
+  const settledMemberCount = rows.filter(
+    (r) => r.balance < 0 && r.isSettled,
+  ).length;
+
   return {
     eventUuid: ev.uuid,
     eventName: ev.name,
     isClosed: ev.isClosed,
     rows,
+    totalOutstanding,
+    owingMemberCount,
+    settledMemberCount,
   };
 }
 
@@ -1679,6 +1726,8 @@ export const handlers = [
         memberUuid: s.memberUuid,
         amount: s.amount ?? 0,
         note: s.note ?? null,
+        isSettled: false,
+        settledAt: null,
         createdAt: now,
       })),
       eventUuid: resolvedEventUuid,
@@ -1716,10 +1765,45 @@ export const handlers = [
     const expense = getExpenses(username).find((e) => e.uuid === params.uuid);
     if (!expense) return fail(6000, "Không tìm thấy phiếu chi tiêu.", 404);
     const body = (await request.json()) as { isSettled?: boolean };
-    expense.isSettled = Boolean(body.isSettled);
-    expense.settledAt = expense.isSettled ? new Date().toISOString() : null;
+    const next = Boolean(body.isSettled);
+    const now = next ? new Date().toISOString() : null;
+    expense.isSettled = next;
+    expense.settledAt = now;
+    // OQ3a: the whole-expense toggle cascades to every BILLABLE share (not the
+    // payer's own share and amount > 0 — payer/0đ shares are settled-by-definition
+    // and left untouched).
+    for (const s of expense.shares) {
+      const billable = s.memberUuid !== expense.payerMemberUuid && s.amount > 0;
+      if (billable) {
+        s.isSettled = next;
+        s.settledAt = now;
+      }
+    }
     return ok({ message: "Đã cập nhật trạng thái đã trả." });
   }),
+
+  // Per-share settled toggle (Layer A, §6). Allowed on a closed event's expense
+  // (the sole closed-event write). Resource-owned: unknown expense → 6000, unknown
+  // share → 7000. Payer-own / 0đ shares accept the flip as a harmless no-op.
+  http.put(
+    "*/api/v1/expenses/:uuid/shares/:shareUuid/settled",
+    async ({ request, params }) => {
+      const username = usernameFromAuthHeader(
+        request.headers.get("Authorization"),
+      );
+      if (!username) {
+        return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
+      }
+      const expense = getExpenses(username).find((e) => e.uuid === params.uuid);
+      if (!expense) return fail(6000, "Không tìm thấy phiếu chi tiêu.", 404);
+      const share = expense.shares.find((s) => s.uuid === params.shareUuid);
+      if (!share) return fail(7000, "Không tìm thấy phần gánh.", 404);
+      const body = (await request.json()) as { isSettled?: boolean };
+      share.isSettled = Boolean(body.isSettled);
+      share.settledAt = share.isSettled ? new Date().toISOString() : null;
+      return ok({ message: "Đã cập nhật trạng thái đã trả phần gánh." });
+    },
+  ),
 
   http.put("*/api/v1/expenses/:uuid", async ({ request, params }) => {
     const username = usernameFromAuthHeader(
@@ -1839,6 +1923,8 @@ export const handlers = [
       memberUuid: body.memberUuid ?? "",
       amount: body.amount ?? 0,
       note: body.note ?? null,
+      isSettled: false,
+      settledAt: null,
       createdAt: new Date().toISOString(),
     };
     expense.shares.push(share);
@@ -2075,6 +2161,34 @@ export const handlers = [
     if (!ev) return fail(9000, "Không tìm thấy đợt chi tiêu.", 404);
     return ok(computeBalance(username, ev));
   }),
+
+  // Per-member net-clearance settled toggle (Layer B, §6). Participant-only (a
+  // non-participant → 3000); event miss → 9000. Allowed on OPEN and CLOSED events
+  // (the sole closed-event write). No audit.
+  http.put(
+    "*/api/v1/events/:uuid/members/:memberUuid/settled",
+    async ({ request, params }) => {
+      const username = usernameFromAuthHeader(
+        request.headers.get("Authorization"),
+      );
+      if (!username) {
+        return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
+      }
+      const ev = eventByUuid(username, String(params.uuid));
+      if (!ev) return fail(9000, "Không tìm thấy đợt chi tiêu.", 404);
+      const memberUuid = String(params.memberUuid);
+      // Participant = appears in the event's balance rows (payer or share member).
+      const participates = computeBalance(username, ev).rows.some(
+        (r) => r.memberUuid === memberUuid,
+      );
+      if (!participates) return fail(3000, "Không tìm thấy thành viên.", 404);
+      const body = (await request.json()) as { isSettled?: boolean };
+      const set = getMemberSettledSet(username, ev.uuid);
+      if (body.isSettled) set.add(memberUuid);
+      else set.delete(memberUuid);
+      return ok({ message: "Đã cập nhật trạng thái đã trả của thành viên." });
+    },
+  ),
 
   http.get("*/api/v1/events/:uuid/export", ({ request, params }) => {
     const username = usernameFromAuthHeader(
@@ -2431,7 +2545,9 @@ export const handlers = [
     if (!ev) return fail(9000, "Không tìm thấy đợt chi tiêu.", 404);
     if (!ev.isClosed) return fail(12002, "Đợt chưa được chốt.", 400);
     const balance = computeBalance(username, ev);
-    const someoneOwes = balance.rows.some((r) => r.balance < 0);
+    // §6/OQ13a: bill only members who still owe (`outstanding > 0`). Once every
+    // owing member has been marked settled, nobody is billed → 12003 ("đã trả hết").
+    const someoneOwes = balance.rows.some((r) => r.outstanding > 0);
     if (!someoneOwes) {
       return fail(12003, "Không còn ai nợ trong đợt này.", 400);
     }

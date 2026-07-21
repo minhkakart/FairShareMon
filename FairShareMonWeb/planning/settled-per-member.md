@@ -668,9 +668,124 @@ keys; no empty leaves; fixed domain terms (đã trả, còn nợ, phần gánh).
 - Status: **plan finalized; implementation blocked ONLY on the backend being built + shipped.** No
   web code to be written until the extended API is live.
 
+### 2026-07-21 (implementation)
+
+- Backend contract shipped + committed (069c4c8), migration applied to the live dev DB. Confirmed the
+  exact JSON field names against the shipped C# DTOs before wiring: `ShareResponse.isSettled` +
+  `settledAt`; `MemberBalanceRow.outstanding` + `isSettled` + `settledAt`;
+  `EventBalanceResponse.totalOutstanding` + `owingMemberCount` + `settledMemberCount`;
+  `SetSettledRequest.isSettled`. Routes verified in the shipped controllers:
+  `PUT /v1/expenses/{uuid}/shares/{shareUuid}/settled` and
+  `PUT /v1/events/{uuid}/members/{memberUuid}/settled` (event route param is `{uuid}`/`{memberUuid}`).
+- Implemented all 8 steps at the locked option (a) decisions:
+  - **Step 1** types: `ShareResponse` +`isSettled`/`settledAt`; `MemberBalanceRow`
+    +`outstanding`/`isSettled`/`settledAt`; `EventBalanceResponse`
+    +`totalOutstanding`/`owingMemberCount`/`settledMemberCount`; feature-local `SetSettledRequest`
+    (events, OQ10a).
+  - **Step 2** client methods: `expensesApi.setShareSettled`, `eventsApi.setMemberSettled`.
+  - **Step 3** hooks: `useSetShareSettled` (invalidates expenses caches only, OQ7a),
+    `useSetMemberSettled` (invalidates `eventsKeys.balance` + `eventsKeys.all`, OQ7a).
+  - **Step 4** extracted the presentational `SettledSwitch` (OQ1a; ran gitnexus `impact` upstream on
+    `SettledToggle` first — d=1 `DetailView` + `ExpensesTable`, HIGH because shared; refactor kept the
+    public props + behavior identical). Re-implemented `SettledToggle` on it; added `ShareSettledToggle`
+    (per-share) + `MemberSettledToggle` (per-member) wrappers. Moved the switch CSS to
+    `SettledSwitch.module.css` (+ a compact `switchSm` variant) and deleted the orphaned
+    `SettledToggle.module.css`.
+  - **Step 5** `SharesSection`: added the "Đã trả" column; billable shares render `ShareSettledToggle`,
+    payer-own + 0đ shares render muted "Không nợ" and are excluded from the rollup; derived rollup chip
+    (all / partial X/Y / none) in the card header; the column is exempt from the closed-event
+    `disabled` gate (R6).
+  - **Step 6** `EventBalanceTable`: added "Còn nợ" + "Trạng thái" columns (`COLUMN_COUNT` 4→6, skeleton
+    + `TableEmpty` updated), per-member toggle only for `balance < 0` (OQ5a), `TableFoot`
+    `totalOutstanding` cell + summary line read verbatim (D2); the advanced/owed/balance columns +
+    sum-to-zero footer left untouched. Added `CheckIcon`/`ClockIcon` to the events icons.
+  - **Step 7** refined the QR `12003` copy (both locales) to member-level net clearance (OQ8a).
+  - **Step 8** i18n `expenses.shares.*` + `events.balance.*` (both locales, parity kept).
+- Verification: `pnpm lint` clean, `tsc -b` + `pnpm build` succeed. Updated the pre-existing test
+  fixtures (`eventBalanceTable.test.tsx`, `expenseDetailPage.test.tsx`, `sharesSection.test.tsx`) with
+  the now-required DTO fields so the build type-checks (NEW settled tests + MSW handler extension remain
+  the web-test-engineer's task). Drove the running SPA in a real browser (MSW mock backend): Layer A —
+  the "Đã trả" column, per-share toggle, "Không nợ" for payer/0đ, and the rollup chip render correctly;
+  Layer B — the "Còn nợ"/"Trạng thái" columns, the owing-only per-member toggle, the status badge, and
+  the untouched sum-to-zero footer render correctly, no console errors.
+- Environment limitation: the live backend was not reachable from Node/Vite in this environment (a
+  system HTTP proxy makes curl succeed while the Vite dev-proxy and Node hit the loopback directly and
+  get `ECONNREFUSED`/502), so the live toggle round-trip + real `outstanding`/summary values could not
+  be exercised end-to-end here. The MSW mock does not yet emit the overlay fields (test-engineer's next
+  step), so the footer total/summary showed placeholder values in the mock run; the code reads them
+  verbatim from the API and populates against the shipped backend.
+
+### 2026-07-21 (tests — web-test-engineer)
+
+- **MSW handler extension** (`src/test/msw/handlers.ts`, the key task): `ShareRecord`
+  gained `isSettled`/`settledAt` (emitted on every `ShareResponse`; initialized on
+  every share-creation path); the whole-expense `PUT /settled` now **cascades** to
+  billable shares (OQ3a); added a per-event-per-member settled store +
+  `computeBalance` now emits the overlay verbatim (`outstanding` net-driven,
+  `isSettled`, `settledAt`, `totalOutstanding`, `owingMemberCount`,
+  `settledMemberCount`); added the two new PUT routes
+  (`/v1/expenses/:e/shares/:s/settled` → 6000/7000; `/v1/events/:e/members/:m/settled`
+  → 9000/3000); the event QR now bills only `outstanding > 0` (→ 12003 when all
+  cleared). All additive — the 861-test baseline stayed green.
+- **New test files (29 tests, all deterministic — pinned Asia/Ho_Chi_Minh + vi-VN):**
+  - `src/features/expenses/settledToggle.test.tsx` (4) — regression that the shipped
+    whole-expense `SettledToggle` (now on `SettledSwitch`) still renders a
+    color-independent `role="switch"`, PUTs `{isSettled}` to `/settled`, toasts the
+    verbatim outcome both ways, and surfaces a 6000 verbatim.
+  - `src/features/expenses/shareSettled.test.tsx` (11) — Layer A: the "Đã trả" column
+    header; billable shares render an enabled named switch reflecting `isSettled`;
+    click PUTs to the per-share sub-route with `{isSettled:true}` + toasts; 7000 →
+    verbatim toast; payer-own (>0) + 0đ shares show muted "Không nợ" with no toggle
+    and are excluded from the rollup; the rollup chip reads none / partial (X/Y) /
+    all; on a closed event the per-share toggle stays enabled + fires while
+    add/edit/remove are hidden (R6).
+  - `src/features/expenses/expenseSettledReconcile.test.tsx` (2) — through
+    `ExpenseDetailPage` against a mutable store: a per-share toggle reconciles the
+    switch from the detail refetch (OQ6a); the whole-expense toggle cascades to the
+    per-share switch + flips the rollup to "Đã trả toàn bộ".
+  - `src/features/events/memberSettled.test.tsx` (8) — Layer B: overlay renders
+    `outstanding` (vi-VN money, targeted by cell testid), color-independent status,
+    and the X-of-Y + total-còn-nợ summary from the API totals; the toggle appears
+    ONLY for owing members (`balance < 0`, OQ5a); marking a member PUTs to the
+    per-member route + toasts + reconciles `outstanding` → "—" and flips the badge;
+    the advanced/owed/balance columns + sum-to-zero footer are unchanged by the flip
+    (D2 regression); the toggle stays enabled on a CLOSED event (R6); a soft-deleted
+    owing member still renders its overlay + toggle; 3000 → verbatim toast.
+  - `src/features/events/settledQrFilter.test.ts` (4) — end-to-end over the committed
+    handlers (no React): a closed event with two owing members is billed; marking one
+    settled still bills the remainder; all cleared → `12003`; a non-participant
+    per-member mark → `3000`.
+- **Extra coverage beyond the plan's list:** the whole-expense→per-share cascade
+  reconcile via `ExpenseDetailPage`; the D2 "balance + footer unchanged by a settled
+  flip" guard; the per-member `3000` non-participant path; and explicit
+  aria-checked/label color-independence assertions on all three switches.
+- Verification: `pnpm test` **890 passed / 0 failed / 0 skipped** (107 files; +29 over
+  the 861 baseline), `tsc -b` clean, `pnpm lint` clean (no new warnings). No product
+  code changed; no product bug surfaced.
+
 ## Final Outcome
 
-(pending)
+Both layers implemented per the locked decisions and verified to build, lint, and render.
+
+**New files:** `features/expenses/components/SettledSwitch.tsx` (+ `SettledSwitch.module.css`),
+`features/expenses/components/ShareSettledToggle.tsx`,
+`features/events/components/MemberSettledToggle.tsx`.
+
+**Modified:** `features/expenses/api/{types.ts,expensesApi.ts}`, `features/expenses/hooks/useExpenses.ts`,
+`features/expenses/components/{SettledToggle.tsx,SharesSection.tsx,SharesSection.module.css}` (+ deleted
+`SettledToggle.module.css`); `features/events/api/{types.ts,eventsApi.ts}`,
+`features/events/hooks/useEvents.ts`,
+`features/events/components/{EventBalanceTable.tsx,EventBalanceTable.module.css,icons.tsx}`;
+`i18n/locales/{vi-VN,en-US}/{expenses,events,wallet}.json`; test fixtures
+`features/events/eventBalanceTable.test.tsx` +
+`features/expenses/{expenseDetailPage,sharesSection}.test.tsx` (required-field updates only).
+
+No `errors.ts` change, no new route/page, no new dependency. Deviations from the plan: none material —
+the events "Trạng thái" column header needed a `statusColumn` i18n key (the plan named the column but
+not the key); the per-member toggle reuses `statusSettled`/`statusOwing` as its switch labels rather
+than a separate `markSettled` key, and `totalOutstanding` renders as a `<Money>` cell (no standalone
+label), so the plan-enumerated `markSettled`/`totalOutstanding` keys were not added (would be dead
+i18n).
 
 ## Future Improvements
 

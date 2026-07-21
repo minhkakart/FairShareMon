@@ -101,7 +101,7 @@
     "noAccountBody": "Add a bank account to your wallet to generate a transfer QR code.",
     "addAccount": "Add account",
     "noDebtTitle": "Nobody owes anything in this event",
-    "noDebtBody": "Every share has been marked settled, so no settlement QR code is needed.",
+    "noDebtBody": "Every member who owed has been marked settled, so no settlement QR code is needed.",
     "notClosedTitle": "The event isn't closed yet",
     "notClosedBody": "A settlement QR code can only be generated after the event is closed. Close the event and try again.",
     "errorTitle": "Couldn't generate the QR code",

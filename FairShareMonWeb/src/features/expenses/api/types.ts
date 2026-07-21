@@ -18,6 +18,14 @@ export interface ShareResponse {
   /** Whole-VND amount as returned by the API. */
   amount: number;
   note?: string | null;
+  /**
+   * True if this share (phần gánh) has been marked settled (đã trả) — Layer A,
+   * §6. Payment metadata only; it does not change `amount`. The whole-expense
+   * settled toggle cascades to every billable share on the backend (OQ3a).
+   */
+  isSettled: boolean;
+  /** Timestamp of the most recent settled mark (null if never marked). */
+  settledAt?: string | null;
   createdAt: string;
 }
 

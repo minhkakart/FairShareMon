@@ -85,6 +85,7 @@ function makeExpense(overrides: Partial<ExpenseResponse> = {}): ExpenseResponse 
         member: MEMBERS[0],
         amount: 0,
         note: null,
+        isSettled: false,
         createdAt: "2026-07-16T03:00:00+00:00",
       },
       {
@@ -92,6 +93,7 @@ function makeExpense(overrides: Partial<ExpenseResponse> = {}): ExpenseResponse 
         member: MEMBERS[1],
         amount: 300000,
         note: "Cả nhóm",
+        isSettled: false,
         createdAt: "2026-07-16T03:00:00+00:00",
       },
     ],

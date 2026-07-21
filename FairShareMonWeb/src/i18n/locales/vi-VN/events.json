@@ -77,7 +77,15 @@
     "zeroLabel": "đã cân bằng",
     "emptyTitle": "Chưa có phiếu nào trong đợt",
     "emptyBody": "Số dư sẽ xuất hiện khi đợt có phiếu chi tiêu. Gán phiếu để bắt đầu.",
-    "errorTitle": "Không tải được cân đối công nợ"
+    "errorTitle": "Không tải được cân đối công nợ",
+    "outstanding": "Còn nợ",
+    "statusColumn": "Trạng thái",
+    "statusSettled": "Đã trả",
+    "statusOwing": "Còn nợ",
+    "settledAriaNamed": "Trạng thái đã trả của {{name}}",
+    "settledToastOn": "Đã đánh dấu thành viên là đã trả.",
+    "settledToastOff": "Đã bỏ đánh dấu đã trả cho thành viên.",
+    "summary": "Đã trả {{settled}}/{{total}} thành viên · Còn nợ {{amount}}"
   },
   "expensesSection": {
     "title": "Phiếu chi tiêu trong đợt",

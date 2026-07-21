@@ -6,6 +6,7 @@ import { eventsApi } from "../api/eventsApi";
 import type {
   CreateEventRequest,
   EventFilter,
+  SetSettledRequest,
   UpdateEventRequest,
 } from "../api/types";
 
@@ -89,6 +90,31 @@ export function useCloseEvent() {
   return useMutation({
     mutationFn: (uuid: string) => eventsApi.close(uuid),
     onSuccess: (_data, uuid) => invalidateEventAndExpenses(uuid),
+  });
+}
+
+/**
+ * Per-member net-clearance settled toggle (Layer B, OQ7a). Invalidates the event
+ * balance overlay + `eventsKeys.all` (so the summary counts refresh); it does NOT
+ * reach the expenses caches — Layer B does not change expense/share data.
+ */
+export function useSetMemberSettled() {
+  return useMutation({
+    mutationFn: ({
+      eventUuid,
+      memberUuid,
+      body,
+    }: {
+      eventUuid: string;
+      memberUuid: string;
+      body: SetSettledRequest;
+    }) => eventsApi.setMemberSettled(eventUuid, memberUuid, body),
+    onSuccess: (_data, { eventUuid }) => {
+      void queryClient.invalidateQueries({
+        queryKey: eventsKeys.balance(eventUuid),
+      });
+      void queryClient.invalidateQueries({ queryKey: eventsKeys.all });
+    },
   });
 }
 

@@ -56,3 +56,28 @@
   font-weight: var(--fs-weight-regular);
   color: var(--fs-color-text-secondary);
 }
+
+/* Muted placeholder for the "Còn nợ" 0đ cell and the owed/zero status cell. */
+.muted {
+  color: var(--fs-color-text-secondary);
+}
+
+/* §6 overlay status cell — the đã-trả/còn-nợ badge stacked over the per-member
+   toggle so the pair stays legible even when the 6-column table scrolls on
+   narrow widths. */
+.statusCell {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--fs-space-2);
+}
+
+/* The event-level settled summary line in the footer (plain text, verbatim
+   from the API totals). */
+.summary {
+  display: block;
+  font-size: var(--fs-text-sm);
+  font-weight: var(--fs-weight-regular);
+  color: var(--fs-color-text-secondary);
+  overflow-wrap: anywhere;
+}

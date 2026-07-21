@@ -57,6 +57,8 @@ const ROWS: MemberBalanceRow[] = [
     advanced: 0,
     owed: 0,
     balance: 0,
+    outstanding: 0,
+    isSettled: false,
   },
   {
     memberUuid: "m-1",
@@ -66,6 +68,8 @@ const ROWS: MemberBalanceRow[] = [
     advanced: 300000,
     owed: 100000,
     balance: 200000,
+    outstanding: 0,
+    isSettled: false,
   },
   {
     memberUuid: "m-2",
@@ -75,13 +79,28 @@ const ROWS: MemberBalanceRow[] = [
     advanced: 0,
     owed: 200000,
     balance: -200000,
+    outstanding: 200000,
+    isSettled: false,
   },
 ];
 
 function stubBalance(rows: MemberBalanceRow[]) {
+  const totalOutstanding = rows.reduce((s, r) => s + r.outstanding, 0);
+  const owingMemberCount = rows.filter((r) => r.outstanding > 0).length;
+  const settledMemberCount = rows.filter(
+    (r) => r.balance < 0 && r.isSettled,
+  ).length;
   server.use(
     http.get(`*/api/v1/events/${UUID}/balance`, () =>
-      ok({ eventUuid: UUID, eventName: "Đà Lạt", isClosed: false, rows }),
+      ok({
+        eventUuid: UUID,
+        eventName: "Đà Lạt",
+        isClosed: false,
+        rows,
+        totalOutstanding,
+        owingMemberCount,
+        settledMemberCount,
+      }),
     ),
   );
 }

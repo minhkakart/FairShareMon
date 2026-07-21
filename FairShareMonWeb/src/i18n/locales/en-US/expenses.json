@@ -110,7 +110,15 @@
     "remove": "Remove",
     "locked": "locked",
     "readOnly": "read-only",
-    "total": "Total"
+    "total": "Total",
+    "settledLabel": "Settled",
+    "notOwed": "Not owed",
+    "settledAriaNamed": "Settled status of {{name}}'s share",
+    "settledToastOn": "Share marked as settled.",
+    "settledToastOff": "Share marked as unsettled.",
+    "rollupAll": "Fully settled",
+    "rollupPartial": "Partially settled ({{settled}}/{{total}} shares)",
+    "rollupNone": "Not settled"
   },
   "settled": {
     "on": "Settled",

@@ -110,7 +110,15 @@
     "remove": "Xóa",
     "locked": "khóa",
     "readOnly": "chỉ đọc",
-    "total": "Tổng"
+    "total": "Tổng",
+    "settledLabel": "Đã trả",
+    "notOwed": "Không nợ",
+    "settledAriaNamed": "Trạng thái đã trả phần gánh của {{name}}",
+    "settledToastOn": "Đã đánh dấu phần gánh là đã trả.",
+    "settledToastOff": "Đã bỏ đánh dấu đã trả phần gánh.",
+    "rollupAll": "Đã trả toàn bộ",
+    "rollupPartial": "Đã trả một phần ({{settled}}/{{total}} phần)",
+    "rollupNone": "Chưa trả"
   },
   "settled": {
     "on": "Đã trả",
