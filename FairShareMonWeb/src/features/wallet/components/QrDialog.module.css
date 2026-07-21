@@ -27,20 +27,18 @@
 .qrFrame {
   position: relative;
   width: 100%;
-  max-width: 15rem; /* single VietQR — square */
+  max-width: 17rem; /* composite settlement sheet — one QR per still-owing member */
   background: #ffffff;
   border: 1px solid var(--fs-color-border);
   border-radius: var(--fs-radius-lg);
   padding: var(--fs-space-3); /* quiet zone around the code */
   overflow: hidden;
 }
-.qrFrame.expense {
-  aspect-ratio: 1 / 1;
-}
-/* The event composite QR is taller (a stacked settlement sheet). */
+/* Both the expense and the event QR are composite settlement sheets (a stacked
+   column of one QR per still-owing member), so both use the taller aspect. */
+.qrFrame.expense,
 .qrFrame.event {
   aspect-ratio: 3 / 4;
-  max-width: 17rem;
 }
 .qrImage {
   display: block;

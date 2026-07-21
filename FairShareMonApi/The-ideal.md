@@ -119,7 +119,7 @@ Tổng cân bằng của mọi thành viên trong một phạm vi luôn bằng 0
 ### 3.10. Ví & QR chuyển khoản
 
 *   **Ví (wallet):** chủ sổ quản lý danh sách **tài khoản ngân hàng** của mình — thêm / sửa / xóa, đặt đúng một tài khoản làm **mặc định**. Tài khoản mặc định là đích nhận tiền khi tạo mã QR (có thể chọn tài khoản khác lúc tạo).
-*   **QR cho phiếu:** chủ sổ **chủ động tạo** khi cần, mỗi lần tạo ra **một mã QR đại diện cho cả phiếu** với số tiền = tổng tiền phiếu — thành viên quét là chuyển khoản nhanh, khỏi gõ tay số tiền/số tài khoản.
+*   **QR cho phiếu:** chủ sổ **chủ động tạo** khi cần. Hệ thống tạo **một mã QR cho mỗi thành viên còn nợ trên phiếu** (phần gánh chưa đánh dấu đã trả, không tính người trả), số tiền = đúng phần gánh của người đó, rồi gom toàn bộ thành **một ảnh duy nhất** (kèm tên + số tiền từng người) — thành viên quét mã của mình là chuyển khoản nhanh, khỏi gõ tay số tiền/số tài khoản. Ai đã đánh dấu đã trả thì không còn trong mã QR tạo lại; không còn ai nợ thì báo rõ.
 *   **QR cho đợt:** chỉ khả dụng **sau khi đợt đã chốt** (số liệu đã đông cứng). Hệ thống tạo **một mã QR cho mỗi thành viên còn nợ** (cân bằng âm), số tiền = đúng số nợ của người đó, rồi gom toàn bộ thành **một ảnh duy nhất** (kèm tên + số tiền từng người) để chia sẻ cho cả nhóm.
 
 > **UC:** Chốt đợt Đà Lạt xong, An bấm "Tạo QR đợt" → nhận một ảnh gom các mã QR kèm tên và số tiền từng người, gửi vào nhóm chat. Cường quét mã của mình — app ngân hàng điền sẵn 500k và tài khoản mặc định của An; chuyển xong An đánh dấu đã trả.
@@ -158,7 +158,7 @@ Tổng cân bằng của mọi thành viên trong một phạm vi luôn bằng 0
 *   Export: CSV trước mắt, thiết kế mở cho định dạng khác.
 *   Giữ phần gánh 0 đồng của chủ sổ trong mọi phiếu.
 *   Nhãn đã xóa: **giữ liên kết lịch sử như danh mục**; tạo lại trùng tên → kích hoạt lại nhãn cũ.
-*   QR: với **phiếu** — tạo thủ công, một mã đại diện cả phiếu (số tiền = tổng phiếu); với **đợt** — sau khi chốt, một mã mỗi thành viên còn nợ, gom một ảnh.
+*   QR: với **phiếu** — tạo thủ công, một mã mỗi thành viên còn nợ trên phiếu (phần gánh chưa trả, trừ người trả), gom một ảnh; với **đợt** — sau khi chốt, một mã mỗi thành viên còn nợ, gom một ảnh.
 *   Hạng người dùng: nâng từ Free lên Premium **bằng thanh toán**.
 *   Thuật ngữ tiếng Anh (dùng cho entity/bảng/endpoint về sau) chốt 2026-07-10: phiếu = **expense**, phần gánh = **share**, đợt = **event**, ví/tài khoản = **wallet/bank account**, đã trả = **settled**, hạng = **Premium/Free** ("voucher/record/batch/Primary-Regular" bị loại vì lệch nghĩa).
 

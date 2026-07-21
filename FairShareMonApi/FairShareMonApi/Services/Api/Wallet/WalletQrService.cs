@@ -17,19 +17,19 @@ namespace FairShareMonApi.Services.Api.Wallet;
 
 /// <summary>
 /// On-demand VietQR generation (The-ideal.md §3.5/§3.10/§5) - the seam that ties the wallet, the M5
-/// expense total and the M7 per-event balance to the VietQR payload builder and the QR image renderer.
-/// The expense QR encodes one transfer for the whole expense (amount = derived total); the event QR
-/// (closed-only) encodes one transfer per still-owing member (amount = |negative balance|) composited
-/// into a single labelled PNG. All inputs are resolved through resource-owned application services, so
-/// ownership misses surface as their existing 404s (<c>ExpenseNotFound</c> 6000 / <c>EventNotFound</c>
-/// 9000); wallet/QR-specific states use the 12xxx codes. Nothing is persisted (OQ17). No tier gate at
-/// M9 - this service is the single seam a later tier mechanism can gate (OQ14). M10 activates that
-/// seam (OQ5b): both QR operations are Premium-only - a Free caller gets 403 PremiumFeatureRequired
-/// (13003) before anything is resolved.
+/// expense shares and the M7 per-event balance to the VietQR payload builder and the QR image renderer.
+/// Both QR operations encode one transfer per still-owing member composited into a single labelled PNG:
+/// the expense QR bills each unsettled share owed by a non-payer member (amount = that share); the event
+/// QR (closed-only) bills each member with a negative balance (amount = |negative balance|). All inputs
+/// are resolved through resource-owned application services, so ownership misses surface as their existing
+/// 404s (<c>ExpenseNotFound</c> 6000 / <c>EventNotFound</c> 9000); wallet/QR-specific states use the 12xxx
+/// codes (incl. <c>NoOutstandingDebtForQr</c> 12003 when nobody owes / everyone is settled). Nothing is
+/// persisted (OQ17). M10 gate (OQ5b): both QR operations are Premium-only - a Free caller gets 403
+/// PremiumFeatureRequired (13003) before anything is resolved.
 /// </summary>
 public interface IWalletQrService
 {
-    Task<ExpenseQrResult> GenerateExpenseQrAsync(string userUuid, string expenseUuid, string? bankAccountUuid, string? format, CancellationToken cancellationToken = default);
+    Task<QrImageResult> GenerateExpenseQrAsync(string userUuid, string expenseUuid, string? bankAccountUuid, CancellationToken cancellationToken = default);
 
     Task<QrImageResult> GenerateEventQrAsync(string userUuid, string eventUuid, string? bankAccountUuid, CancellationToken cancellationToken = default);
 }
@@ -45,34 +45,46 @@ public sealed class WalletQrService(
     IBankDirectoryService bankDirectory,
     IStringLocalizer<StringResources>? localizer = null) : IWalletQrService
 {
-    private const string PayloadFormat = "payload";
     private const string PngContentType = "image/png";
 
     // DI supplies the localizer; unit-test construction (new WalletQrService(...)) falls back to the shared
     // localizer, which resolves the same resx family and honours the request CurrentUICulture (mirrors TierService).
     private readonly IStringLocalizer<StringResources> _localizer = localizer ?? SharedStringLocalizer.Instance;
 
-    public async Task<ExpenseQrResult> GenerateExpenseQrAsync(string userUuid, string expenseUuid, string? bankAccountUuid, string? format, CancellationToken cancellationToken = default)
+    public async Task<QrImageResult> GenerateExpenseQrAsync(string userUuid, string expenseUuid, string? bankAccountUuid, CancellationToken cancellationToken = default)
     {
         tierService.EnsurePremiumFeature(MessageKeys.Feature.Qr);
 
         var account = await ResolveDestinationAsync(userUuid, bankAccountUuid, cancellationToken);
 
-        // Resource-owned expense (miss -> ExpenseNotFound 6000); Total is the derived SUM(shares) (M5).
+        // Resource-owned expense (miss -> ExpenseNotFound 6000); its shares carry who owes what (M5).
         var expense = await expensesService.GetAsync(userUuid, expenseUuid, cancellationToken);
 
+        // Bill one QR per member who still owes on this expense: an unsettled, non-zero share owed by
+        // someone other than the payer (the payer paid the total and never transfers to themselves; the
+        // 0đ owner-representative share drops out via Amount > 0). The per-member settled flag (Layer A)
+        // is the "who still owes" overlay - regenerating after some members pay bills only the remainder.
+        var billable = expense.Shares
+            .Where(share => !share.IsSettled && share.Amount > 0m && share.Member.Uuid != expense.Payer.Uuid)
+            .ToList();
+        if (billable.Count == 0)
+            throw new ErrorException(ErrorCodes.NoOutstandingDebtForQr, MessageKeys.Error.NoOutstandingDebtForQr);
+
         var provider = qrContentResolver.Resolve();
-        var payload = await provider.BuildContentAsync(
-            new QrContentRequest(account.BankBin, account.AccountNumber, account.AccountHolderName, expense.Total, expense.Name),
-            cancellationToken);
+        var items = new List<QrCompositeItem>(billable.Count);
+        foreach (var share in billable)
+        {
+            var payload = await provider.BuildContentAsync(
+                new QrContentRequest(account.BankBin, account.AccountNumber, account.AccountHolderName, share.Amount, $"{expense.Name} - {share.Member.Name}"),
+                cancellationToken);
+            var label = $"{share.Member.Name}: {FormatMoney(share.Amount)}";
+            items.Add(new QrCompositeItem(label, payload));
+        }
 
-        if (IsPayloadFormat(format))
-            return ExpenseQrResult.FromPayload(payload);
-
-        // Build the header only on the image path so the payload short-circuit does no directory lookup.
-        var header = await BuildHeaderAsync(account, expense.Name, expense.Total, cancellationToken);
-        var image = qrImageService.RenderSingle(payload, header);
-        return ExpenseQrResult.FromImage(new QrImageResult(image, PngContentType, $"expense-qr-{expense.Uuid}.png"));
+        // Expense header carries no amount (per-member amounts stay under each member's QR).
+        var header = await BuildHeaderAsync(account, expense.Name, amount: null, cancellationToken);
+        var image = qrImageService.RenderComposite(items, header);
+        return new QrImageResult(image, PngContentType, $"expense-qr-{expense.Uuid}.png");
     }
 
     public async Task<QrImageResult> GenerateEventQrAsync(string userUuid, string eventUuid, string? bankAccountUuid, CancellationToken cancellationToken = default)
@@ -128,9 +140,6 @@ public sealed class WalletQrService(
         return await bankAccountRepository.GetDefaultAsync(userUuid, cancellationToken)
             ?? throw new ErrorException(ErrorCodes.NoBankAccountForQr, MessageKeys.Error.NoBankAccountForQr);
     }
-
-    private static bool IsPayloadFormat(string? format) =>
-        !string.IsNullOrWhiteSpace(format) && format.Trim().Equals(PayloadFormat, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Builds the QR-image header from the destination account: the branded bank name (VietQR directory
