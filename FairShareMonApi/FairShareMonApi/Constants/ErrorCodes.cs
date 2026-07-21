@@ -163,4 +163,10 @@ public static class ErrorCodes
 
     /// <summary>Login rejected because the account is disabled (HTTP 403).</summary>
     public const int AccountDisabled = 14003;
+
+    // 15xxx - Settled per member (block reserved by planning/settled-per-member.md; the feature is
+    // resource-owned only and needs no new codes - every failure reuses an existing miss code:
+    // ShareNotFound (7000) / ExpenseNotFound (6000) / EventNotFound (9000) / MemberNotFound (3000, also
+    // the non-participant case, settled-per-member OQ12a). No codes are defined yet; this block is
+    // reserved for any future settled-per-member-specific failure state.
 }

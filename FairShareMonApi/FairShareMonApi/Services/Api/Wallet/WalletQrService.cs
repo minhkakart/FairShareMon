@@ -88,8 +88,10 @@ public sealed class WalletQrService(
         if (!balance.IsClosed)
             throw new ErrorException(ErrorCodes.EventNotClosedForQr, MessageKeys.Error.EventNotClosedForQr);
 
-        // A negative per-event balance means the member still owes; its magnitude is the amount (§3.7).
-        var owing = balance.Rows.Where(row => row.Balance < 0m).ToList();
+        // Bill only members who still owe AND have not been marked settled: the derived "outstanding"
+        // overlay (settled-per-member OQ13a). outstanding = -balance for an uncleared owing member, 0
+        // otherwise - so regenerating after some members pay bills only the remainder.
+        var owing = balance.Rows.Where(row => row.Outstanding > 0m).ToList();
         if (owing.Count == 0)
             throw new ErrorException(ErrorCodes.NoOutstandingDebtForQr, MessageKeys.Error.NoOutstandingDebtForQr);
 
@@ -97,7 +99,7 @@ public sealed class WalletQrService(
         var items = new List<QrCompositeItem>(owing.Count);
         foreach (var row in owing)
         {
-            var amount = -row.Balance;
+            var amount = row.Outstanding;
             var payload = await provider.BuildContentAsync(
                 new QrContentRequest(account.BankBin, account.AccountNumber, account.AccountHolderName, amount, $"{balance.EventName} - {row.MemberName}"),
                 cancellationToken);

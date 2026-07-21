@@ -14,7 +14,9 @@ public class StatsProfile : Profile
     public StatsProfile()
     {
         CreateMap<MemberBalanceAggregate, MemberBalanceRow>()
-            .ForMember(dest => dest.Balance, opt => opt.MapFrom(src => src.Advanced - src.Owed));
+            .ForMember(dest => dest.Balance, opt => opt.MapFrom(src => src.Advanced - src.Owed))
+            // Outstanding is the derived Layer B overlay - computed once in StatsService, not here (D2 / OQ8a).
+            .ForMember(dest => dest.Outstanding, opt => opt.Ignore());
 
         CreateMap<CategoryStatAggregate, CategoryStatRow>();
 

@@ -39,12 +39,23 @@ public sealed class StatsService(
 
         var aggregates = await statsRepository.GetEventBalanceAsync(userUuid, evt.Id, cancellationToken);
 
+        var rows = mapper.Map<List<MemberBalanceRow>>(aggregates);
+
+        // Derived "outstanding" overlay (settled-per-member OQ8a), computed here in one place. Layer B net:
+        // a member still owes their net |balance| unless they've been marked settled; a non-negative
+        // balance (they are owed) owes nothing. This never perturbs advanced/owed/balance (D2).
+        foreach (var row in rows)
+            row.Outstanding = row.Balance < 0m && !row.IsSettled ? -row.Balance : 0m;
+
         return new EventBalanceResponse
         {
             EventUuid = evt.Uuid,
             EventName = evt.Name,
             IsClosed = evt.IsClosed,
-            Rows = mapper.Map<IReadOnlyList<MemberBalanceRow>>(aggregates)
+            Rows = rows,
+            TotalOutstanding = rows.Sum(row => row.Outstanding),
+            OwingMemberCount = rows.Count(row => row.Outstanding > 0m),
+            SettledMemberCount = rows.Count(row => row.Balance < 0m && row.IsSettled)
         };
     }
 

@@ -226,6 +226,46 @@ public class WalletQrServiceTests
     }
 
     [Fact]
+    public async Task GenerateEventQr_SettledOwingMember_ExcludedFromComposite()
+    {
+        // Two owing members (negative balance); Cường has cleared his net debt (Layer B), so his
+        // Outstanding is 0 and the QR (billing on Outstanding > 0, OQ13a) must bill only Dũng.
+        AddDefaultAccount();
+        _stats.Balance = new EventBalanceResponse
+        {
+            EventUuid = EventUuid, EventName = "Đà Lạt", IsClosed = true,
+            Rows =
+            [
+                SettledRow("Cường", -500_000m), // owing but settled → excluded
+                Row("Dũng", -125_000m)          // owing, uncleared → included
+            ]
+        };
+
+        var result = await CreateService().GenerateEventQrAsync(UserUuid, EventUuid, null);
+
+        var items = Assert.Single(_images.CompositeBatches);
+        var only = Assert.Single(items);
+        Assert.Contains("Dũng", only.Label);
+        Assert.Equal("125000", ParseTlv(only.Payload)["54"]);
+    }
+
+    [Fact]
+    public async Task GenerateEventQr_AllOwingMembersSettled_Throws12003()
+    {
+        AddDefaultAccount();
+        _stats.Balance = new EventBalanceResponse
+        {
+            EventUuid = EventUuid, EventName = "Đà Lạt", IsClosed = true,
+            Rows = [SettledRow("Cường", -500_000m), SettledRow("Dũng", -125_000m)]
+        };
+
+        var exception = await Assert.ThrowsAsync<ErrorException>(() =>
+            CreateService().GenerateEventQrAsync(UserUuid, EventUuid, null));
+
+        Assert.Equal(ErrorCodes.NoOutstandingDebtForQr, exception.Code); // widened: no UNCLEARED negative balances
+    }
+
+    [Fact]
     public async Task GenerateEventQr_NoBankAccount_Throws12001BeforeBalanceLookup()
     {
         _stats.Balance = new EventBalanceResponse { EventUuid = EventUuid, IsClosed = true, Rows = [Row("Cường", -1m)] };
@@ -385,8 +425,15 @@ public class WalletQrServiceTests
         Assert.Equal(ErrorCodes.PremiumFeatureRequired, exception.Code);
     }
 
+    // Mirrors the StatsService overlay derivation (settled-per-member OQ8a): an unsettled owing member's
+    // outstanding is -balance, otherwise 0. The event QR bills on Outstanding > 0 (OQ13a).
     private static MemberBalanceRow Row(string name, decimal balance) =>
-        new() { MemberUuid = Guid.NewGuid().ToString(), MemberName = name, Balance = balance };
+        new() { MemberUuid = Guid.NewGuid().ToString(), MemberName = name, Balance = balance, Outstanding = balance < 0m ? -balance : 0m };
+
+    // An owing member who has cleared their net debt (Layer B settled): balance stays negative but the
+    // derived Outstanding is 0, so the QR must skip them (settled-per-member OQ13a).
+    private static MemberBalanceRow SettledRow(string name, decimal balance) =>
+        new() { MemberUuid = Guid.NewGuid().ToString(), MemberName = name, Balance = balance, IsSettled = true, SettledAt = DateTime.UtcNow, Outstanding = 0m };
 
     private static Dictionary<string, string> ParseTlv(string data)
     {

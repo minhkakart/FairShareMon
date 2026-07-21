@@ -28,6 +28,17 @@ public partial class Share : IEntity
     /// <summary>Optional note, max 500 chars (OQ16).</summary>
     public string? Note { get; set; }
 
+    /// <summary>
+    /// Per-share settled flag (đã trả), Layer A of the settled-per-member feature (§3.5, §6). Payment
+    /// metadata only - never changes <see cref="Amount"/>. Reconciled with the whole-expense
+    /// <see cref="Expense.IsSettled"/> (settled-per-member OQ3): the expense is settled iff every
+    /// "billable" share (<c>Amount &gt; 0</c> and member ≠ payer) is settled. Not audited (OQ10).
+    /// </summary>
+    public bool IsSettled { get; set; }
+
+    /// <summary>When this share was last toggled settled (set on true, cleared on false). Null when never settled (settled-per-member OQ2).</summary>
+    public DateTime? SettledAt { get; set; }
+
     public DateTime CreatedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }

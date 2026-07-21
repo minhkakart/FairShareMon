@@ -7,6 +7,7 @@ import type {
   EventFilter,
   EventResponse,
   EventSummaryResponse,
+  SetSettledRequest,
   UpdateEventRequest,
 } from "./types";
 
@@ -44,6 +45,20 @@ export const eventsApi = {
 
   balance: (uuid: string) =>
     api.get<EventBalanceResponse>(`/v1/events/${uuid}/balance`),
+
+  /**
+   * Per-member net-clearance settled toggle (Layer B). Participant-only (else
+   * 3000); allowed on OPEN and CLOSED events (the sole closed-event write).
+   */
+  setMemberSettled: (
+    eventUuid: string,
+    memberUuid: string,
+    body: SetSettledRequest,
+  ) =>
+    api.put<MessageResponse>(
+      `/v1/events/${eventUuid}/members/${memberUuid}/settled`,
+      body,
+    ),
 
   /** Binary CSV export (blob path, not the JSON envelope). Open + closed events. */
   exportCsv: (uuid: string) =>

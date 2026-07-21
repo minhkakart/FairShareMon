@@ -104,6 +104,8 @@ public static class MessageKeys
         public const string ExpenseSettledUpdated = "Success.ExpenseSettledUpdated";
         public const string ExpenseDetached = "Success.ExpenseDetached";
         public const string ShareDeleted = "Success.ShareDeleted";
+        public const string ShareSettledUpdated = "Success.ShareSettledUpdated";
+        public const string MemberSettledUpdated = "Success.MemberSettledUpdated";
         public const string HealthOk = "Success.HealthOk";
         public const string MemberDeleted = "Success.MemberDeleted";
         public const string TagDeleted = "Success.TagDeleted";

@@ -77,7 +77,15 @@
     "zeroLabel": "settled up",
     "emptyTitle": "No expenses in this event yet",
     "emptyBody": "The balance appears once the event has expenses. Assign an expense to start.",
-    "errorTitle": "Couldn't load the debt balance"
+    "errorTitle": "Couldn't load the debt balance",
+    "outstanding": "Outstanding",
+    "statusColumn": "Status",
+    "statusSettled": "Settled",
+    "statusOwing": "Owing",
+    "settledAriaNamed": "Settled status of {{name}}",
+    "settledToastOn": "Member marked as settled.",
+    "settledToastOff": "Member marked as unsettled.",
+    "summary": "{{settled}}/{{total}} members settled · {{amount}} outstanding"
   },
   "expensesSection": {
     "title": "Expenses in this event",

@@ -5,6 +5,7 @@ using FairShareMonApi.Database.Entities;
 using FairShareMonApi.Exceptions;
 using FairShareMonApi.Mappings;
 using FairShareMonApi.Models.Events;
+using FairShareMonApi.Models.Expenses;
 using FairShareMonApi.Repositories;
 using FairShareMonApi.Repositories.Abstractions;
 using FairShareMonApi.Services.Api.Events;
@@ -26,6 +27,7 @@ public class EventsServiceTests
     private const string UserUuid = "0198a5c2-0000-7000-8000-0000000000e6";
 
     private readonly FakeEventRepository _events = new();
+    private readonly FakeEventMemberSettlementRepository _settlements = new();
     private readonly FakeTierService _tier = new();
 
     // Timezone-aware DateTimes (D3): EventsService now injects IRequestTimeZone and threads its Zone into
@@ -36,7 +38,7 @@ public class EventsServiceTests
     private readonly IMapper _mapper = new MapperConfiguration(config => config.AddProfile<EventProfile>()).CreateMapper();
 
     private EventsService CreateService() =>
-        new(_events, _tier, _requestTimeZone, _mapper, new CreateEventRequestValidator(), new UpdateEventRequestValidator());
+        new(_events, _settlements, _tier, _requestTimeZone, _mapper, new CreateEventRequestValidator(), new UpdateEventRequestValidator());
 
     private static readonly DateTime Start = new(2026, 7, 14, 0, 0, 0, DateTimeKind.Utc);
     private static readonly DateTime End = new(2026, 7, 16, 23, 59, 59, DateTimeKind.Utc);
@@ -317,6 +319,40 @@ public class EventsServiceTests
         Assert.Equal(ErrorCodes.EventClosed, exception.Code); // delete only while OPEN (OQ3)
     }
 
+    // ---- SetMemberSettled (Layer B net-clearance toggle, settled-per-member §6) --------------------
+
+    [Fact]
+    public async Task SetMemberSettledAsync_Success_ForwardsFlagAndThrowsNothing()
+    {
+        _settlements.SetMemberSettledStatus = SettlementWriteStatus.Success;
+
+        await CreateService().SetMemberSettledAsync(UserUuid, "e-1", "m-1", new SetSettledRequest { IsSettled = true });
+
+        Assert.True(_settlements.LastSetSettledValue); // service forwards the request flag verbatim
+    }
+
+    [Fact]
+    public async Task SetMemberSettledAsync_EventMiss_ThrowsEventNotFound9000()
+    {
+        _settlements.SetMemberSettledStatus = SettlementWriteStatus.EventNotFound;
+
+        var exception = await Assert.ThrowsAsync<ErrorException>(() =>
+            CreateService().SetMemberSettledAsync(UserUuid, "no-such-event", "m-1", new SetSettledRequest { IsSettled = true }));
+
+        Assert.Equal(ErrorCodes.EventNotFound, exception.Code);
+    }
+
+    [Fact]
+    public async Task SetMemberSettledAsync_NonParticipantOrForeignMember_ThrowsMemberNotFound3000()
+    {
+        _settlements.SetMemberSettledStatus = SettlementWriteStatus.MemberNotFound;
+
+        var exception = await Assert.ThrowsAsync<ErrorException>(() =>
+            CreateService().SetMemberSettledAsync(UserUuid, "e-1", "not-a-participant", new SetSettledRequest { IsSettled = true }));
+
+        Assert.Equal(ErrorCodes.MemberNotFound, exception.Code); // OQ9a/OQ12a: non-participant is a resource-owned miss
+    }
+
     // ---- List --------------------------------------------------------------------------------------
 
     [Fact]
@@ -385,6 +421,25 @@ public class EventsServiceTests
         var summary = Assert.Single(await CreateService().ListAsync(UserUuid, new EventFilter()));
 
         Assert.Equal(EventUpdated, summary.UpdatedAt);
+    }
+
+    private sealed class FakeEventMemberSettlementRepository : IEventMemberSettlementRepository
+    {
+        public SettlementWriteStatus SetMemberSettledStatus { get; set; } = SettlementWriteStatus.Success;
+
+        public bool LastSetSettledValue { get; private set; }
+
+        public Task<SettlementWriteStatus> SetMemberSettledAsync(string userUuid, string eventUuid, string memberUuid, bool isSettled, CancellationToken cancellationToken = default)
+        {
+            LastSetSettledValue = isSettled;
+            return Task.FromResult(SetMemberSettledStatus);
+        }
+
+        public Task<TResult> ExecuteQueryAsync<TResult>(Func<AppDbContext, CancellationToken, Task<TResult>> query, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<TResult> ExecuteTransactionAsync<TResult>(Func<AppDbContext, TransactionContext, Task<TResult>> action, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
     }
 
     private sealed class FakeEventRepository : IEventRepository

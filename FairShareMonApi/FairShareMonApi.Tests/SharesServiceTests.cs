@@ -4,6 +4,7 @@ using FairShareMonApi.Database;
 using FairShareMonApi.Database.Entities;
 using FairShareMonApi.Exceptions;
 using FairShareMonApi.Mappings;
+using FairShareMonApi.Models.Expenses;
 using FairShareMonApi.Models.Shares;
 using FairShareMonApi.Repositories;
 using FairShareMonApi.Repositories.Abstractions;
@@ -149,6 +150,40 @@ public class SharesServiceTests
         await CreateService().DeleteAsync(UserUuid, "e-1", "s-1");
     }
 
+    // ---- SetSettled (Layer A per-share toggle, settled-per-member §6) -------------------------------
+
+    [Fact]
+    public async Task SetSettledAsync_Success_ForwardsFlagAndThrowsNothing()
+    {
+        _shares.SetSettledStatus = ExpenseWriteStatus.Success;
+
+        await CreateService().SetSettledAsync(UserUuid, "e-1", "s-1", new SetSettledRequest { IsSettled = true });
+
+        Assert.True(_shares.LastSetSettledValue); // service forwards the request flag verbatim
+    }
+
+    [Fact]
+    public async Task SetSettledAsync_ExpenseMiss_ThrowsExpenseNotFound6000()
+    {
+        _shares.SetSettledStatus = ExpenseWriteStatus.ExpenseNotFound;
+
+        var exception = await Assert.ThrowsAsync<ErrorException>(() =>
+            CreateService().SetSettledAsync(UserUuid, "no-such-expense", "s-1", new SetSettledRequest { IsSettled = true }));
+
+        Assert.Equal(ErrorCodes.ExpenseNotFound, exception.Code); // resource-owned miss on the owning expense
+    }
+
+    [Fact]
+    public async Task SetSettledAsync_ShareMiss_ThrowsShareNotFound7000()
+    {
+        _shares.SetSettledStatus = ExpenseWriteStatus.ShareNotFound;
+
+        var exception = await Assert.ThrowsAsync<ErrorException>(() =>
+            CreateService().SetSettledAsync(UserUuid, "e-1", "no-such-share", new SetSettledRequest { IsSettled = false }));
+
+        Assert.Equal(ErrorCodes.ShareNotFound, exception.Code);
+    }
+
     private sealed class FakeShareRepository : IShareRepository
     {
         public ExpenseWriteResult<Share> AddResult { get; set; } = ExpenseWriteResult<Share>.Fail(ExpenseWriteStatus.ExpenseNotFound);
@@ -156,6 +191,10 @@ public class SharesServiceTests
         public ExpenseWriteResult<Share> UpdateResult { get; set; } = ExpenseWriteResult<Share>.Fail(ExpenseWriteStatus.ShareNotFound);
 
         public ExpenseWriteStatus DeleteStatus { get; set; } = ExpenseWriteStatus.Success;
+
+        public ExpenseWriteStatus SetSettledStatus { get; set; } = ExpenseWriteStatus.Success;
+
+        public bool LastSetSettledValue { get; private set; }
 
         public int AddCalls { get; private set; }
 
@@ -170,6 +209,12 @@ public class SharesServiceTests
 
         public Task<ExpenseWriteStatus> DeleteAsync(string userUuid, string expenseUuid, string shareUuid, CancellationToken cancellationToken = default) =>
             Task.FromResult(DeleteStatus);
+
+        public Task<ExpenseWriteStatus> SetSettledAsync(string userUuid, string expenseUuid, string shareUuid, bool isSettled, CancellationToken cancellationToken = default)
+        {
+            LastSetSettledValue = isSettled;
+            return Task.FromResult(SetSettledStatus);
+        }
 
         public Task<TResult> ExecuteQueryAsync<TResult>(Func<AppDbContext, CancellationToken, Task<TResult>> query, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();

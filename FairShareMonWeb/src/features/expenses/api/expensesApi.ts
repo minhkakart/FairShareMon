@@ -55,6 +55,17 @@ export const expensesApi = {
   setSettled: (uuid: string, body: SetSettledRequest) =>
     api.put<MessageResponse>(`/v1/expenses/${uuid}/settled`, body),
 
+  /** Per-share settled toggle (Layer A). Allowed on a closed event's expense. */
+  setShareSettled: (
+    expenseUuid: string,
+    shareUuid: string,
+    body: SetSettledRequest,
+  ) =>
+    api.put<MessageResponse>(
+      `/v1/expenses/${expenseUuid}/shares/${shareUuid}/settled`,
+      body,
+    ),
+
   addShare: (uuid: string, body: CreateShareRequest) =>
     api.post<ShareResponse>(`/v1/expenses/${uuid}/shares`, body),
 

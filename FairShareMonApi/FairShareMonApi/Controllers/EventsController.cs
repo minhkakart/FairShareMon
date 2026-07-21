@@ -1,5 +1,6 @@
 using FairShareMonApi.Models;
 using FairShareMonApi.Models.Events;
+using FairShareMonApi.Models.Expenses;
 using FairShareMonApi.Models.Stats;
 using FairShareMonApi.Services.Api.Events;
 using FairShareMonApi.Services.Api.Export;
@@ -129,5 +130,18 @@ public class EventsController(IEventsService eventsService, IStatsService statsS
     {
         await eventsService.CloseAsync(AuthenticatedUser.Id, uuid, cancellationToken);
         return ApiResult.SuccessMessage(localizer[MessageKeys.Success.EventClosed].Value);
+    }
+
+    [HttpPut("{uuid}/members/{memberUuid}/settled")]
+    [SwaggerOperation(
+        Summary = "Cập nhật trạng thái đã trả của thành viên trong đợt",
+        Description = "Đánh dấu hoặc bỏ đánh dấu một thành viên đã trả xong khoản nợ ròng của họ trong đợt (đã trả theo từng thành viên - §3.7/§6). Chỉ áp dụng cho thành viên có tham gia đợt (là người trả hoặc người gánh của một phiếu trong đợt); thành viên không tham gia trả về 404. Đây là metadata thanh toán, không thay đổi số liệu và không ghi vào nhật ký. Cho phép cả khi đợt đang mở và đã chốt (ngoại lệ §4.4). Dùng để lọc mã QR: chỉ những thành viên còn nợ chưa trả mới được tạo mã.")]
+    [SwaggerResponse(StatusCodes.Status200OK, "Đã cập nhật trạng thái đã trả của thành viên.", typeof(ApiResult))]
+    [SwaggerResponse(StatusCodes.Status401Unauthorized, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", typeof(ApiResult))]
+    [SwaggerResponse(StatusCodes.Status404NotFound, "Không tìm thấy đợt chi tiêu hoặc thành viên tham gia đợt.", typeof(ApiResult))]
+    public async Task<IActionResult> SetMemberSettledAsync([FromRoute] string uuid, [FromRoute] string memberUuid, [FromBody] SetSettledRequest request, CancellationToken cancellationToken)
+    {
+        await eventsService.SetMemberSettledAsync(AuthenticatedUser.Id, uuid, memberUuid, request, cancellationToken);
+        return ApiResult.SuccessMessage(localizer[MessageKeys.Success.MemberSettledUpdated].Value);
     }
 }

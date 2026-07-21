@@ -103,6 +103,27 @@ export function useSetSettled() {
   });
 }
 
+/**
+ * Per-share settled toggle (Layer A). Invalidates the expenses caches ONLY
+ * (OQ7a): the event overlay `outstanding` is Layer-B (net) driven, so a
+ * per-share (gross) flip does not change the balance overlay. The expense-detail
+ * refetch surfaces any backend recompute of the whole-expense `isSettled`.
+ */
+export function useSetShareSettled() {
+  return useMutation({
+    mutationFn: ({
+      expenseUuid,
+      shareUuid,
+      body,
+    }: {
+      expenseUuid: string;
+      shareUuid: string;
+      body: SetSettledRequest;
+    }) => expensesApi.setShareSettled(expenseUuid, shareUuid, body),
+    onSuccess: (_data, { expenseUuid }) => invalidateExpense(expenseUuid),
+  });
+}
+
 export function useAddShare() {
   return useMutation({
     mutationFn: ({ uuid, body }: { uuid: string; body: CreateShareRequest }) =>

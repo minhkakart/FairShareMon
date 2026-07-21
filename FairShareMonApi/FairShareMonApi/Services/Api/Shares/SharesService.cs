@@ -2,6 +2,7 @@ using AutoMapper;
 using DiDecoration.Attributes;
 using FairShareMonApi.Constants;
 using FairShareMonApi.Exceptions;
+using FairShareMonApi.Models.Expenses;
 using FairShareMonApi.Models.Shares;
 using FairShareMonApi.Repositories;
 using FluentValidation;
@@ -21,6 +22,9 @@ public interface ISharesService
     Task<ShareResponse> UpdateAsync(string userUuid, string expenseUuid, string shareUuid, UpdateShareRequest request, CancellationToken cancellationToken = default);
 
     Task DeleteAsync(string userUuid, string expenseUuid, string shareUuid, CancellationToken cancellationToken = default);
+
+    /// <summary>Toggles the per-share settled flag (Layer A, §6); allowed on closed events (OQ5a); no audit (OQ10a). Share miss -&gt; 7000, expense miss -&gt; 6000.</summary>
+    Task SetSettledAsync(string userUuid, string expenseUuid, string shareUuid, SetSettledRequest request, CancellationToken cancellationToken = default);
 }
 
 [ScopedService(typeof(ISharesService))]
@@ -88,6 +92,21 @@ public sealed class SharesService(
                 throw new ErrorException(ErrorCodes.OwnerRepresentativeShareNotDeletable, MessageKeys.Error.OwnerRepresentativeShareNotDeletable);
             case ExpenseWriteStatus.EventClosed:
                 throw EventClosed();
+            default:
+                throw ShareNotFound();
+        }
+    }
+
+    public async Task SetSettledAsync(string userUuid, string expenseUuid, string shareUuid, SetSettledRequest request, CancellationToken cancellationToken = default)
+    {
+        var status = await shareRepository.SetSettledAsync(userUuid, expenseUuid, shareUuid, request.IsSettled, cancellationToken);
+
+        switch (status)
+        {
+            case ExpenseWriteStatus.Success:
+                return;
+            case ExpenseWriteStatus.ExpenseNotFound:
+                throw ExpenseNotFound();
             default:
                 throw ShareNotFound();
         }

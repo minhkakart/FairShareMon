@@ -1,10 +1,8 @@
-import { cx } from "@/components/ui";
 import { useT } from "@/i18n/useT";
 import { useToast } from "@/app/ToastHost";
 import { resolveErrorMessage } from "@/lib/api/http-error-handling";
 import { useSetSettled } from "../hooks/useExpenses";
-import { CheckIcon, ClockIcon } from "./icons";
-import styles from "./SettledToggle.module.css";
+import { SettledSwitch } from "./SettledSwitch";
 
 export type SettledToggleProps = {
   uuid: string;
@@ -14,12 +12,14 @@ export type SettledToggleProps = {
 };
 
 /**
- * The settled toggle (B3) — its own immediate mutate, no confirm. Color-
- * independent: a text label ("Đã trả" / "Chưa trả") plus an icon, never color
- * alone (`role="switch"` + `aria-checked`). This is the ONE write allowed on a
- * closed-event expense (R4), so it is never disabled by the closed-event guard.
- * Error → toast (verbatim server message); the invalidate-on-success refetch
- * reconciles the displayed state.
+ * The whole-expense settled toggle (B3) — its own immediate mutate, no confirm.
+ * Now built on the shared presentational `SettledSwitch` (OQ1a): the color-
+ * independent `role="switch"` markup lives there; this wrapper owns the mutation,
+ * toast, and accessible name (behavior unchanged). This is the ONE write allowed
+ * on a closed-event expense (R4), so it is never disabled by the closed-event
+ * guard. Error → toast (verbatim server message); the invalidate-on-success
+ * refetch reconciles the displayed state. The backend cascades this flag to every
+ * billable share (OQ3a).
  */
 export function SettledToggle({
   uuid,
@@ -30,8 +30,7 @@ export function SettledToggle({
   const toast = useToast();
   const setSettled = useSetSettled();
 
-  const label = isSettled ? t("expenses:settled.on") : t("expenses:settled.off");
-  const accessibleLabel = contextName
+  const accessibleName = contextName
     ? t("expenses:settled.ariaNamed", { name: contextName })
     : t("expenses:settled.aria");
 
@@ -51,22 +50,13 @@ export function SettledToggle({
   }
 
   return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={isSettled}
-      aria-label={accessibleLabel}
-      className={cx(styles.switch, isSettled && styles.switchOn)}
-      disabled={setSettled.isPending}
-      onClick={() => void onToggle()}
-    >
-      <span className={styles.switchTrack} aria-hidden="true">
-        <span className={styles.switchThumb} />
-      </span>
-      <span className={styles.icon} aria-hidden="true">
-        {isSettled ? <CheckIcon /> : <ClockIcon />}
-      </span>
-      <span className={styles.switchLabel}>{label}</span>
-    </button>
+    <SettledSwitch
+      isSettled={isSettled}
+      onToggle={() => void onToggle()}
+      pending={setSettled.isPending}
+      accessibleName={accessibleName}
+      labelOn={t("expenses:settled.on")}
+      labelOff={t("expenses:settled.off")}
+    />
   );
 }

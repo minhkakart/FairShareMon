@@ -82,6 +82,7 @@ function makeExpense(overrides: Partial<ExpenseResponse> = {}): ExpenseResponse 
     shares: [
       {
         uuid: "s-owner",
+        isSettled: false,
         member: {
           uuid: "m-owner",
           name: "Bạn (chủ sổ)",
@@ -95,6 +96,7 @@ function makeExpense(overrides: Partial<ExpenseResponse> = {}): ExpenseResponse 
       },
       {
         uuid: "s-1",
+        isSettled: false,
         member: {
           uuid: "m-1",
           name: "An Nguyễn",

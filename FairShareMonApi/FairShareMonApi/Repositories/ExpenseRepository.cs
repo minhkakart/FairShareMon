@@ -36,7 +36,7 @@ public interface IExpenseRepository : IBaseRepository, IQueryRepository<Expense>
     /// <summary>Hard-deletes the expense (cascades shares + expense_tags); stages Delete audits before removal.</summary>
     Task<ExpenseWriteStatus> DeleteAsync(string userUuid, string expenseUuid, CancellationToken cancellationToken = default);
 
-    /// <summary>Sets the settled flag + settled_at; no audit (OQ11). The sole §4.4 exception: NOT guarded against a closed event (M6, OQ13).</summary>
+    /// <summary>Sets the settled flag + settled_at and cascades to the billable shares (settled-per-member OQ3a); no audit (OQ11). The sole §4.4 exception: NOT guarded against a closed event (M6, OQ13).</summary>
     Task<ExpenseWriteStatus> SetSettledAsync(string userUuid, string expenseUuid, bool isSettled, CancellationToken cancellationToken = default);
 
     /// <summary>Assigns/moves the expense to an event (owned + OPEN + within range); a CLOSED source or target -&gt; EventClosed (M6, OQ4/OQ16). No audit (OQ6).</summary>
@@ -311,6 +311,7 @@ public sealed class ExpenseRepository(AppDbContext dbContext, IAuditLogFactory a
         ExecuteTransactionAsync(async (_, transaction) =>
         {
             var expense = await Query(tracking: true)
+                .Include(entity => entity.Shares)
                 .FirstOrDefaultAsync(entity => entity.Uuid == expenseUuid && entity.User.Uuid == userUuid, cancellationToken);
             if (expense is null)
             {
@@ -318,8 +319,12 @@ public sealed class ExpenseRepository(AppDbContext dbContext, IAuditLogFactory a
                 return ExpenseWriteStatus.ExpenseNotFound;
             }
 
+            var now = AppDateTime.Now;
             expense.IsSettled = isSettled;
-            expense.SettledAt = isSettled ? AppDateTime.Now : null;
+            expense.SettledAt = isSettled ? now : null;
+            // Cascade the whole-expense toggle to its billable shares so the two layers stay consistent
+            // (settled-per-member OQ3a); payer-own + 0đ shares are left untouched (OQ6a).
+            SettlementReconciler.CascadeToShares(expense, isSettled, now);
             // No audit for a settled toggle (OQ11). No closed-event guard - the sole §4.4 exception (OQ13).
             return ExpenseWriteStatus.Success;
         }, cancellationToken);

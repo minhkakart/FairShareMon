@@ -25,4 +25,17 @@ public class MemberBalanceRow
 
     /// <summary>Cân bằng = đã ứng - phải gánh.</summary>
     public decimal Balance { get; set; }
+
+    /// <summary>
+    /// Số tiền còn nợ ròng chưa trả (overlay suy ra, §6). = -balance khi thành viên còn nợ (balance &lt; 0)
+    /// và chưa đánh dấu đã trả; = 0 khi đã đánh dấu đã trả hoặc không nợ (balance ≥ 0). Không làm thay đổi
+    /// balance (D2).
+    /// </summary>
+    public decimal Outstanding { get; set; }
+
+    /// <summary>True nếu thành viên đã được đánh dấu đã trả khoản nợ ròng trong đợt này (Layer B, §3.7/§6).</summary>
+    public bool IsSettled { get; set; }
+
+    /// <summary>Thời điểm đánh dấu đã trả khoản nợ ròng gần nhất (null nếu chưa đánh dấu).</summary>
+    public DateTime? SettledAt { get; set; }
 }

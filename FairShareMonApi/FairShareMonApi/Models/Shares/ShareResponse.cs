@@ -15,5 +15,11 @@ public class ShareResponse
 
     public string? Note { get; set; }
 
+    /// <summary>True nếu phần gánh này đã được đánh dấu đã trả (Layer A, §6). Chỉ là metadata thanh toán, không đổi số tiền.</summary>
+    public bool IsSettled { get; set; }
+
+    /// <summary>Thời điểm đánh dấu đã trả gần nhất (null nếu chưa đánh dấu).</summary>
+    public DateTime? SettledAt { get; set; }
+
     public DateTime CreatedAt { get; set; }
 }

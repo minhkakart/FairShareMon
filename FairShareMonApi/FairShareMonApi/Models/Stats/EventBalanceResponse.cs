@@ -16,4 +16,13 @@ public class EventBalanceResponse
 
     /// <summary>Cân bằng theo từng thành viên tham gia đợt.</summary>
     public IReadOnlyList<MemberBalanceRow> Rows { get; set; } = [];
+
+    /// <summary>Tổng số tiền còn nợ chưa trả của cả đợt (overlay suy ra, §6). = tổng outstanding của các thành viên còn nợ.</summary>
+    public decimal TotalOutstanding { get; set; }
+
+    /// <summary>Số thành viên còn nợ chưa trả (outstanding &gt; 0).</summary>
+    public int OwingMemberCount { get; set; }
+
+    /// <summary>Số thành viên đang nợ (balance &lt; 0) nhưng đã được đánh dấu đã trả khoản nợ ròng.</summary>
+    public int SettledMemberCount { get; set; }
 }

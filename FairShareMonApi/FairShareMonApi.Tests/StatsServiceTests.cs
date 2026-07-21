@@ -59,8 +59,8 @@ public class StatsServiceTests
         _stats.OwnedEvent = evt;
         _stats.BalanceAggregates =
         [
-            new MemberBalanceAggregate("m-binh", "Bình", false, false, 800_000m, 500_000m),
-            new MemberBalanceAggregate("m-cuong", "Cường", false, true, 0m, 500_000m)
+            new MemberBalanceAggregate("m-binh", "Bình", false, false, 800_000m, 500_000m, false, null),
+            new MemberBalanceAggregate("m-cuong", "Cường", false, true, 0m, 500_000m, false, null)
         ];
 
         var response = await CreateService().GetEventBalanceAsync(UserUuid, "e-1");
@@ -89,6 +89,79 @@ public class StatsServiceTests
         var response = await CreateService().GetEventBalanceAsync(UserUuid, "e-1");
 
         Assert.Empty(response.Rows); // owned-but-empty event → empty rows (OQ15)
+    }
+
+    // ---- Outstanding overlay math (settled-per-member OQ8a; balance stays pure, D2) ----------------
+
+    [Fact]
+    public async Task GetEventBalanceAsync_UnclearedOwingMember_OutstandingEqualsNegatedBalance()
+    {
+        _stats.OwnedEvent = OwnedEvent();
+        // Bình +300k (owed to), Cường −500k (owing, not settled).
+        _stats.BalanceAggregates =
+        [
+            new MemberBalanceAggregate("m-binh", "Bình", false, false, 800_000m, 500_000m, false, null),
+            new MemberBalanceAggregate("m-cuong", "Cường", false, false, 0m, 500_000m, false, null)
+        ];
+
+        var response = await CreateService().GetEventBalanceAsync(UserUuid, "e-1");
+
+        var cuong = Assert.Single(response.Rows, row => row.MemberUuid == "m-cuong");
+        Assert.Equal(500_000m, cuong.Outstanding);       // = -balance for an uncleared owing member
+        var binh = Assert.Single(response.Rows, row => row.MemberUuid == "m-binh");
+        Assert.Equal(0m, binh.Outstanding);              // owed (balance ≥ 0) → owes nothing
+
+        Assert.Equal(500_000m, response.TotalOutstanding);
+        Assert.Equal(1, response.OwingMemberCount);      // only Cường still owes
+        Assert.Equal(0, response.SettledMemberCount);
+    }
+
+    [Fact]
+    public async Task GetEventBalanceAsync_SettledOwingMember_OutstandingZeroAndCountedAsSettled()
+    {
+        _stats.OwnedEvent = OwnedEvent();
+        // Cường still has balance −500k but has been marked settled (Layer B) → cleared.
+        _stats.BalanceAggregates =
+        [
+            new MemberBalanceAggregate("m-binh", "Bình", false, false, 800_000m, 500_000m, false, null),
+            new MemberBalanceAggregate("m-cuong", "Cường", false, false, 0m, 500_000m, true, new DateTime(2026, 7, 20, 0, 0, 0, DateTimeKind.Utc))
+        ];
+
+        var response = await CreateService().GetEventBalanceAsync(UserUuid, "e-1");
+
+        var cuong = Assert.Single(response.Rows, row => row.MemberUuid == "m-cuong");
+        Assert.Equal(-500_000m, cuong.Balance);          // balance itself is UNCHANGED (D2 / M7 OQ2)
+        Assert.Equal(0m, cuong.Outstanding);             // settled → outstanding zeroed
+        Assert.True(cuong.IsSettled);
+
+        Assert.Equal(0m, response.TotalOutstanding);
+        Assert.Equal(0, response.OwingMemberCount);
+        Assert.Equal(1, response.SettledMemberCount);    // Cường: balance < 0 AND settled
+    }
+
+    [Fact]
+    public async Task GetEventBalanceAsync_Overlay_DoesNotPerturbBalanceAdvancedOrOwed()
+    {
+        _stats.OwnedEvent = OwnedEvent();
+        // A valid sum-to-zero set: Bình +300k, Cường −300k (Cường marked settled).
+        var aggregates = new[]
+        {
+            new MemberBalanceAggregate("m-binh", "Bình", false, false, 800_000m, 500_000m, false, null),
+            new MemberBalanceAggregate("m-cuong", "Cường", false, false, 200_000m, 500_000m, true, DateTime.UtcNow)
+        };
+        _stats.BalanceAggregates = aggregates;
+
+        var response = await CreateService().GetEventBalanceAsync(UserUuid, "e-1");
+
+        // advanced/owed/balance map straight from the aggregates regardless of any settled flag (D2).
+        foreach (var aggregate in aggregates)
+        {
+            var row = Assert.Single(response.Rows, r => r.MemberUuid == aggregate.MemberUuid);
+            Assert.Equal(aggregate.Advanced, row.Advanced);
+            Assert.Equal(aggregate.Owed, row.Owed);
+            Assert.Equal(aggregate.Advanced - aggregate.Owed, row.Balance);
+        }
+        Assert.Equal(0m, response.Rows.Sum(row => row.Balance)); // sum-to-zero preserved
     }
 
     // ---- Overview ----------------------------------------------------------------------------------

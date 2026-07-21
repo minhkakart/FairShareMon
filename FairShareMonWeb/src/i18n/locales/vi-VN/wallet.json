@@ -101,7 +101,7 @@
     "noAccountBody": "Thêm một tài khoản ngân hàng vào ví để tạo mã QR chuyển khoản.",
     "addAccount": "Thêm tài khoản",
     "noDebtTitle": "Không còn ai nợ trong đợt này",
-    "noDebtBody": "Mọi phần gánh đã được đánh dấu đã trả, nên không cần mã QR quyết toán.",
+    "noDebtBody": "Mọi thành viên còn nợ đã được đánh dấu đã trả, nên không cần mã QR quyết toán.",
     "notClosedTitle": "Đợt chưa được chốt",
     "notClosedBody": "Chỉ có thể tạo mã QR quyết toán sau khi chốt đợt. Hãy chốt đợt rồi thử lại.",
     "errorTitle": "Không tạo được mã QR",

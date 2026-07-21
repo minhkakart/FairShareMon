@@ -38,6 +38,13 @@ public partial class Share
 
             entity.Property(share => share.Note).HasColumnName("note").HasMaxLength(NoteMaxLength);
 
+            // Per-share settled (Layer A, §6). Payment metadata; never touches amount (settled-per-member OQ2).
+            entity.Property(share => share.IsSettled)
+                .HasColumnName("is_settled")
+                .HasDefaultValue(false);
+
+            entity.Property(share => share.SettledAt).HasColumnName("settled_at");
+
             entity.Property(share => share.CreatedAt).HasColumnName("created_at");
             entity.Property(share => share.UpdatedAt)
                 .HasColumnName("updated_at")

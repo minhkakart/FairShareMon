@@ -382,6 +382,45 @@ namespace FairShareMonApi.Migrations
                         });
                 });
 
+            modelBuilder.Entity("FairShareMonApi.Database.Entities.EventMemberSettlement", b =>
+                {
+                    b.Property<ulong>("EventId")
+                        .HasColumnType("bigint unsigned")
+                        .HasColumnName("event_id");
+
+                    b.Property<ulong>("MemberId")
+                        .HasColumnType("bigint unsigned")
+                        .HasColumnName("member_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("created_at");
+
+                    b.Property<bool>("IsSettled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint(1)")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_settled");
+
+                    b.Property<DateTime?>("SettledAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("settled_at");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("current_timestamp(6) ON UPDATE current_timestamp(6)");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlComputedColumn(b.Property<DateTime>("UpdatedAt"));
+
+                    b.HasKey("EventId", "MemberId");
+
+                    b.HasIndex("MemberId");
+
+                    b.ToTable("event_member_settlements", (string)null);
+                });
+
             modelBuilder.Entity("FairShareMonApi.Database.Entities.Expense", b =>
                 {
                     b.Property<ulong>("Id")
@@ -565,6 +604,12 @@ namespace FairShareMonApi.Migrations
                         .HasColumnType("bigint unsigned")
                         .HasColumnName("expense_id");
 
+                    b.Property<bool>("IsSettled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint(1)")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_settled");
+
                     b.Property<ulong>("MemberId")
                         .HasColumnType("bigint unsigned")
                         .HasColumnName("member_id");
@@ -573,6 +618,10 @@ namespace FairShareMonApi.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("varchar(500)")
                         .HasColumnName("note");
+
+                    b.Property<DateTime?>("SettledAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("settled_at");
 
                     b.Property<DateTime>("UpdatedAt")
                         .ValueGeneratedOnAddOrUpdate()
@@ -884,6 +933,25 @@ namespace FairShareMonApi.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("FairShareMonApi.Database.Entities.EventMemberSettlement", b =>
+                {
+                    b.HasOne("FairShareMonApi.Database.Entities.Event", "Event")
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("FairShareMonApi.Database.Entities.Member", "Member")
+                        .WithMany()
+                        .HasForeignKey("MemberId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Event");
+
+                    b.Navigation("Member");
                 });
 
             modelBuilder.Entity("FairShareMonApi.Database.Entities.Expense", b =>

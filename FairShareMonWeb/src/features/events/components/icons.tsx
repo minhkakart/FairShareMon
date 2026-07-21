@@ -43,3 +43,16 @@ export const DownloadIcon = () => (
     <path d="M10 3v9m0 0l-3.5-3.5M10 12l3.5-3.5M4 15h12" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
+
+export const CheckIcon = () => (
+  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true" width="1em" height="1em">
+    <path d="M4 10l4 4 8-9" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+export const ClockIcon = () => (
+  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true" width="1em" height="1em">
+    <circle cx="10" cy="10" r="7.2" />
+    <path d="M10 6v4.2l2.8 1.8" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);

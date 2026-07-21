@@ -3,6 +3,7 @@ using FairShareMonApi.Database;
 using FairShareMonApi.Database.Entities;
 using FairShareMonApi.Repositories.Abstractions;
 using FairShareMonApi.Services.Audit;
+using FairShareMonApi.Utils;
 using Microsoft.EntityFrameworkCore;
 
 namespace FairShareMonApi.Repositories;
@@ -25,6 +26,14 @@ public interface IShareRepository : IBaseRepository
 
     /// <summary>Hard-deletes a share; blocks deleting the owner-rep's share (7002); stages a Delete audit.</summary>
     Task<ExpenseWriteStatus> DeleteAsync(string userUuid, string expenseUuid, string shareUuid, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sets the per-share settled flag + settled_at (Layer A, §6), then reconciles the owning expense's
+    /// whole-expense settled flag (settled-per-member OQ3a). No amount change; the sole §4.4 exception:
+    /// NOT guarded against a closed event (OQ5a); no audit (OQ10a). Expense miss -&gt; ExpenseNotFound
+    /// (6000), share miss -&gt; ShareNotFound (7000).
+    /// </summary>
+    Task<ExpenseWriteStatus> SetSettledAsync(string userUuid, string expenseUuid, string shareUuid, bool isSettled, CancellationToken cancellationToken = default);
 }
 
 [ScopedService(typeof(IShareRepository))]
@@ -149,6 +158,37 @@ public sealed class ShareRepository(AppDbContext dbContext, IAuditLogFactory aud
             StageAudit(db, auditLogFactory.BuildShareAudit(
                 AuditAction.Delete, before: ShareAuditSnapshot.From(share, expense.Uuid, share.Member), after: null, expense.UserId));
             db.Shares.Remove(share);
+
+            return ExpenseWriteStatus.Success;
+        }, cancellationToken);
+
+    public Task<ExpenseWriteStatus> SetSettledAsync(string userUuid, string expenseUuid, string shareUuid, bool isSettled, CancellationToken cancellationToken = default) =>
+        ExecuteTransactionAsync(async (_, transaction) =>
+        {
+            // Resource-owned expense with its shares, tracked for mutation. No closed-event guard (§4.4
+            // exception, OQ5a); no audit (OQ10a).
+            var expense = await Query<Expense>(tracking: true)
+                .Include(entity => entity.Shares)
+                .FirstOrDefaultAsync(entity => entity.Uuid == expenseUuid && entity.User.Uuid == userUuid, cancellationToken);
+            if (expense is null)
+            {
+                transaction.NoCommit();
+                return ExpenseWriteStatus.ExpenseNotFound;
+            }
+
+            var share = expense.Shares.FirstOrDefault(entity => entity.Uuid == shareUuid);
+            if (share is null)
+            {
+                transaction.NoCommit();
+                return ExpenseWriteStatus.ShareNotFound;
+            }
+
+            // Stored per-share flag is set even on a payer-own / 0đ share (a harmless no-op for derivations, OQ6a).
+            share.IsSettled = isSettled;
+            share.SettledAt = isSettled ? AppDateTime.Now : null;
+
+            // Reconcile the whole-expense flag from the per-share flags (OQ3a).
+            SettlementReconciler.ReconcileExpense(expense);
 
             return ExpenseWriteStatus.Success;
         }, cancellationToken);
