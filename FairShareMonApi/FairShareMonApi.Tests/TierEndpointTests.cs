@@ -310,6 +310,25 @@ public class TierLimitEndpointTests(TierLimitWebApplicationFactory factory, Data
     }
 
     [SkippableFact]
+    public async Task Free_QrMemberRoutes_Return403Code13003()
+    {
+        var (client, _) = await CreateFreeClientAsync();
+
+        using (var expenseQr = await client.GetAsync("api/v1/expenses/some-uuid/qr/members"))
+        {
+            Assert.Equal(HttpStatusCode.Forbidden, expenseQr.StatusCode);
+            AssertErrorEnvelope(await ReadEnvelopeAsync(expenseQr), ErrorCodes.PremiumFeatureRequired);
+        }
+
+        using (var eventQr = await client.GetAsync("api/v1/events/some-uuid/qr/members"))
+        {
+            Assert.Equal(HttpStatusCode.Forbidden, eventQr.StatusCode);
+            AssertErrorEnvelope(await ReadEnvelopeAsync(eventQr), ErrorCodes.PremiumFeatureRequired);
+        }
+        client.Dispose();
+    }
+
+    [SkippableFact]
     public async Task Free_CsvExport_StaysFree_Returns200()
     {
         var (client, _) = await CreateFreeClientAsync();

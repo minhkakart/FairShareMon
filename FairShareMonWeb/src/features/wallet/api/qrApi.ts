@@ -1,23 +1,25 @@
 import { api } from "@/lib/api/client";
-import type { BlobResult } from "@/lib/api/client";
+import type { MemberQrResponse } from "./types";
 
 /**
- * VietQR image endpoints. The routes live on the expense/event resources, but
- * the concept + the shared `QrDialog` are wallet-owned, so both detail mods
- * import one place. Each returns a PNG `Blob` via the centralized binary path
- * (`api.blob`); error responses still arrive as the JSON envelope and throw a
- * typed `ApiError`. Both endpoints are Premium (403 13003).
+ * Per-member VietQR endpoints. The routes live on the expense/event resources,
+ * but the concept + the shared `QrDialog` are wallet-owned, so both detail mods
+ * import one place. Each returns the list of still-owing members with their OWN
+ * single QR as a `data:image/png;base64,<…>` data URL (JSON via the centralized
+ * `api.get`, which unwraps `ApiResult<T>`; error responses throw a typed
+ * `ApiError`). Both endpoints are Premium (403 13003); the event route is
+ * closed-only (400 12002).
  */
 export const qrApi = {
-  /** Per-expense transfer QR (square PNG). Optional non-default destination. */
-  expenseQr: (uuid: string, bankAccountUuid?: string): Promise<BlobResult> =>
-    api.blob("GET", `/v1/expenses/${uuid}/qr`, {
+  /** Still-owing members of an expense, each with their own transfer QR. */
+  expenseMemberQrs: (uuid: string, bankAccountUuid?: string) =>
+    api.get<MemberQrResponse[]>(`/v1/expenses/${uuid}/qr/members`, {
       query: { bankAccountUuid },
     }),
 
-  /** Per-event composite settlement QR (portrait PNG). Closed events only. */
-  eventQr: (uuid: string, bankAccountUuid?: string): Promise<BlobResult> =>
-    api.blob("GET", `/v1/events/${uuid}/qr`, {
+  /** Still-owing members of a closed event, each with their own settlement QR. */
+  eventMemberQrs: (uuid: string, bankAccountUuid?: string) =>
+    api.get<MemberQrResponse[]>(`/v1/events/${uuid}/qr/members`, {
       query: { bankAccountUuid },
     }),
 };

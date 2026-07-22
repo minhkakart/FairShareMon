@@ -1,6 +1,7 @@
 using FairShareMonApi.Models;
 using FairShareMonApi.Models.Expenses;
 using FairShareMonApi.Models.Shares;
+using FairShareMonApi.Models.Wallet;
 using FairShareMonApi.Services.Api.Expenses;
 using FairShareMonApi.Services.Api.Export;
 using FairShareMonApi.Services.Api.Shares;
@@ -189,6 +190,20 @@ public class ExpensesController(IExpensesService expensesService, ISharesService
         var image = await walletQrService.GenerateExpenseQrAsync(AuthenticatedUser.Id, uuid, bankAccountUuid, cancellationToken);
         return File(image.Content, image.ContentType, image.FileName);
     }
+
+    [HttpGet("{uuid}/qr/members")]
+    [Produces("application/json")]
+    [SwaggerOperation(
+        Summary = "Danh sách mã QR chuyển khoản theo từng thành viên còn nợ trên phiếu",
+        Description = "Trả về danh sách mã QR chuyển khoản theo từng thành viên còn nợ trên phiếu chi tiêu (phần gánh chưa đánh dấu đã trả, khác 0đ, không phải người trả): mỗi thành viên một ảnh QR VietQR riêng dạng data URL (data:image/png;base64,...) với số tiền đúng bằng phần gánh của người đó, kèm tên thành viên và số tiền trong phần đầu ảnh. Thứ tự theo thứ tự phần gánh của phiếu. Đích nhận là tài khoản ngân hàng mặc định, hoặc tài khoản chỉ định qua tham số bankAccountUuid (phải thuộc tài khoản). Không còn ai nợ (tất cả đã trả) trả về 400. Chỉ đọc, resource-owned - phiếu không thuộc tài khoản trả về 404; chưa có tài khoản ngân hàng trả về 400.")]
+    [SwaggerResponse(StatusCodes.Status200OK, "Tạo danh sách mã QR theo từng thành viên thành công.", typeof(ApiResult<IReadOnlyList<MemberQrResponse>>))]
+    [SwaggerResponse(StatusCodes.Status400BadRequest, "Không còn ai nợ trên phiếu, hoặc chưa có tài khoản ngân hàng để tạo mã QR.", typeof(ApiResult))]
+    [SwaggerResponse(StatusCodes.Status401Unauthorized, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", typeof(ApiResult))]
+    [SwaggerResponse(StatusCodes.Status403Forbidden, "Tính năng tạo mã QR chỉ dành cho tài khoản Premium (nâng cấp để sử dụng).", typeof(ApiResult))]
+    [SwaggerResponse(StatusCodes.Status404NotFound, "Không tìm thấy phiếu chi tiêu hoặc tài khoản ngân hàng.", typeof(ApiResult))]
+    public async Task<IActionResult> GetMemberQrsAsync([FromRoute] string uuid, [FromQuery] string? bankAccountUuid, CancellationToken cancellationToken) =>
+        ApiResult<IReadOnlyList<MemberQrResponse>>.Success(
+            await walletQrService.GenerateExpenseMemberQrsAsync(AuthenticatedUser.Id, uuid, bankAccountUuid, cancellationToken));
 
     [HttpGet("{uuid}/history")]
     [SwaggerOperation(

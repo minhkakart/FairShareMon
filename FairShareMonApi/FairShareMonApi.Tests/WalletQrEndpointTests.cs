@@ -289,7 +289,179 @@ public class WalletQrEndpointTests(WebApplicationFactory<Program> factory, Datab
         AssertErrorEnvelope(await ReadEnvelopeAsync(response), ErrorCodes.Unauthorized);
     }
 
+    // ---- Expense per-member QR list: success + edges (wrapped JSON, NOT a file) -------------------
+
+    [SkippableFact]
+    public async Task ExpenseMemberQrs_Default_Returns200WrappedList()
+    {
+        using var client = await CreatePremiumClientAsync();
+        await CreateBankAccountAsync(client);
+        var expense = await CreateSimpleExpenseUuidAsync(client);
+
+        using var response = await client.GetAsync($"api/v1/expenses/{expense}/qr/members");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        // Wrapped JSON envelope, NOT raw PNG bytes.
+        Assert.Contains("application/json", response.Content.Headers.ContentType!.ToString());
+        AssertMemberQrList(await ReadEnvelopeAsync(response), expectedCount: 1);
+    }
+
+    [SkippableFact]
+    public async Task ExpenseMemberQrs_NobodyOwes_Returns400Code12003()
+    {
+        using var client = await CreatePremiumClientAsync();
+        await CreateBankAccountAsync(client);
+        var expense = await CreateNoDebtorExpenseUuidAsync(client);
+
+        using var response = await client.GetAsync($"api/v1/expenses/{expense}/qr/members");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        AssertErrorEnvelope(await ReadEnvelopeAsync(response), ErrorCodes.NoOutstandingDebtForQr);
+    }
+
+    [SkippableFact]
+    public async Task ExpenseMemberQrs_NoBankAccount_Returns400Code12001()
+    {
+        using var client = await CreatePremiumClientAsync(); // no wallet configured
+        var expense = await CreateSimpleExpenseUuidAsync(client);
+
+        using var response = await client.GetAsync($"api/v1/expenses/{expense}/qr/members");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        AssertErrorEnvelope(await ReadEnvelopeAsync(response), ErrorCodes.NoBankAccountForQr);
+    }
+
+    [SkippableFact]
+    public async Task ExpenseMemberQrs_AnotherUsersExpense_Returns404Code6000()
+    {
+        using var owner = await CreatePremiumClientAsync();
+        using var stranger = await CreatePremiumClientAsync();
+        await CreateBankAccountAsync(stranger); // resolution precedes the resource check
+        var expense = await CreateSimpleExpenseUuidAsync(owner);
+
+        using var response = await stranger.GetAsync($"api/v1/expenses/{expense}/qr/members");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode); // never 403
+        AssertErrorEnvelope(await ReadEnvelopeAsync(response), ErrorCodes.ExpenseNotFound);
+    }
+
+    [SkippableFact]
+    public async Task ExpenseMemberQrs_Anonymous_Returns401()
+    {
+        using var client = Factory.CreateClient();
+
+        using var response = await client.GetAsync("api/v1/expenses/some-uuid/qr/members");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        AssertErrorEnvelope(await ReadEnvelopeAsync(response), ErrorCodes.Unauthorized);
+    }
+
+    // ---- Event per-member QR list: success + edges -----------------------------------------------
+
+    [SkippableFact]
+    public async Task EventMemberQrs_ClosedWithDebtor_Returns200WrappedList()
+    {
+        using var client = await CreatePremiumClientAsync();
+        await CreateBankAccountAsync(client);
+        var evt = await CreateClosedEventWithDebtorAsync(client);
+
+        using var response = await client.GetAsync($"api/v1/events/{evt}/qr/members");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("application/json", response.Content.Headers.ContentType!.ToString());
+        AssertMemberQrList(await ReadEnvelopeAsync(response), expectedCount: 1); // only An owes (200k)
+    }
+
+    [SkippableFact]
+    public async Task EventMemberQrs_OpenEvent_Returns400Code12002()
+    {
+        using var client = await CreatePremiumClientAsync();
+        await CreateBankAccountAsync(client);
+        var evt = await CreateEventUuidAsync(client, "Đà Lạt", Day14, Day16); // not closed
+
+        using var response = await client.GetAsync($"api/v1/events/{evt}/qr/members");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        AssertErrorEnvelope(await ReadEnvelopeAsync(response), ErrorCodes.EventNotClosedForQr);
+    }
+
+    [SkippableFact]
+    public async Task EventMemberQrs_ClosedButNobodyOwes_Returns400Code12003()
+    {
+        using var client = await CreatePremiumClientAsync();
+        await CreateBankAccountAsync(client);
+        var evt = await CreateEventUuidAsync(client, "Đà Lạt", Day14, Day16); // no expenses -> nobody owes
+        await CloseEventAsync(client, evt);
+
+        using var response = await client.GetAsync($"api/v1/events/{evt}/qr/members");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        AssertErrorEnvelope(await ReadEnvelopeAsync(response), ErrorCodes.NoOutstandingDebtForQr);
+    }
+
+    [SkippableFact]
+    public async Task EventMemberQrs_NoBankAccount_Returns400Code12001()
+    {
+        using var client = await CreatePremiumClientAsync(); // no wallet
+        var evt = await CreateClosedEventWithDebtorAsync(client);
+
+        using var response = await client.GetAsync($"api/v1/events/{evt}/qr/members");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        AssertErrorEnvelope(await ReadEnvelopeAsync(response), ErrorCodes.NoBankAccountForQr);
+    }
+
+    [SkippableFact]
+    public async Task EventMemberQrs_AnotherUsersEvent_Returns404Code9000()
+    {
+        using var owner = await CreatePremiumClientAsync();
+        using var stranger = await CreatePremiumClientAsync();
+        await CreateBankAccountAsync(stranger);
+        var evt = await CreateClosedEventWithDebtorAsync(owner);
+
+        using var response = await stranger.GetAsync($"api/v1/events/{evt}/qr/members");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        AssertErrorEnvelope(await ReadEnvelopeAsync(response), ErrorCodes.EventNotFound);
+    }
+
+    [SkippableFact]
+    public async Task EventMemberQrs_Anonymous_Returns401()
+    {
+        using var client = Factory.CreateClient();
+
+        using var response = await client.GetAsync("api/v1/events/some-uuid/qr/members");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        AssertErrorEnvelope(await ReadEnvelopeAsync(response), ErrorCodes.Unauthorized);
+    }
+
     // ---- Test-local helpers -----------------------------------------------------------------------
+
+    /// <summary>Asserts a wrapped success envelope carrying a MemberQrResponse[] of the expected size, each
+    /// element with camelCase memberUuid/memberName/amount/image, image = a PNG data URL that decodes to
+    /// bytes starting with the PNG magic.</summary>
+    private static void AssertMemberQrList(JsonDocument envelope, int expectedCount)
+    {
+        var root = envelope.RootElement;
+        Assert.True(root.GetProperty("isSuccess").GetBoolean());
+        var data = root.GetProperty("data");
+        Assert.Equal(JsonValueKind.Array, data.ValueKind);
+        Assert.Equal(expectedCount, data.GetArrayLength());
+
+        foreach (var element in data.EnumerateArray())
+        {
+            Assert.False(string.IsNullOrWhiteSpace(element.GetProperty("memberUuid").GetString()));
+            Assert.False(string.IsNullOrWhiteSpace(element.GetProperty("memberName").GetString()));
+            Assert.True(element.GetProperty("amount").GetDecimal() > 0m);
+
+            const string prefix = "data:image/png;base64,";
+            var image = element.GetProperty("image").GetString()!;
+            Assert.StartsWith(prefix, image);
+            var bytes = Convert.FromBase64String(image[prefix.Length..]);
+            Assert.True(StartsWithPngMagic(bytes)); // real RenderSingle PNG
+        }
+    }
 
     public override async Task DisposeAsync()
     {

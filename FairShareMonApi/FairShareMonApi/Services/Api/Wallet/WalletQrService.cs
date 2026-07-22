@@ -32,6 +32,21 @@ public interface IWalletQrService
     Task<QrImageResult> GenerateExpenseQrAsync(string userUuid, string expenseUuid, string? bankAccountUuid, CancellationToken cancellationToken = default);
 
     Task<QrImageResult> GenerateEventQrAsync(string userUuid, string eventUuid, string? bankAccountUuid, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Tạo một mã QR VietQR riêng cho mỗi thành viên còn nợ trên phiếu chi tiêu (phần gánh chưa đánh dấu
+    /// đã trả, khác 0đ, không phải người trả). Mỗi mã được dựng server-side qua <c>RenderSingle</c> và trả
+    /// về dưới dạng data URL. Dùng chung tập "ai còn nợ" với <see cref="GenerateExpenseQrAsync"/>. Không lưu gì.
+    /// </summary>
+    Task<IReadOnlyList<MemberQrResponse>> GenerateExpenseMemberQrsAsync(string userUuid, string expenseUuid, string? bankAccountUuid, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Tạo một mã QR VietQR riêng cho mỗi thành viên còn nợ trong một đợt đã chốt (cân bằng âm chưa đánh dấu
+    /// đã trả). Chỉ áp dụng cho đợt đã chốt (đợt đang mở -&gt; 12002). Mỗi mã được dựng server-side qua
+    /// <c>RenderSingle</c> và trả về dưới dạng data URL. Dùng chung tập "ai còn nợ" với
+    /// <see cref="GenerateEventQrAsync"/>. Không lưu gì.
+    /// </summary>
+    Task<IReadOnlyList<MemberQrResponse>> GenerateEventMemberQrsAsync(string userUuid, string eventUuid, string? bankAccountUuid, CancellationToken cancellationToken = default);
 }
 
 [ScopedService(typeof(IWalletQrService))]
@@ -60,29 +75,25 @@ public sealed class WalletQrService(
         // Resource-owned expense (miss -> ExpenseNotFound 6000); its shares carry who owes what (M5).
         var expense = await expensesService.GetAsync(userUuid, expenseUuid, cancellationToken);
 
-        // Bill one QR per member who still owes on this expense: an unsettled, non-zero share owed by
-        // someone other than the payer (the payer paid the total and never transfers to themselves; the
-        // 0đ owner-representative share drops out via Amount > 0). The per-member settled flag (Layer A)
-        // is the "who still owes" overlay - regenerating after some members pay bills only the remainder.
-        var billable = expense.Shares
-            .Where(share => !share.IsSettled && share.Amount > 0m && share.Member.Uuid != expense.Payer.Uuid)
-            .ToList();
-        if (billable.Count == 0)
+        // Bill one QR per member who still owes on this expense (shared billing selection - see
+        // CollectExpenseBillables). Empty -> NoOutstandingDebtForQr (12003).
+        var (contextName, billed) = CollectExpenseBillables(expense);
+        if (billed.Count == 0)
             throw new ErrorException(ErrorCodes.NoOutstandingDebtForQr, MessageKeys.Error.NoOutstandingDebtForQr);
 
         var provider = qrContentResolver.Resolve();
-        var items = new List<QrCompositeItem>(billable.Count);
-        foreach (var share in billable)
+        var items = new List<QrCompositeItem>(billed.Count);
+        foreach (var member in billed)
         {
             var payload = await provider.BuildContentAsync(
-                new QrContentRequest(account.BankBin, account.AccountNumber, account.AccountHolderName, share.Amount, $"{expense.Name} - {share.Member.Name}"),
+                new QrContentRequest(account.BankBin, account.AccountNumber, account.AccountHolderName, member.Amount, member.Description),
                 cancellationToken);
-            var label = $"{share.Member.Name}: {FormatMoney(share.Amount)}";
+            var label = $"{member.MemberName}: {FormatMoney(member.Amount)}";
             items.Add(new QrCompositeItem(label, payload));
         }
 
         // Expense header carries no amount (per-member amounts stay under each member's QR).
-        var header = await BuildHeaderAsync(account, expense.Name, amount: null, cancellationToken);
+        var header = await BuildHeaderAsync(account, contextName, amount: null, cancellationToken);
         var image = qrImageService.RenderComposite(items, header);
         return new QrImageResult(image, PngContentType, $"expense-qr-{expense.Uuid}.png");
     }
@@ -100,29 +111,125 @@ public sealed class WalletQrService(
         if (!balance.IsClosed)
             throw new ErrorException(ErrorCodes.EventNotClosedForQr, MessageKeys.Error.EventNotClosedForQr);
 
-        // Bill only members who still owe AND have not been marked settled: the derived "outstanding"
-        // overlay (settled-per-member OQ13a). outstanding = -balance for an uncleared owing member, 0
-        // otherwise - so regenerating after some members pay bills only the remainder.
-        var owing = balance.Rows.Where(row => row.Outstanding > 0m).ToList();
-        if (owing.Count == 0)
+        // Bill only members who still owe (shared billing selection - see CollectEventBillables). Empty
+        // -> NoOutstandingDebtForQr (12003).
+        var (contextName, billed) = CollectEventBillables(balance);
+        if (billed.Count == 0)
             throw new ErrorException(ErrorCodes.NoOutstandingDebtForQr, MessageKeys.Error.NoOutstandingDebtForQr);
 
         var provider = qrContentResolver.Resolve();
-        var items = new List<QrCompositeItem>(owing.Count);
-        foreach (var row in owing)
+        var items = new List<QrCompositeItem>(billed.Count);
+        foreach (var member in billed)
         {
-            var amount = row.Outstanding;
             var payload = await provider.BuildContentAsync(
-                new QrContentRequest(account.BankBin, account.AccountNumber, account.AccountHolderName, amount, $"{balance.EventName} - {row.MemberName}"),
+                new QrContentRequest(account.BankBin, account.AccountNumber, account.AccountHolderName, member.Amount, member.Description),
                 cancellationToken);
-            var label = $"{row.MemberName}: {FormatMoney(amount)}";
+            var label = $"{member.MemberName}: {FormatMoney(member.Amount)}";
             items.Add(new QrCompositeItem(label, payload));
         }
 
         // Event header carries no amount (per-member amounts stay under each member's QR).
-        var header = await BuildHeaderAsync(account, balance.EventName, amount: null, cancellationToken);
+        var header = await BuildHeaderAsync(account, contextName, amount: null, cancellationToken);
         var image = qrImageService.RenderComposite(items, header);
         return new QrImageResult(image, PngContentType, $"event-qr-{balance.EventUuid}.png");
+    }
+
+    public async Task<IReadOnlyList<MemberQrResponse>> GenerateExpenseMemberQrsAsync(string userUuid, string expenseUuid, string? bankAccountUuid, CancellationToken cancellationToken = default)
+    {
+        tierService.EnsurePremiumFeature(MessageKeys.Feature.Qr);
+
+        var account = await ResolveDestinationAsync(userUuid, bankAccountUuid, cancellationToken);
+
+        // Resource-owned expense (miss -> ExpenseNotFound 6000); its shares carry who owes what (M5).
+        var expense = await expensesService.GetAsync(userUuid, expenseUuid, cancellationToken);
+
+        var (contextName, billed) = CollectExpenseBillables(expense);
+        if (billed.Count == 0)
+            throw new ErrorException(ErrorCodes.NoOutstandingDebtForQr, MessageKeys.Error.NoOutstandingDebtForQr);
+
+        return await BuildMemberQrsAsync(account, contextName, billed, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<MemberQrResponse>> GenerateEventMemberQrsAsync(string userUuid, string eventUuid, string? bankAccountUuid, CancellationToken cancellationToken = default)
+    {
+        tierService.EnsurePremiumFeature(MessageKeys.Feature.Qr);
+
+        var account = await ResolveDestinationAsync(userUuid, bankAccountUuid, cancellationToken);
+
+        // Reuse the M7 balance (miss -> EventNotFound 9000); never recompute debt.
+        var balance = await statsService.GetEventBalanceAsync(userUuid, eventUuid, cancellationToken);
+
+        // Event QR is closed-only (§4.4/§5): the data must be frozen before it is shared.
+        if (!balance.IsClosed)
+            throw new ErrorException(ErrorCodes.EventNotClosedForQr, MessageKeys.Error.EventNotClosedForQr);
+
+        var (contextName, billed) = CollectEventBillables(balance);
+        if (billed.Count == 0)
+            throw new ErrorException(ErrorCodes.NoOutstandingDebtForQr, MessageKeys.Error.NoOutstandingDebtForQr);
+
+        return await BuildMemberQrsAsync(account, contextName, billed, cancellationToken);
+    }
+
+    /// <summary>
+    /// A still-owing member and the transfer to bill them: the display name, the outstanding amount, and the
+    /// VietQR description. Shared by the composite and per-member QR paths so their billed sets cannot diverge.
+    /// </summary>
+    private sealed record BilledMember(string MemberUuid, string MemberName, decimal Amount, string Description);
+
+    /// <summary>
+    /// Selects who still owes on an expense: an unsettled, non-zero share owed by someone other than the payer
+    /// (the payer paid the total and never transfers to themselves; the 0đ owner-representative share drops out
+    /// via Amount &gt; 0). Order preserved from <c>expense.Shares</c>. ContextName = the expense name.
+    /// </summary>
+    private static (string ContextName, IReadOnlyList<BilledMember> Billed) CollectExpenseBillables(Models.Expenses.ExpenseResponse expense)
+    {
+        var billed = expense.Shares
+            .Where(share => !share.IsSettled && share.Amount > 0m && share.Member.Uuid != expense.Payer.Uuid)
+            .Select(share => new BilledMember(share.Member.Uuid, share.Member.Name, share.Amount, $"{expense.Name} - {share.Member.Name}"))
+            .ToList();
+        return (expense.Name, billed);
+    }
+
+    /// <summary>
+    /// Selects who still owes in a closed event: each balance row with <c>Outstanding &gt; 0</c> (the derived
+    /// settled-per-member overlay). Order preserved from <c>balance.Rows</c>. ContextName = the event name.
+    /// </summary>
+    private static (string ContextName, IReadOnlyList<BilledMember> Billed) CollectEventBillables(Models.Stats.EventBalanceResponse balance)
+    {
+        var billed = balance.Rows
+            .Where(row => row.Outstanding > 0m)
+            .Select(row => new BilledMember(row.MemberUuid, row.MemberName, row.Outstanding, $"{balance.EventName} - {row.MemberName}"))
+            .ToList();
+        return (balance.EventName, billed);
+    }
+
+    /// <summary>
+    /// Renders one single-QR PNG per billed member (order preserved) and returns each as a
+    /// <c>data:image/png;base64,&lt;...&gt;</c> data URL. The member name and amount are carried in the header
+    /// title / amount row (RenderSingle draws no label under the QR). Pure read - nothing is persisted.
+    /// </summary>
+    private async Task<IReadOnlyList<MemberQrResponse>> BuildMemberQrsAsync(BankAccount account, string contextName, IReadOnlyList<BilledMember> billed, CancellationToken cancellationToken)
+    {
+        var provider = qrContentResolver.Resolve();
+        var results = new List<MemberQrResponse>(billed.Count);
+        foreach (var member in billed)
+        {
+            var payload = await provider.BuildContentAsync(
+                new QrContentRequest(account.BankBin, account.AccountNumber, account.AccountHolderName, member.Amount, member.Description),
+                cancellationToken);
+            var header = await BuildHeaderAsync(account, $"{contextName} - {member.MemberName}", member.Amount, cancellationToken);
+            var png = qrImageService.RenderSingle(payload, header);
+            var image = "data:image/png;base64," + Convert.ToBase64String(png);
+            results.Add(new MemberQrResponse
+            {
+                MemberUuid = member.MemberUuid,
+                MemberName = member.MemberName,
+                Amount = member.Amount,
+                Image = image,
+            });
+        }
+
+        return results;
     }
 
     /// <summary>

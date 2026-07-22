@@ -2562,6 +2562,82 @@ export const handlers = [
     return pngResponse(`event-qr-${ev.uuid}.png`);
   }),
 
+  // --- Per-member QR (per-member-qr-sharing) — Premium (403 13003) ---------
+  // Each still-owing member gets their OWN single VietQR as a data URL. Same
+  // gating/ownership contract as the composite `/qr`; the billed set drives 12003
+  // (empty → nobody owes) BEFORE the account check, mirroring the backend.
+  http.get("*/api/v1/expenses/:uuid/qr/members", ({ request, params }) => {
+    const username = usernameFromAuthHeader(
+      request.headers.get("Authorization"),
+    );
+    if (!username) {
+      return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
+    }
+    if (!isPremiumUser(username)) return premiumGate();
+    const expense = getExpenses(username).find((e) => e.uuid === params.uuid);
+    if (!expense) return fail(6000, "Không tìm thấy phiếu chi tiêu.", 404);
+    // Bill only still-owing, non-payer, non-zero shares (§ backend billing).
+    const billed = expense.shares.filter(
+      (s) =>
+        s.memberUuid !== expense.payerMemberUuid &&
+        !s.isSettled &&
+        s.amount > 0,
+    );
+    if (billed.length === 0) {
+      return fail(12003, "Không còn ai nợ trên phiếu này.", 400);
+    }
+    const accounts = getBankAccounts(username);
+    if (accounts.length === 0) {
+      return fail(12001, "Chưa có tài khoản ngân hàng nhận tiền.", 400);
+    }
+    const override = new URL(request.url).searchParams.get("bankAccountUuid");
+    if (override && !accounts.some((a) => a.uuid === override)) {
+      return fail(12000, "Không tìm thấy tài khoản ngân hàng.", 404);
+    }
+    return ok(
+      billed.map((s) => ({
+        memberUuid: s.memberUuid,
+        memberName: memberByUuid(username, s.memberUuid)?.name ?? "(không rõ)",
+        amount: s.amount,
+        image: `data:image/png;base64,${PNG_1x1_BASE64}`,
+      })),
+    );
+  }),
+
+  http.get("*/api/v1/events/:uuid/qr/members", ({ request, params }) => {
+    const username = usernameFromAuthHeader(
+      request.headers.get("Authorization"),
+    );
+    if (!username) {
+      return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
+    }
+    if (!isPremiumUser(username)) return premiumGate();
+    const ev = eventByUuid(username, String(params.uuid));
+    if (!ev) return fail(9000, "Không tìm thấy đợt chi tiêu.", 404);
+    if (!ev.isClosed) return fail(12002, "Đợt chưa được chốt.", 400);
+    const balance = computeBalance(username, ev);
+    const billed = balance.rows.filter((r) => r.outstanding > 0);
+    if (billed.length === 0) {
+      return fail(12003, "Không còn ai nợ trong đợt này.", 400);
+    }
+    const accounts = getBankAccounts(username);
+    if (accounts.length === 0) {
+      return fail(12001, "Chưa có tài khoản ngân hàng nhận tiền.", 400);
+    }
+    const override = new URL(request.url).searchParams.get("bankAccountUuid");
+    if (override && !accounts.some((a) => a.uuid === override)) {
+      return fail(12000, "Không tìm thấy tài khoản ngân hàng.", 404);
+    }
+    return ok(
+      billed.map((r) => ({
+        memberUuid: r.memberUuid,
+        memberName: r.memberName,
+        amount: r.outstanding,
+        image: `data:image/png;base64,${PNG_1x1_BASE64}`,
+      })),
+    );
+  }),
+
   // --- Bank directory (our own endpoint, ApiResult<T> envelope) ------------
   // `GET /api/v1/banks` — reference data served by the backend (auth + envelope
   // handled by client.ts). Returns the ApiResult<T> envelope with BankResponse[]
