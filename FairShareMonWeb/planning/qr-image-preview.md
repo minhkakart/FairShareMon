@@ -11,10 +11,12 @@ This is a **frontend-only, presentation-only** feature. It calls **no new API**,
 dependency**, and touches **no business rule** — it reuses the blob object-URL the shipped `QrDialog`
 already creates for the `<img>`. Applies to **both** QR kinds (expense + event).
 
-> **Scope note (locked).** The stack is LOCKED (`FairShareMonWeb/CLAUDE.md`). No zoom/pan/lightbox
-> library is introduced — the viewer is HAND-ROLLED with Pointer Events + a CSS `transform`. Adding
-> such a library would be a foundation-level Open Question; this plan explicitly does NOT take it (see
-> Decision Log D5).
+> **Scope note (SUPERSEDED 2026-07-22).** This originally shipped as a HAND-ROLLED viewer (no library,
+> per D5). On 2026-07-22 the user APPROVED adding `yet-another-react-lightbox` (YARL), resolving the
+> foundation-level Open Question that D5 had deferred, and the viewer internals were swapped to YARL +
+> its Zoom plugin while keeping the same `QrPreviewDialog` public contract. The hand-rolled
+> Pointer-Events/`useZoomPan` implementation was removed. See Decision Log **D7** and the 2026-07-22
+> swap entry in the Progress Log; D5 is retained below as historical context.
 
 ## Objective
 
@@ -497,6 +499,46 @@ avoid an unapproved dependency.
 The preview `.ground` stays `#ffffff` (aspect-ratio 3/4) in light + dark so the QR still scans;
 `.viewport { touch-action: none; overscroll-behavior: contain }` so mobile pinch/pan don't scroll the
 page. **Reason:** matches the shipped `.qrFrame` scan-safety rule and enables reliable touch gestures.
+_(Post-swap: the touch-action/overscroll handling is now YARL's controller; the white ground is
+reinstated behind the YARL slide image — see D7.)_
+
+### D7 — Swap the hand-rolled viewer to `yet-another-react-lightbox` (YARL) — approved 2026-07-22
+The user APPROVED adding `yet-another-react-lightbox` (^3, installed `3.32.1`; React 19 is a supported
+peer) + its Zoom plugin, resolving the foundation-level Open Question that D5 had deferred. The
+`QrPreviewDialog` internals were swapped from raw Radix + the hand-rolled `useZoomPan` to a single
+`<Lightbox>` with `plugins={[Zoom]}`. **The public component contract is unchanged** (`{ open,
+onOpenChange, imageUrl, kind }`), so `QrDialog`'s wiring and the two enlarge triggers are untouched.
+- **Wiring:** `open={open && imageUrl != null}`, `close={() => onOpenChange(false)}`, one slide
+  `{ src: imageUrl, alt }` (alt reuses `imageAltExpense`/`imageAltEvent`). Single image →
+  `carousel={{ finite: true }}` + `render={{ buttonPrev: () => null, buttonNext: () => null }}` hide
+  prev/next. Zoom config: `{ maxZoomPixelRatio: 4, wheelZoomDistanceFactor: 100,
+  pinchZoomDistanceFactor: 100, scrollToZoom: true }`.
+- **i18n / labels:** YARL's `labels` prop maps our copy — `Close → wallet:qr.close`,
+  `"Zoom in" → wallet:qr.zoomIn`, `"Zoom out" → wallet:qr.zoomOut` (the Zoom plugin augments YARL's
+  `Labels` type with the two zoom keys). YARL supplies its own zoom in/out + close controls, so the
+  hand-rolled reset/fit control and the `role="group"` zoom toolbar are gone — `wallet:qr.resetZoom`,
+  `qr.zoomControls`, `qr.previewTitle` are now unused by product code (kept in both locales; see the
+  swap Progress-Log entry for why they weren't deleted).
+- **Escape-stack (R5) — fixed:** YARL is a body-level portal, NOT part of Radix's dismissable-layer
+  stack, and Radix's base `Dialog` listens for Escape in the **document capture phase** — so a bare
+  Escape would close BOTH the preview and the base QR dialog (verified regression). Fix, self-contained
+  in `QrPreviewDialog` (no `QrDialog`/`DialogContent` change): while the preview is open, a
+  **window-capture** `keydown` listener (fires before document-capture) intercepts Escape,
+  `stopImmediatePropagation()` + `preventDefault()` so Radix never sees it, and closes only the preview
+  via `onOpenChange(false)`. A second Escape then closes the base dialog as normal. Verified in a real
+  browser.
+- **Layering (R5):** YARL portals to `<body>` at `z-index: var(--yarl__portal_zindex, 9999)`; pinned
+  to our token via `styles={{ root: { "--yarl__portal_zindex": "var(--fs-z-lightbox)" } }}` (330), so
+  it sits above the base QR dialog (310) + popovers (320) and below toasts (400). Verified in a real
+  browser: the portal computed `z-index` is `330` and it is the top element at the viewport centre.
+- **Scannability (D6 preserved):** YARL's backdrop is dark and the composite QR PNG is not guaranteed
+  opaque, so a white ground is reinstated behind the slide image only (`.lightbox :global(.yarl__slide_image)
+  { background-color: #ffffff }`), keeping the toolbar/close chrome dark for contrast.
+- **Removed:** the `useZoomPan` hook, the raw-Radix shell, nearly all of `QrPreviewDialog.module.css`
+  (down to the one white-ground rule), and the now-unused `ZoomInIcon`/`ZoomOutIcon`/`FitIcon` glyphs
+  (`ExpandIcon` stays — the enlarge badge uses it). `--fs-z-lightbox` is retained (YARL consumes it).
+**Reason:** a maintained, accessible, touch-tested lightbox replaces ~200 lines of hand-rolled
+pointer/zoom math (D5's accepted trade-off), now that the dependency is approved.
 
 ## Progress Log
 
@@ -612,7 +654,120 @@ lifecycle, a11y, i18n, and tokens all verified sound. Post-review fixes applied:
 
 Re-verified after fixes: `pnpm build` succeeds, wallet suite **116 passed**, `tsc -b`/lint clean.
 
+### 2026-07-22 — YARL swap (frontend engineer)
+
+Replaced the hand-rolled lightbox internals with `yet-another-react-lightbox` (YARL) + its Zoom
+plugin, per the user's 2026-07-22 dependency approval (D7). The `QrPreviewDialog` public contract is
+unchanged, so `QrDialog` wiring and the two enlarge triggers were **not** touched.
+
+- **Dependency:** `pnpm add yet-another-react-lightbox` → `^3` (resolved `3.32.1`) added to
+  `package.json` dependencies + `pnpm-lock.yaml`. React 19 is a supported peer (`react: ^16.8 || ^17
+  || ^18 || ^19`).
+- **`QrPreviewDialog.tsx` [REWRITE]:** now a single `<Lightbox>` (see D7 for the full prop map). Added
+  a window-capture Escape interceptor to preserve R5 (Escape closes the preview only — see D7). Removed
+  the `useZoomPan` hook, the raw-Radix shell, the `cx`/Radix imports, and the `CloseGlyph`.
+- **`QrPreviewDialog.module.css` [TRIMMED]:** from ~170 lines down to a single scoped rule giving the
+  slide image a white ground (`.lightbox :global(.yarl__slide_image) { background-color: #ffffff }`)
+  for scannability (D6). YARL owns the overlay/viewport/toolbar/close/animation styling.
+- **`icons.tsx` [MOD]:** removed `ZoomInIcon`, `ZoomOutIcon`, `FitIcon` (only the old viewer used
+  them; YARL ships its own zoom-control icons). Kept `ExpandIcon` (the enlarge badge uses it).
+- **i18n:** NO key changes. `enlarge`/`zoomIn`/`zoomOut`/`close`/`imageAltExpense`/`imageAltEvent` stay
+  in use. `previewTitle`/`zoomControls`/`resetZoom` are now dead in product code, but are STILL
+  referenced by `qrDialog.test.tsx` (the preview specs + the `QrPreviewKeys_…` typed-JSON index) — so
+  per the grep-before-delete gate they were **kept** (deleting them would break `tsc -b` on the test
+  file, failing `pnpm build`). They should be removed when the web-test-engineer redoes the preview
+  specs. Both locales stay key-in-sync; `walletI18n.test.ts` + `QrPreviewKeys_…` stay green.
+- **`styles/tokens.css`:** unchanged — `--fs-z-lightbox: 330` retained (YARL's portal z-index is pinned
+  to it).
+- **`QrDialog.tsx` / `QrDialog.module.css`:** unchanged.
+
+Verification: `pnpm exec tsc -b` clean; `pnpm lint` exit 0 (only pre-existing `only-export-components`
+warnings in unrelated files); `pnpm build` succeeds. Drove the REAL app (Playwright + MSW, PREMIUM
+seed user `admin`) with a throwaway spec (since deleted): opened the QR dialog, opened the preview from
+an enlarge trigger, and confirmed via DOM + screenshot that the YARL portal paints a full-viewport
+black backdrop at **computed z-index 330** (base dialog 310 below, toast 400 above), the zoom-in /
+zoom-out / close chrome renders with our localized labels ("Phóng to" / "Thu nhỏ" / "Đóng"), the QR
+image sits on a **white ground**, and **Escape closes the preview only** (base QR dialog's `<img>`
+survives) with a second Escape closing the base — R5 preserved.
+
+**For the web-test-engineer (preview specs to redo):** the preview is now a YARL portal, so the DOM
+differs from the hand-rolled version:
+- The lightbox is a `role="dialog"` with accessible name **"Lightbox"** (YARL's default `Lightbox`
+  label; not localized — override via the `Lightbox` label key if a localized name is wanted).
+  Query: `screen.getByRole("dialog", { name: "Lightbox" })`.
+- Chrome buttons are YARL `<button class="yarl__button">` with `aria-label`/`title` from our labels:
+  zoom-in = "Phóng to", zoom-out = "Thu nhỏ", close = "Đóng". NOTE: "Phóng to" is a substring of the
+  enlarge trigger "Phóng to mã QR" — use **exact** names for the zoom buttons.
+- There is **no** `role="group"` "Điều khiển thu phóng", **no** `img[data-scale]`, and **no**
+  reset/fit button anymore. The 8 old `QrPreview_*` specs that queried those now fail at RUNTIME (not
+  tsc). `QrPreview_ReadyImage_ExposesTwoEnlargeTriggers` still passes (triggers unchanged).
+- Zoom-in/out is disabled by YARL when the image can't zoom — the committed MSW `pngResponse()` is a
+  1×1 PNG, so YARL disables zoom-in; a real-sized fixture is needed to exercise zooming, and jsdom has
+  no layout for gesture geometry (E2E territory, as before).
+
+### 2026-07-22 — Tests rewritten for the YARL swap (web-test-engineer)
+
+Rewrote the `describe("QrDialog QR preview")` block in `src/features/wallet/qrDialog.test.tsx` to
+match the YARL portal DOM (D7). No product code touched. The hand-rolled `img[data-scale]` hook, the
+`role="group"` "Điều khiển thu phóng" zoom toolbar, and the reset/fit button are gone from the DOM, so
+the two zoom-state specs (`QrPreview_ZoomInThenReset_DrivesDataScale`,
+`QrPreview_ZoomOut_StaysClampedAtFit`) were **removed** (the zoom state machine is no longer observable
+in jsdom; the 1×1 `pngResponse()` fixture also renders YARL's zoom-in disabled — real wheel/pinch/pan
+stays E2E territory). The lightbox is queried via `getByRole("dialog", { name: "Lightbox" })` (YARL's
+default, non-localized name), the QR raster inside it via `within(lightbox).getByRole("img", { name:
+/VietQR/ })`.
+
+Specs in the block now (8 total):
+- `QrPreview_ReadyImage_ExposesTwoEnlargeTriggers` — **unchanged**; both "Phóng to mã QR" triggers.
+- `QrPreview_ClickImageSurface_OpensPreview` — **rewritten**; first trigger opens the YARL lightbox,
+  QR `<img>` present inside it.
+- `QrPreview_ClickExpandBadge_OpensPreview` — **rewritten**; second trigger opens the same lightbox.
+- `QrPreview_Escape_ClosesPreviewOnly_BaseDialogStaysOpen` — **rewritten** (key regression guard for
+  the window-capture Escape interceptor, R5/D7): first Escape removes the lightbox, the base QR
+  `<img>` (`/VietQR/`) survives.
+- `QrPreview_CloseButton_ClosesPreviewOnly` — **new**; YARL's close button (`name: "Đóng"`, scoped to
+  the lightbox to avoid the base dialog's two "Đóng" controls) closes the preview only.
+- `QrPreview_Open_ReusesSameBlobUrl_NoSecondCreateObjectUrl` — **rewritten**; no extra
+  `createObjectURL`, lightbox img `src` == base blob URL (R4).
+- `QrPreview_OpenThenClose_NeverRevokesTheObjectUrl` — **rewritten** (close via Escape); no
+  `revokeObjectURL` while the base dialog is mounted (R4/R6).
+- `QrPreview_EventKind_UsesEventImageAlt` — **rewritten**; the lightbox img uses `imageAltEvent` for
+  `kind="event"` (R3).
+
+Dead i18n keys removed (confirmed unused in product code by grep — only the old test referenced them;
+`M7Showcase.tsx` uses an unrelated `.previewTitle` CSS-module class): `qr.previewTitle`,
+`qr.zoomControls`, `qr.resetZoom` deleted from **both** `wallet.json` locales (key-for-key in sync,
+`walletI18n.test.ts` parity stays green). `QrPreviewKeys_ExistInBothLocales_NonEmpty` updated to assert
+only the still-used keys (`enlarge`, `zoomIn`, `zoomOut`, `close`).
+
+Verification: `pnpm exec vitest run qrDialog.test.tsx walletI18n.test.ts` → **35 passed** (2 files).
+Full `pnpm test` → **900 passed / 107 files**. `pnpm exec tsc -b` clean. `pnpm lint` exit 0 (only
+pre-existing `only-export-components` warnings in unrelated files; none in the wallet/test files). No
+product bug found.
+
+### 2026-07-22 — Review of the YARL swap (web-code-reviewer) + a11y fix
+
+Clean review — no blocker/high/medium; the window-capture Escape interceptor was verified correct
+against Radix's `ownerDocument`-capture listener and YARL's body portal (Escape-first preserved, no
+listener leak), layering (`--yarl__portal_zindex` → `--fs-z-lightbox` 330) and the white-ground
+scannability confirmed on the actual portal element. One **low** finding fixed: the lightbox's
+accessible name was YARL's hardcoded English "Lightbox" in a vi-VN-default app — localized it via the
+`Lightbox` label → `wallet:qr.previewTitle` and restored that key in both locales (the preview-spec
+`getByRole("dialog",{name})` queries + the key-presence assertion were updated to the localized name).
+Re-verified: full suite **900 passed**, `tsc -b`/lint clean.
+
+**Open follow-up (non-blocking):** focus-trap Tab-containment between the base Radix dialog and YARL's
+body-level portal is not exercised in jsdom (the specs click controls, don't Tab). Recommend a
+Playwright keyboard pass (Tab cycles within the lightbox; focus returns to the enlarge trigger on
+close) with a real-sized QR fixture that also enables actual zoom.
+
 ## Final Outcome
+
+> **Superseded 2026-07-22 by the YARL swap (D7).** The description below is the ORIGINAL hand-rolled
+> shipment. It shipped and was reviewed, then the viewer internals were replaced with
+> `yet-another-react-lightbox` once the user approved the dependency — the `QrPreviewDialog` public
+> contract, `QrDialog` wiring, the two enlarge triggers, `--fs-z-lightbox`, and the reused i18n keys
+> all carried over unchanged. See the "YARL swap" Progress-Log entry and Decision D7 above.
 
 Implemented, reviewed, and verified 2026-07-22. All seven plan steps landed with no deviations and no
 new Open Questions. Files: **[NEW]** `QrPreviewDialog.tsx`, `QrPreviewDialog.module.css`; **[MOD]** `QrDialog.tsx`,

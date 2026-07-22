@@ -500,7 +500,7 @@ describe("QrDialog ownership 404 one-shot", () => {
   });
 });
 
-// ─── QR preview (lightbox) ───────────────────────────────────────────────────
+// ─── QR preview (YARL lightbox) ──────────────────────────────────────────────
 describe("QrDialog QR preview", () => {
   // Seed a ready PREMIUM expense QR against MSW, with createObjectURL stubbed to a
   // stable blob URL so the preview can be asserted to REUSE it (never a 2nd one).
@@ -516,10 +516,23 @@ describe("QrDialog QR preview", () => {
     return createSpy;
   }
 
-  // The preview <img> is the only element carrying the data-scale test hook, so it
-  // uniquely identifies the lightbox raster regardless of the base QR <img>.
-  const previewImg = () =>
-    document.querySelector<HTMLImageElement>("img[data-scale]");
+  // The preview is now a `yet-another-react-lightbox` (YARL) portal (D7): a
+  // role="dialog" whose accessible name is YARL's `Lightbox` label, localized via
+  // `wallet:qr.previewTitle` (vi-VN "Xem mã QR phóng to"). That name uniquely
+  // distinguishes the lightbox layer from the base QR dialog (named from `title`).
+  //
+  // NOTE: real wheel / pinch / drag-to-pan zoom is E2E territory — jsdom has no
+  // layout or PointerEvent geometry. The committed pngResponse() fixture is a 1×1
+  // PNG, which YARL treats as non-zoomable (it renders the zoom-in button
+  // DISABLED), so we never drive an actual zoom here — the zoom state machine is
+  // no longer observable in jsdom. These specs assert the lightbox chrome + image
+  // + the custom Escape/close interceptors only.
+  const previewName = "Xem mã QR phóng to"; // wallet:qr.previewTitle (vi-VN pinned)
+  const findLightbox = () => screen.findByRole("dialog", { name: previewName });
+  const queryLightbox = () => screen.queryByRole("dialog", { name: previewName });
+  // The QR raster inside the lightbox (scoped so it never matches the base <img>).
+  const lightboxImg = (lightbox: HTMLElement) =>
+    within(lightbox).getByRole("img", { name: /VietQR/ });
 
   it("QrPreview_ReadyImage_ExposesTwoEnlargeTriggers", async () => {
     seedReadyExpense();
@@ -527,7 +540,7 @@ describe("QrDialog QR preview", () => {
     await screen.findByRole("img", { name: /VietQR/ });
 
     // D1 — the transparent full-image surface AND the top-right badge, both named
-    // wallet:qr.enlarge ("Phóng to mã QR").
+    // wallet:qr.enlarge ("Phóng to mã QR"). Unchanged by the YARL swap.
     const triggers = screen.getAllByRole("button", {
       name: /Phóng to mã QR/,
     });
@@ -545,10 +558,9 @@ describe("QrDialog QR preview", () => {
       screen.getAllByRole("button", { name: /Phóng to mã QR/ })[0],
     );
 
-    // The lightbox is open: its labeled zoom-control group is present.
-    expect(
-      await screen.findByRole("group", { name: "Điều khiển thu phóng" }),
-    ).toBeInTheDocument();
+    // The YARL lightbox is open and renders the QR image (with our alt) inside it.
+    const lightbox = await findLightbox();
+    expect(lightboxImg(lightbox)).toBeInTheDocument();
   });
 
   it("QrPreview_ClickExpandBadge_OpensPreview", async () => {
@@ -557,14 +569,14 @@ describe("QrDialog QR preview", () => {
     renderQr();
     await screen.findByRole("img", { name: /VietQR/ });
 
-    // Second trigger (DOM order) is the top-right .enlargeBadge icon button.
+    // Second trigger (DOM order) is the top-right .enlargeBadge icon button —
+    // opens the SAME lightbox.
     await user.click(
       screen.getAllByRole("button", { name: /Phóng to mã QR/ })[1],
     );
 
-    expect(
-      await screen.findByRole("group", { name: "Điều khiển thu phóng" }),
-    ).toBeInTheDocument();
+    const lightbox = await findLightbox();
+    expect(lightboxImg(lightbox)).toBeInTheDocument();
   });
 
   it("QrPreview_Escape_ClosesPreviewOnly_BaseDialogStaysOpen", async () => {
@@ -576,22 +588,23 @@ describe("QrDialog QR preview", () => {
     await user.click(
       screen.getAllByRole("button", { name: /Phóng to mã QR/ })[0],
     );
-    await screen.findByRole("group", { name: "Điều khiển thu phóng" });
+    await findLightbox();
 
-    // Radix Escape-stack: Escape closes the topmost (preview) layer first.
+    // R5 / D7 — the key regression guard. YARL portals to <body> and is NOT part
+    // of Radix's dismissable-layer stack, and Radix's base Dialog listens for
+    // Escape in the DOCUMENT-capture phase, so a bare Escape would close BOTH.
+    // A custom WINDOW-capture interceptor in QrPreviewDialog swallows the first
+    // Escape (stopImmediatePropagation + preventDefault) so Radix never sees it
+    // and closes ONLY the preview. (A second Escape then closes the base dialog.)
     await user.keyboard("{Escape}");
 
-    // The preview is gone…
-    await waitFor(() =>
-      expect(
-        screen.queryByRole("group", { name: "Điều khiển thu phóng" }),
-      ).not.toBeInTheDocument(),
-    );
+    // The lightbox is gone…
+    await waitFor(() => expect(queryLightbox()).not.toBeInTheDocument());
     // …but the base QR dialog's image survives (base dialog did NOT close).
     expect(screen.getByRole("img", { name: /VietQR/ })).toBeInTheDocument();
   });
 
-  it("QrPreview_ZoomInThenReset_DrivesDataScale", async () => {
+  it("QrPreview_CloseButton_ClosesPreviewOnly", async () => {
     seedReadyExpense();
     const user = userEvent.setup();
     renderQr();
@@ -600,46 +613,16 @@ describe("QrDialog QR preview", () => {
     await user.click(
       screen.getAllByRole("button", { name: /Phóng to mã QR/ })[0],
     );
-    await screen.findByRole("group", { name: "Điều khiển thu phóng" });
+    const lightbox = await findLightbox();
 
-    // Fit-to-viewport at open → scale 1.
-    expect(previewImg()?.getAttribute("data-scale")).toBe("1");
+    // YARL's close button carries our localized label (wallet:qr.close → "Đóng").
+    // Scope to the lightbox so we never match the base dialog's own "Đóng"
+    // controls (the DialogContent close + the footer button).
+    await user.click(within(lightbox).getByRole("button", { name: "Đóng" }));
 
-    // Zoom in (button is a fixed ×1.4 step — layout-independent, deterministic in
-    // jsdom where getBoundingClientRect is zero-size). Exact name avoids matching
-    // the enlarge triggers ("Phóng to mã QR").
-    await user.click(screen.getByRole("button", { name: "Phóng to" }));
-    await waitFor(() =>
-      expect(
-        Number(previewImg()?.getAttribute("data-scale")),
-      ).toBeGreaterThan(1),
-    );
-
-    // Reset-to-fit → back to scale 1.
-    await user.click(
-      screen.getByRole("button", { name: "Khôi phục vừa khung" }),
-    );
-    await waitFor(() =>
-      expect(previewImg()?.getAttribute("data-scale")).toBe("1"),
-    );
-  });
-
-  it("QrPreview_ZoomOut_StaysClampedAtFit", async () => {
-    // Zoom-out from the fit floor (MIN = 1) must clamp, never go below fit.
-    seedReadyExpense();
-    const user = userEvent.setup();
-    renderQr();
-    await screen.findByRole("img", { name: /VietQR/ });
-
-    await user.click(
-      screen.getAllByRole("button", { name: /Phóng to mã QR/ })[0],
-    );
-    await screen.findByRole("group", { name: "Điều khiển thu phóng" });
-
-    await user.click(screen.getByRole("button", { name: "Thu nhỏ" }));
-    // A short settle, then assert it stayed clamped at 1 (not < 1).
-    await new Promise((r) => setTimeout(r, 30));
-    expect(previewImg()?.getAttribute("data-scale")).toBe("1");
+    await waitFor(() => expect(queryLightbox()).not.toBeInTheDocument());
+    // Base dialog + its QR image survive (the close affected the preview only).
+    expect(screen.getByRole("img", { name: /VietQR/ })).toBeInTheDocument();
   });
 
   it("QrPreview_Open_ReusesSameBlobUrl_NoSecondCreateObjectUrl", async () => {
@@ -655,12 +638,12 @@ describe("QrDialog QR preview", () => {
     await user.click(
       screen.getAllByRole("button", { name: /Phóng to mã QR/ })[0],
     );
-    await screen.findByRole("group", { name: "Điều khiển thu phóng" });
+    const lightbox = await findLightbox();
 
     // R4 — opening the preview creates NO new object URL (the preview only reads
-    // the string QrDialog owns) and the preview raster points at the same blob.
+    // the string QrDialog owns) and the lightbox raster points at the same blob.
     expect(createSpy.mock.calls.length).toBe(callsBeforePreview);
-    expect(previewImg()?.getAttribute("src")).toBe("blob:qr-shared");
+    expect(lightboxImg(lightbox).getAttribute("src")).toBe("blob:qr-shared");
   });
 
   it("QrPreview_OpenThenClose_NeverRevokesTheObjectUrl", async () => {
@@ -680,13 +663,9 @@ describe("QrDialog QR preview", () => {
     await user.click(
       screen.getAllByRole("button", { name: /Phóng to mã QR/ })[0],
     );
-    await screen.findByRole("group", { name: "Điều khiển thu phóng" });
+    await findLightbox();
     await user.keyboard("{Escape}");
-    await waitFor(() =>
-      expect(
-        screen.queryByRole("group", { name: "Điều khiển thu phóng" }),
-      ).not.toBeInTheDocument(),
-    );
+    await waitFor(() => expect(queryLightbox()).not.toBeInTheDocument());
 
     // The still-mounted base dialog keeps the blob alive — no revoke yet.
     expect(revokeSpy).not.toHaveBeenCalledWith("blob:qr-norev");
@@ -707,10 +686,13 @@ describe("QrDialog QR preview", () => {
     await user.click(
       screen.getAllByRole("button", { name: /Phóng to mã QR/ })[0],
     );
-    await screen.findByRole("group", { name: "Điều khiển thu phóng" });
+    const lightbox = await findLightbox();
 
-    // The event-specific alt copy ("quyết toán công nợ của đợt") is on the preview img.
-    expect(previewImg()?.getAttribute("alt")).toMatch(/quyết toán công nợ/);
+    // The event-specific alt copy ("quyết toán công nợ của đợt") is on the
+    // lightbox image.
+    expect(lightboxImg(lightbox).getAttribute("alt")).toMatch(
+      /quyết toán công nợ/,
+    );
   });
 });
 
@@ -719,14 +701,11 @@ describe("QrDialog QR preview i18n keys", () => {
   it("QrPreviewKeys_ExistInBothLocales_NonEmpty", async () => {
     const vi = await import("@/i18n/locales/vi-VN/wallet.json");
     const en = await import("@/i18n/locales/en-US/wallet.json");
-    const keys = [
-      "enlarge",
-      "previewTitle",
-      "zoomControls",
-      "zoomIn",
-      "zoomOut",
-      "resetZoom",
-    ] as const;
+    // The preview labels still consumed after the YARL swap (D7): the enlarge
+    // triggers, the localized lightbox accessible name (`previewTitle` → YARL's
+    // `Lightbox` label), and YARL's zoom/close chrome. `zoomControls`/`resetZoom`
+    // were retired with the hand-rolled viewer and removed from both locales.
+    const keys = ["enlarge", "previewTitle", "zoomIn", "zoomOut", "close"] as const;
     for (const k of keys) {
       expect(vi.default.qr[k]?.trim()).toBeTruthy();
       expect(en.default.qr[k]?.trim()).toBeTruthy();
