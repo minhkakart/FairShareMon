@@ -683,6 +683,12 @@ TS strict, and the API-client-centric, envelope/error-code, refresh, i18n, and b
 constraints from the API contract are all satisfiable on this stack (rationale per option in the
 annotated Open Questions).
 
+**Later-approved dependencies (post-lock additions the user signed off on):**
+
+| Dependency                        | Approved    | For                                                                                                                      |
+| --------------------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `yet-another-react-lightbox` (^3) | 2026-07-22  | The QR image preview (lightbox) — replaced the hand-rolled Radix + `useZoomPan` viewer. See `planning/qr-image-preview.md`. |
+
 **Consequence:** implementation is unblocked. The ui-designer builds the design system on the OQ5
 substrate (CSS Modules + CSS-custom-property tokens + Radix), and the web-implementer builds the Step
 0–10 plan. Introducing any dependency not on this list is a new Open Question, not a silent decision.
