@@ -500,6 +500,240 @@ describe("QrDialog ownership 404 one-shot", () => {
   });
 });
 
+// ─── QR preview (lightbox) ───────────────────────────────────────────────────
+describe("QrDialog QR preview", () => {
+  // Seed a ready PREMIUM expense QR against MSW, with createObjectURL stubbed to a
+  // stable blob URL so the preview can be asserted to REUSE it (never a 2nd one).
+  function seedReadyExpense(blobUrl = "blob:qr-preview") {
+    seedSession("PREMIUM");
+    const createSpy = vi
+      .spyOn(URL, "createObjectURL")
+      .mockReturnValue(blobUrl);
+    server.use(
+      http.get("*/api/v1/bank-accounts", () => ok(ACCOUNTS)),
+      http.get("*/api/v1/expenses/:uuid/qr", () => pngResponse()),
+    );
+    return createSpy;
+  }
+
+  // The preview <img> is the only element carrying the data-scale test hook, so it
+  // uniquely identifies the lightbox raster regardless of the base QR <img>.
+  const previewImg = () =>
+    document.querySelector<HTMLImageElement>("img[data-scale]");
+
+  it("QrPreview_ReadyImage_ExposesTwoEnlargeTriggers", async () => {
+    seedReadyExpense();
+    renderQr();
+    await screen.findByRole("img", { name: /VietQR/ });
+
+    // D1 — the transparent full-image surface AND the top-right badge, both named
+    // wallet:qr.enlarge ("Phóng to mã QR").
+    const triggers = screen.getAllByRole("button", {
+      name: /Phóng to mã QR/,
+    });
+    expect(triggers).toHaveLength(2);
+  });
+
+  it("QrPreview_ClickImageSurface_OpensPreview", async () => {
+    seedReadyExpense();
+    const user = userEvent.setup();
+    renderQr();
+    await screen.findByRole("img", { name: /VietQR/ });
+
+    // First trigger (DOM order) is the transparent .enlargeSurface over the image.
+    await user.click(
+      screen.getAllByRole("button", { name: /Phóng to mã QR/ })[0],
+    );
+
+    // The lightbox is open: its labeled zoom-control group is present.
+    expect(
+      await screen.findByRole("group", { name: "Điều khiển thu phóng" }),
+    ).toBeInTheDocument();
+  });
+
+  it("QrPreview_ClickExpandBadge_OpensPreview", async () => {
+    seedReadyExpense();
+    const user = userEvent.setup();
+    renderQr();
+    await screen.findByRole("img", { name: /VietQR/ });
+
+    // Second trigger (DOM order) is the top-right .enlargeBadge icon button.
+    await user.click(
+      screen.getAllByRole("button", { name: /Phóng to mã QR/ })[1],
+    );
+
+    expect(
+      await screen.findByRole("group", { name: "Điều khiển thu phóng" }),
+    ).toBeInTheDocument();
+  });
+
+  it("QrPreview_Escape_ClosesPreviewOnly_BaseDialogStaysOpen", async () => {
+    seedReadyExpense();
+    const user = userEvent.setup();
+    renderQr();
+    await screen.findByRole("img", { name: /VietQR/ });
+
+    await user.click(
+      screen.getAllByRole("button", { name: /Phóng to mã QR/ })[0],
+    );
+    await screen.findByRole("group", { name: "Điều khiển thu phóng" });
+
+    // Radix Escape-stack: Escape closes the topmost (preview) layer first.
+    await user.keyboard("{Escape}");
+
+    // The preview is gone…
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("group", { name: "Điều khiển thu phóng" }),
+      ).not.toBeInTheDocument(),
+    );
+    // …but the base QR dialog's image survives (base dialog did NOT close).
+    expect(screen.getByRole("img", { name: /VietQR/ })).toBeInTheDocument();
+  });
+
+  it("QrPreview_ZoomInThenReset_DrivesDataScale", async () => {
+    seedReadyExpense();
+    const user = userEvent.setup();
+    renderQr();
+    await screen.findByRole("img", { name: /VietQR/ });
+
+    await user.click(
+      screen.getAllByRole("button", { name: /Phóng to mã QR/ })[0],
+    );
+    await screen.findByRole("group", { name: "Điều khiển thu phóng" });
+
+    // Fit-to-viewport at open → scale 1.
+    expect(previewImg()?.getAttribute("data-scale")).toBe("1");
+
+    // Zoom in (button is a fixed ×1.4 step — layout-independent, deterministic in
+    // jsdom where getBoundingClientRect is zero-size). Exact name avoids matching
+    // the enlarge triggers ("Phóng to mã QR").
+    await user.click(screen.getByRole("button", { name: "Phóng to" }));
+    await waitFor(() =>
+      expect(
+        Number(previewImg()?.getAttribute("data-scale")),
+      ).toBeGreaterThan(1),
+    );
+
+    // Reset-to-fit → back to scale 1.
+    await user.click(
+      screen.getByRole("button", { name: "Khôi phục vừa khung" }),
+    );
+    await waitFor(() =>
+      expect(previewImg()?.getAttribute("data-scale")).toBe("1"),
+    );
+  });
+
+  it("QrPreview_ZoomOut_StaysClampedAtFit", async () => {
+    // Zoom-out from the fit floor (MIN = 1) must clamp, never go below fit.
+    seedReadyExpense();
+    const user = userEvent.setup();
+    renderQr();
+    await screen.findByRole("img", { name: /VietQR/ });
+
+    await user.click(
+      screen.getAllByRole("button", { name: /Phóng to mã QR/ })[0],
+    );
+    await screen.findByRole("group", { name: "Điều khiển thu phóng" });
+
+    await user.click(screen.getByRole("button", { name: "Thu nhỏ" }));
+    // A short settle, then assert it stayed clamped at 1 (not < 1).
+    await new Promise((r) => setTimeout(r, 30));
+    expect(previewImg()?.getAttribute("data-scale")).toBe("1");
+  });
+
+  it("QrPreview_Open_ReusesSameBlobUrl_NoSecondCreateObjectUrl", async () => {
+    const createSpy = seedReadyExpense("blob:qr-shared");
+    const user = userEvent.setup();
+    renderQr();
+    const baseImg = await screen.findByRole("img", { name: /VietQR/ });
+    expect(baseImg.getAttribute("src")).toBe("blob:qr-shared");
+
+    // Count createObjectURL calls made up to the ready state.
+    const callsBeforePreview = createSpy.mock.calls.length;
+
+    await user.click(
+      screen.getAllByRole("button", { name: /Phóng to mã QR/ })[0],
+    );
+    await screen.findByRole("group", { name: "Điều khiển thu phóng" });
+
+    // R4 — opening the preview creates NO new object URL (the preview only reads
+    // the string QrDialog owns) and the preview raster points at the same blob.
+    expect(createSpy.mock.calls.length).toBe(callsBeforePreview);
+    expect(previewImg()?.getAttribute("src")).toBe("blob:qr-shared");
+  });
+
+  it("QrPreview_OpenThenClose_NeverRevokesTheObjectUrl", async () => {
+    // R4/R6 — the preview never owns the blob lifecycle; opening + closing it must
+    // not revoke the URL (only base-dialog unmount / blob change revokes).
+    seedSession("PREMIUM");
+    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:qr-norev");
+    const revokeSpy = vi.spyOn(URL, "revokeObjectURL");
+    server.use(
+      http.get("*/api/v1/bank-accounts", () => ok(ACCOUNTS)),
+      http.get("*/api/v1/expenses/:uuid/qr", () => pngResponse()),
+    );
+    const user = userEvent.setup();
+    renderQr();
+    await screen.findByRole("img", { name: /VietQR/ });
+
+    await user.click(
+      screen.getAllByRole("button", { name: /Phóng to mã QR/ })[0],
+    );
+    await screen.findByRole("group", { name: "Điều khiển thu phóng" });
+    await user.keyboard("{Escape}");
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("group", { name: "Điều khiển thu phóng" }),
+      ).not.toBeInTheDocument(),
+    );
+
+    // The still-mounted base dialog keeps the blob alive — no revoke yet.
+    expect(revokeSpy).not.toHaveBeenCalledWith("blob:qr-norev");
+  });
+
+  it("QrPreview_EventKind_UsesEventImageAlt", async () => {
+    // R3 — the preview reuses the event alt (wallet:qr.imageAltEvent) for kind=event.
+    seedSession("PREMIUM");
+    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:qr-event");
+    server.use(
+      http.get("*/api/v1/bank-accounts", () => ok(ACCOUNTS)),
+      http.get("*/api/v1/events/:uuid/qr", () => pngResponse()),
+    );
+    const user = userEvent.setup();
+    renderQr({ kind: "event", targetUuid: "ev-1", title: "Mã QR quyết toán" });
+    await screen.findByRole("img", { name: /VietQR/ });
+
+    await user.click(
+      screen.getAllByRole("button", { name: /Phóng to mã QR/ })[0],
+    );
+    await screen.findByRole("group", { name: "Điều khiển thu phóng" });
+
+    // The event-specific alt copy ("quyết toán công nợ của đợt") is on the preview img.
+    expect(previewImg()?.getAttribute("alt")).toMatch(/quyết toán công nợ/);
+  });
+});
+
+// ─── QR preview i18n keys ─────────────────────────────────────────────────────
+describe("QrDialog QR preview i18n keys", () => {
+  it("QrPreviewKeys_ExistInBothLocales_NonEmpty", async () => {
+    const vi = await import("@/i18n/locales/vi-VN/wallet.json");
+    const en = await import("@/i18n/locales/en-US/wallet.json");
+    const keys = [
+      "enlarge",
+      "previewTitle",
+      "zoomControls",
+      "zoomIn",
+      "zoomOut",
+      "resetZoom",
+    ] as const;
+    for (const k of keys) {
+      expect(vi.default.qr[k]?.trim()).toBeTruthy();
+      expect(en.default.qr[k]?.trim()).toBeTruthy();
+    }
+  });
+});
+
 // ─── i18n ────────────────────────────────────────────────────────────────────
 describe("QrDialog i18n", () => {
   it("QrDialog_EnUsLocale_RendersEnglishGateCopy", async () => {

@@ -76,3 +76,33 @@ export const PencilIcon = () => (
     <path d="M13.5 3.5l3 3L7 16H4v-3l9.5-9.5z" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
+
+/* Maximize / expand — four outward corner arrows. Used by the enlarge badge + surface. */
+export const ExpandIcon = () => (
+  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true" width="20" height="20">
+    <path d="M12 3h5v5M8 17H3v-5M17 3l-6 6M3 17l6-6" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+/* Magnifier with a plus — zoom in. */
+export const ZoomInIcon = () => (
+  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true" width="20" height="20">
+    <circle cx="8.5" cy="8.5" r="5" />
+    <path d="M12.2 12.2L17 17M6.5 8.5h4M8.5 6.5v4" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+/* Magnifier with a minus — zoom out. */
+export const ZoomOutIcon = () => (
+  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true" width="20" height="20">
+    <circle cx="8.5" cy="8.5" r="5" />
+    <path d="M12.2 12.2L17 17M6.5 8.5h4" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+/* Reset-to-fit — a frame with inward corner arrows. */
+export const FitIcon = () => (
+  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true" width="20" height="20">
+    <path d="M4 8V4h4M16 8V4h-4M4 12v4h4M16 12v4h-4M8 8l-3-3M12 8l3-3M8 12l-3 3M12 12l3 3" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
