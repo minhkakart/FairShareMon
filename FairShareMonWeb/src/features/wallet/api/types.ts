@@ -32,3 +32,15 @@ export interface UpdateBankAccountRequest {
   accountNumber: string;
   accountHolderName: string;
 }
+
+/**
+ * One still-owing member's OWN single VietQR (per-member QR endpoints
+ * `GET …/qr/members`). `image` is a `data:image/png;base64,<…>` data URL, ready
+ * to drop straight into an `<img src>` — no object-URL lifecycle needed.
+ */
+export interface MemberQrResponse {
+  memberUuid: string;
+  memberName: string;
+  amount: number;
+  image: string;
+}

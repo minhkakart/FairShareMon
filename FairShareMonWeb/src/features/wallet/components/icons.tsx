@@ -77,6 +77,14 @@ export const PencilIcon = () => (
   </svg>
 );
 
+/* Share — an upward arrow leaving a tray (OS-share affordance). Used by the QR
+   dialog footer Share button. (YARL supplies its own share glyph in the lightbox.) */
+export const ShareIcon = () => (
+  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true" width="1em" height="1em">
+    <path d="M10 3v9M10 3L7 6M10 3l3 3M5 9.5H4a1 1 0 00-1 1V16a1 1 0 001 1h12a1 1 0 001-1v-5.5a1 1 0 00-1-1h-1" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
 /* Maximize / expand — four outward corner arrows. Used by the enlarge badge + surface.
    (The zoom-in / zoom-out / fit glyphs were removed when the QR preview moved to
    yet-another-react-lightbox, which ships its own zoom-control icons.) */

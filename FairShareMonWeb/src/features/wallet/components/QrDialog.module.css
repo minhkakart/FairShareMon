@@ -27,15 +27,17 @@
 .qrFrame {
   position: relative;
   width: 100%;
-  max-width: 17rem; /* composite settlement sheet — one QR per still-owing member */
+  max-width: 17rem; /* one still-owing member's own single QR */
   background: #ffffff;
   border: 1px solid var(--fs-color-border);
   border-radius: var(--fs-radius-lg);
   padding: var(--fs-space-3); /* quiet zone around the code */
   overflow: hidden;
 }
-/* Both the expense and the event QR are composite settlement sheets (a stacked
-   column of one QR per still-owing member), so both use the taller aspect. */
+/* Each image is one member's own single VietQR card (header band + QR), a portrait
+   PNG (~380×560 server-side). Both kinds share the same footprint so the skeleton →
+   image transition never shifts; `object-fit: contain` letterboxes onto the white
+   ground for any exact aspect. */
 .qrFrame.expense,
 .qrFrame.event {
   aspect-ratio: 3 / 4;
@@ -95,6 +97,37 @@
 .enlargeBadge:focus-visible {
   outline: 2px solid var(--fs-color-focus);
   outline-offset: 2px;
+}
+
+/* Per-member caption under the QR well (the first still-owing member): name +
+   amount + a "1/N · N members" meta line + the enlarge hint. Real text (not
+   color-coded); long Vietnamese names wrap. */
+.qrCaption {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--fs-space-1);
+  text-align: center;
+}
+.qrCaptionName {
+  font-size: var(--fs-text-md);
+  font-weight: var(--fs-weight-semibold);
+  color: var(--fs-color-text);
+  overflow-wrap: anywhere;
+}
+.qrCaptionAmount {
+  font-size: var(--fs-text-md);
+  font-weight: var(--fs-weight-medium);
+  color: var(--fs-color-text);
+  font-variant-numeric: tabular-nums;
+}
+.qrCaptionMeta {
+  font-size: var(--fs-text-sm);
+  color: var(--fs-color-text-secondary);
+}
+.qrCaptionHint {
+  font-size: var(--fs-text-sm);
+  color: var(--fs-color-text-secondary);
 }
 
 /* The human-readable account block — the ACCESSIBLE channel paired with the

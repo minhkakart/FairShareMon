@@ -16,17 +16,19 @@ import {
 } from "@/components/ui";
 import { useToast } from "@/app/ToastHost";
 import { ErrorCodes, isApiError } from "@/lib/api/errors";
-import { downloadBlob } from "@/lib/download/downloadBlob";
+import { formatMoneyVnd } from "@/i18n/format";
 import { useCurrentUser } from "@/features/auth/hooks/useAuth";
 import { useBankAccountsQuery } from "../hooks/useBankAccounts";
-import { useEventQrQuery, useExpenseQrQuery } from "../hooks/useQr";
-import type { BankAccountResponse } from "../api/types";
+import { useEventMemberQrsQuery, useExpenseMemberQrsQuery } from "../hooks/useQr";
+import type { BankAccountResponse, MemberQrResponse } from "../api/types";
 import { maskAccount, groupAccount } from "../format";
+import { canShareMemberQr, downloadMemberQr, shareMemberQr } from "../qrShare";
 import {
   CheckIcon,
   CopyIcon,
   DownloadIcon,
   ExpandIcon,
+  ShareIcon,
   WalletIcon,
 } from "./icons";
 import { QrPreviewDialog } from "./QrPreviewDialog";
@@ -45,14 +47,15 @@ export type QrDialogProps = {
 };
 
 /**
- * The shared VietQR display modal (OQ3a). Owns the query, the error-code → state
- * mapping, and the blob object-URL lifecycle: it fetches the PNG via `api.blob`,
- * creates an object URL, and revokes it on unmount / re-fetch / destination
- * change. The QR image is decorative — the human-readable account block beneath
- * it is the accessible channel and the source for "copy details" (OQ4a: holder +
- * number, never the raw TLV payload).
+ * The shared VietQR display modal. Owns the query and the error-code → state
+ * mapping. It fetches the still-owing members with their OWN per-member QR data
+ * URLs via `…/qr/members` (JSON) and shows the FIRST member in the preview pane;
+ * enlarging opens the multi-slide lightbox across everyone. The QR image is
+ * decorative — the human-readable account block beneath it is the accessible
+ * channel and the source for "copy details" (holder + number, never the raw TLV
+ * payload).
  *
- * Hybrid Premium gate (OQ1a): a Free user (proactive, by session tier) sees the
+ * Hybrid Premium gate: a Free user (proactive, by session tier) sees the
  * informational upgrade panel and the query never fires; a stale-tier `403 13003`
  * (reactive) renders the same panel. Error codes branch to friendly states:
  * `12001` no-account (→ /wallet), `12003` no-debt, `12002` not-closed (defensive).
@@ -96,38 +99,27 @@ export function QrDialog({
     accounts.find((a) => a.uuid === displayUuid) ?? accounts[0];
 
   const enabled = open && isPremium;
-  const expenseQr = useExpenseQrQuery(
+  const expenseQr = useExpenseMemberQrsQuery(
     targetUuid,
     queryBankAccountUuid,
     enabled && kind === "expense",
   );
-  const eventQr = useEventQrQuery(
+  const eventQr = useEventMemberQrsQuery(
     targetUuid,
     queryBankAccountUuid,
     enabled && kind === "event",
   );
   const qrQuery = kind === "expense" ? expenseQr : eventQr;
 
-  // Blob object-URL lifecycle: create on new data, revoke on the previous URL
-  // whenever the blob/destination changes AND on unmount.
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
-  useEffect(() => {
-    const data = qrQuery.data;
-    if (!data) {
-      setImageUrl(null);
-      return;
-    }
-    const url = URL.createObjectURL(data.blob);
-    setImageUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [qrQuery.data]);
+  const members: MemberQrResponse[] = qrQuery.data ?? [];
+  const current = members[0];
 
-  // If the image disappears while the preview is open (destination-switch
+  // If the member list empties while the preview is open (destination-switch
   // refetch, error), close the preview — belt-and-suspenders with the preview's
   // own R6 early-close guard.
   useEffect(() => {
-    if (imageUrl == null) setPreviewOpen(false);
-  }, [imageUrl]);
+    if (members.length === 0) setPreviewOpen(false);
+  }, [members.length]);
 
   // Ownership 404 → close + toast (never a dialog state; no existence leak). A
   // one-shot ref guards against re-firing: the toast context value is recreated
@@ -152,16 +144,25 @@ export function QrDialog({
   }, [error, open, onOpenChange, toast]);
 
   const errorCode = isApiError(error) ? error.code : 0;
-  const isReady = qrQuery.isSuccess && imageUrl != null;
+  const isReady = qrQuery.isSuccess && members.length > 0;
   const showPicker = accounts.length >= 2;
-
-  const fallbackName =
-    kind === "expense"
-      ? t("wallet:qr.downloadNameExpense")
-      : t("wallet:qr.downloadNameEvent");
+  const canShare = current != null && canShareMemberQr(current);
 
   function onDownload() {
-    if (qrQuery.data) downloadBlob(qrQuery.data, fallbackName);
+    if (current) downloadMemberQr(current);
+  }
+
+  function onShare() {
+    if (current) {
+      void shareMemberQr(
+        current,
+        t("wallet:qr.shareTitle"),
+        t("wallet:qr.shareText", {
+          name: current.memberName,
+          amount: formatMoneyVnd(current.amount),
+        }),
+      );
+    }
   }
 
   return (
@@ -173,7 +174,7 @@ export function QrDialog({
             isPremium={isPremium}
             errorCode={errorCode}
             isReady={isReady}
-            imageUrl={imageUrl}
+            members={members}
             hasError={qrQuery.isError}
             showPicker={showPicker}
             accounts={accounts}
@@ -195,12 +196,22 @@ export function QrDialog({
               <CopyDetailsButton account={selectedAccount} />
               <Button
                 type="button"
-                variant="primary"
+                variant="secondary"
                 iconStart={<DownloadIcon />}
                 onClick={onDownload}
               >
                 {t("wallet:qr.download")}
               </Button>
+              {canShare ? (
+                <Button
+                  type="button"
+                  variant="primary"
+                  iconStart={<ShareIcon />}
+                  onClick={onShare}
+                >
+                  {t("wallet:qr.share")}
+                </Button>
+              ) : null}
             </>
           ) : null}
         </DialogFooter>
@@ -208,8 +219,9 @@ export function QrDialog({
       <QrPreviewDialog
         open={previewOpen}
         onOpenChange={setPreviewOpen}
-        imageUrl={imageUrl}
+        members={members}
         kind={kind}
+        startIndex={0}
       />
     </Dialog>
   );
@@ -222,7 +234,7 @@ function QrDialogInner({
   isPremium,
   errorCode,
   isReady,
-  imageUrl,
+  members,
   hasError,
   showPicker,
   accounts,
@@ -236,7 +248,7 @@ function QrDialogInner({
   isPremium: boolean;
   errorCode: number;
   isReady: boolean;
-  imageUrl: string | null;
+  members: MemberQrResponse[];
   hasError: boolean;
   showPicker: boolean;
   accounts: BankAccountResponse[];
@@ -247,6 +259,7 @@ function QrDialogInner({
   onEnlarge: () => void;
 }) {
   const { t } = useT();
+  const current = members[0];
 
   // Premium gate (OQ1a) — proactive (Free) OR reactive (403 13003).
   if (!isPremium || errorCode === ErrorCodes.PremiumFeatureRequired) {
@@ -339,16 +352,17 @@ function QrDialogInner({
 
       <div className={styles.qrWell}>
         <div className={`${styles.qrFrame} ${styles[kind]}`}>
-          {isReady && imageUrl ? (
+          {isReady && current ? (
             <>
               <img
                 className={styles.qrImage}
-                src={imageUrl}
-                alt={
+                src={current.image}
+                alt={t(
                   kind === "expense"
-                    ? t("wallet:qr.imageAltExpense")
-                    : t("wallet:qr.imageAltEvent")
-                }
+                    ? "wallet:qr.imageAltExpense"
+                    : "wallet:qr.imageAltEvent",
+                  { name: current.memberName },
+                )}
               />
               {/* Two enlarge triggers, one preview (D1): the whole image as a
                   transparent focusable surface, plus an explicit top-right badge. */}
@@ -372,6 +386,23 @@ function QrDialogInner({
           )}
         </div>
       </div>
+
+      {isReady && current ? (
+        <div className={styles.qrCaption}>
+          <span className={styles.qrCaptionName}>{current.memberName}</span>
+          <span className={styles.qrCaptionAmount}>
+            {formatMoneyVnd(current.amount)}
+          </span>
+          <span className={styles.qrCaptionMeta}>
+            {t("wallet:qr.slideCounter", { index: 1, total: members.length })}
+            {" · "}
+            {t("wallet:qr.memberCount", { count: members.length })}
+          </span>
+          <span className={styles.qrCaptionHint}>
+            {t("wallet:qr.enlargeHint")}
+          </span>
+        </div>
+      ) : null}
 
       {isReady && selectedAccount ? (
         <dl className={styles.accountCard}>

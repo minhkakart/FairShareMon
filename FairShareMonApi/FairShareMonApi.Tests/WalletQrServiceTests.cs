@@ -444,6 +444,329 @@ public class WalletQrServiceTests
         Assert.Equal(ErrorCodes.PremiumFeatureRequired, exception.Code);
     }
 
+    // ---- Per-member expense QR list (GenerateExpenseMemberQrsAsync) -------------------------------
+
+    [Fact]
+    public async Task GenerateExpenseMemberQrs_Default_OneEntryPerBilledMemberInSharesOrder()
+    {
+        AddDefaultAccount();
+        _expenses.Expense = ExpenseWith(
+            Share("Cường", 500_000m),
+            Share("Dũng", 250_000m));
+
+        var result = await CreateService().GenerateExpenseMemberQrsAsync(UserUuid, ExpenseUuid, null);
+
+        Assert.Equal(2, result.Count); // one per billable share
+
+        // Order preserved from expense.Shares (Decision 5).
+        Assert.Equal("Cường", result[0].MemberName);
+        Assert.Equal(500_000m, result[0].Amount);
+        Assert.Equal(_expenses.Expense.Shares[0].Member.Uuid, result[0].MemberUuid);
+        Assert.StartsWith("data:image/png;base64,", result[0].Image);
+
+        Assert.Equal("Dũng", result[1].MemberName);
+        Assert.Equal(250_000m, result[1].Amount);
+        Assert.Equal(_expenses.Expense.Shares[1].Member.Uuid, result[1].MemberUuid);
+        Assert.StartsWith("data:image/png;base64,", result[1].Image);
+
+        // Per-member path renders via RenderSingle -> one captured payload per billed member, in order.
+        Assert.Equal(2, _images.SinglePayloads.Count);
+        Assert.Empty(_images.CompositeBatches); // NOT the composite path
+        Assert.Equal("500000", ParseTlv(_images.SinglePayloads[0])["54"]); // amount rides each own payload
+        Assert.Equal("250000", ParseTlv(_images.SinglePayloads[1])["54"]);
+    }
+
+    [Fact]
+    public async Task GenerateExpenseMemberQrs_ExcludesSettledZeroAndPayerOwnShares()
+    {
+        AddDefaultAccount();
+        _expenses.Expense = ExpenseWith(
+            Share("Cường", 500_000m),                // billed
+            Share("Dũng", 250_000m, settled: true),  // settled -> excluded
+            Share("Én", 0m),                          // zero -> excluded
+            PayerShare(300_000m));                    // payer's own share -> excluded
+
+        var result = await CreateService().GenerateExpenseMemberQrsAsync(UserUuid, ExpenseUuid, null);
+
+        var only = Assert.Single(result);
+        Assert.Equal("Cường", only.MemberName);
+        Assert.Equal(500_000m, only.Amount);
+        Assert.Equal("500000", ParseTlv(Assert.Single(_images.SinglePayloads))["54"]);
+    }
+
+    [Fact]
+    public async Task GenerateExpenseMemberQrs_AllSharesSettledZeroOrPayerOnly_Throws12003()
+    {
+        AddDefaultAccount();
+        _expenses.Expense = ExpenseWith(
+            Share("Cường", 500_000m, settled: true), // settled -> excluded
+            Share("Én", 0m),                          // zero -> excluded
+            PayerShare(300_000m));                    // payer's own -> excluded
+
+        var exception = await Assert.ThrowsAsync<ErrorException>(() =>
+            CreateService().GenerateExpenseMemberQrsAsync(UserUuid, ExpenseUuid, null));
+
+        Assert.Equal(ErrorCodes.NoOutstandingDebtForQr, exception.Code);
+        Assert.Empty(_images.SinglePayloads); // nothing rendered when nobody owes
+    }
+
+    [Fact]
+    public async Task GenerateExpenseMemberQrs_HeaderPerMemberCarriesTitleAndMemberAmount()
+    {
+        AddDefaultAccount();
+        _expenses.Expense = ExpenseWith(
+            Share("Cường", 500_000m),
+            Share("Dũng", 250_000m));
+
+        await CreateService().GenerateExpenseMemberQrsAsync(UserUuid, ExpenseUuid, null);
+
+        Assert.Equal(2, _images.SingleHeaders.Count);
+
+        // Title = "{expenseName} - {memberName}" (Open Question 2a); amount row = the member's amount.
+        Assert.Equal("Ăn tối - Cường", _images.SingleHeaders[0].Title);
+        Assert.NotNull(_images.SingleHeaders[0].AmountLabel);
+        Assert.Equal("500.000đ", _images.SingleHeaders[0].AmountText);
+
+        Assert.Equal("Ăn tối - Dũng", _images.SingleHeaders[1].Title);
+        Assert.Equal("250.000đ", _images.SingleHeaders[1].AmountText);
+
+        // Branded bank fields still ride each header.
+        Assert.Equal("Vietcombank", _images.SingleHeaders[0].BankName);
+        Assert.Equal("Nguyen Van A", _images.SingleHeaders[0].AccountHolderName);
+        Assert.Equal("0123456789", _images.SingleHeaders[0].AccountNumber);
+    }
+
+    [Fact]
+    public async Task GenerateExpenseMemberQrs_Image_DecodesToPngMagicBytes()
+    {
+        AddDefaultAccount();
+        _expenses.Expense = ExpenseWith(Share("Cường", 500_000m));
+
+        var result = await CreateService().GenerateExpenseMemberQrsAsync(UserUuid, ExpenseUuid, null);
+
+        var only = Assert.Single(result);
+        const string prefix = "data:image/png;base64,";
+        Assert.StartsWith(prefix, only.Image);
+        var bytes = Convert.FromBase64String(only.Image[prefix.Length..]);
+        Assert.Equal(new byte[] { 0x89, 0x50, 0x4E, 0x47 }, bytes); // PNG magic (CapturingQrImageService output)
+    }
+
+    [Fact]
+    public async Task GenerateExpenseMemberQrs_NoBankAccount_Throws12001()
+    {
+        _expenses.Expense = ExpenseWith(Share("Cường", 500_000m));
+
+        var exception = await Assert.ThrowsAsync<ErrorException>(() =>
+            CreateService().GenerateExpenseMemberQrsAsync(UserUuid, ExpenseUuid, null));
+
+        Assert.Equal(ErrorCodes.NoBankAccountForQr, exception.Code);
+    }
+
+    [Fact]
+    public async Task GenerateExpenseMemberQrs_OverrideAccountMiss_Throws12000()
+    {
+        AddDefaultAccount();
+        _expenses.Expense = ExpenseWith(Share("Cường", 500_000m));
+
+        var exception = await Assert.ThrowsAsync<ErrorException>(() =>
+            CreateService().GenerateExpenseMemberQrsAsync(UserUuid, ExpenseUuid, "no-such-account"));
+
+        Assert.Equal(ErrorCodes.BankAccountNotFound, exception.Code);
+    }
+
+    [Fact]
+    public async Task GenerateExpenseMemberQrs_ExpenseMiss_Throws6000()
+    {
+        AddDefaultAccount();
+        _expenses.ThrowNotFound = true;
+
+        var exception = await Assert.ThrowsAsync<ErrorException>(() =>
+            CreateService().GenerateExpenseMemberQrsAsync(UserUuid, ExpenseUuid, null));
+
+        Assert.Equal(ErrorCodes.ExpenseNotFound, exception.Code);
+    }
+
+    [Fact]
+    public async Task GenerateExpenseMemberQrs_FreeCaller_Throws13003BeforeResolvingDestination()
+    {
+        // No bank account added: 13003 (not 12001) proves the Premium gate runs before resolution.
+        _tier.PremiumFeatureCode = ErrorCodes.PremiumFeatureRequired;
+
+        var exception = await Assert.ThrowsAsync<ErrorException>(() =>
+            CreateService().GenerateExpenseMemberQrsAsync(UserUuid, ExpenseUuid, null));
+
+        Assert.Equal(ErrorCodes.PremiumFeatureRequired, exception.Code);
+    }
+
+    [Fact]
+    public async Task GenerateExpenseMemberQrs_SharesSameBilledSetAsCompositePath()
+    {
+        // Parity: the per-member list and the composite items cover the SAME members/amounts (shared
+        // CollectExpenseBillables) for the same seeded input.
+        AddDefaultAccount();
+        _expenses.Expense = ExpenseWith(
+            Share("Cường", 500_000m),
+            Share("Dũng", 250_000m, settled: true), // excluded from both
+            Share("Én", 125_000m));
+
+        var service = CreateService();
+        var members = await service.GenerateExpenseMemberQrsAsync(UserUuid, ExpenseUuid, null);
+        await service.GenerateExpenseQrAsync(UserUuid, ExpenseUuid, null); // composite path, same seeded input
+        var composite = Assert.Single(_images.CompositeBatches);
+
+        Assert.Equal(composite.Count, members.Count);
+        var memberNames = members.Select(m => m.MemberName).ToArray();
+        Assert.Equal(new[] { "Cường", "Én" }, memberNames);
+        // Composite labels carry the same member names, in the same order (shared billed set).
+        Assert.Contains("Cường", composite[0].Label);
+        Assert.Contains("Én", composite[1].Label);
+    }
+
+    // ---- Per-member event QR list (GenerateEventMemberQrsAsync) -----------------------------------
+
+    [Fact]
+    public async Task GenerateEventMemberQrs_ClosedWithDebtors_OneEntryPerOutstandingMemberInRowsOrder()
+    {
+        AddDefaultAccount();
+        _stats.Balance = new EventBalanceResponse
+        {
+            EventUuid = EventUuid, EventName = "Đà Lạt", IsClosed = true,
+            Rows =
+            [
+                Row("Bình", 300_000m),   // positive -> excluded
+                Row("An", 0m),           // zero -> excluded
+                Row("Cường", -500_000m), // owing -> included
+                Row("Dũng", -125_000m)   // owing -> included
+            ]
+        };
+
+        var result = await CreateService().GenerateEventMemberQrsAsync(UserUuid, EventUuid, null);
+
+        Assert.Equal(2, result.Count);
+
+        // Order preserved from balance.Rows (Decision 5); amount = Outstanding = |balance|.
+        Assert.Equal("Cường", result[0].MemberName);
+        Assert.Equal(500_000m, result[0].Amount);
+        Assert.StartsWith("data:image/png;base64,", result[0].Image);
+
+        Assert.Equal("Dũng", result[1].MemberName);
+        Assert.Equal(125_000m, result[1].Amount);
+
+        Assert.Equal(2, _images.SinglePayloads.Count);
+        Assert.Empty(_images.CompositeBatches);
+        Assert.Equal("500000", ParseTlv(_images.SinglePayloads[0])["54"]);
+        Assert.Equal("125000", ParseTlv(_images.SinglePayloads[1])["54"]);
+
+        // Header title carries event name + member; amount row = the member's outstanding.
+        Assert.Equal("Đà Lạt - Cường", _images.SingleHeaders[0].Title);
+        Assert.Equal("500.000đ", _images.SingleHeaders[0].AmountText);
+    }
+
+    [Fact]
+    public async Task GenerateEventMemberQrs_ExcludesSettledAndClearedMembers()
+    {
+        AddDefaultAccount();
+        _stats.Balance = new EventBalanceResponse
+        {
+            EventUuid = EventUuid, EventName = "Đà Lạt", IsClosed = true,
+            Rows =
+            [
+                SettledRow("Cường", -500_000m), // owing but cleared (Outstanding 0) -> excluded
+                Row("Dũng", -125_000m)          // owing, uncleared -> included
+            ]
+        };
+
+        var result = await CreateService().GenerateEventMemberQrsAsync(UserUuid, EventUuid, null);
+
+        var only = Assert.Single(result);
+        Assert.Equal("Dũng", only.MemberName);
+        Assert.Equal(125_000m, only.Amount);
+        Assert.Equal("125000", ParseTlv(Assert.Single(_images.SinglePayloads))["54"]);
+    }
+
+    [Fact]
+    public async Task GenerateEventMemberQrs_AllCleared_Throws12003()
+    {
+        AddDefaultAccount();
+        _stats.Balance = new EventBalanceResponse
+        {
+            EventUuid = EventUuid, EventName = "Đà Lạt", IsClosed = true,
+            Rows = [SettledRow("Cường", -500_000m), Row("Bình", 300_000m)]
+        };
+
+        var exception = await Assert.ThrowsAsync<ErrorException>(() =>
+            CreateService().GenerateEventMemberQrsAsync(UserUuid, EventUuid, null));
+
+        Assert.Equal(ErrorCodes.NoOutstandingDebtForQr, exception.Code);
+        Assert.Empty(_images.SinglePayloads);
+    }
+
+    [Fact]
+    public async Task GenerateEventMemberQrs_OpenEvent_Throws12002()
+    {
+        AddDefaultAccount();
+        _stats.Balance = new EventBalanceResponse
+        {
+            EventUuid = EventUuid, EventName = "Đà Lạt", IsClosed = false,
+            Rows = [Row("Cường", -500_000m)]
+        };
+
+        var exception = await Assert.ThrowsAsync<ErrorException>(() =>
+            CreateService().GenerateEventMemberQrsAsync(UserUuid, EventUuid, null));
+
+        Assert.Equal(ErrorCodes.EventNotClosedForQr, exception.Code);
+        Assert.Empty(_images.SinglePayloads);
+    }
+
+    [Fact]
+    public async Task GenerateEventMemberQrs_EventMiss_Throws9000()
+    {
+        AddDefaultAccount();
+        _stats.ThrowNotFound = true;
+
+        var exception = await Assert.ThrowsAsync<ErrorException>(() =>
+            CreateService().GenerateEventMemberQrsAsync(UserUuid, EventUuid, null));
+
+        Assert.Equal(ErrorCodes.EventNotFound, exception.Code);
+    }
+
+    [Fact]
+    public async Task GenerateEventMemberQrs_NoBankAccount_Throws12001BeforeBalanceLookup()
+    {
+        _stats.Balance = new EventBalanceResponse { EventUuid = EventUuid, IsClosed = true, Rows = [Row("Cường", -1m)] };
+
+        var exception = await Assert.ThrowsAsync<ErrorException>(() =>
+            CreateService().GenerateEventMemberQrsAsync(UserUuid, EventUuid, null));
+
+        Assert.Equal(ErrorCodes.NoBankAccountForQr, exception.Code);
+    }
+
+    [Fact]
+    public async Task GenerateEventMemberQrs_OverrideAccountMiss_Throws12000()
+    {
+        AddDefaultAccount();
+        _stats.Balance = new EventBalanceResponse
+        {
+            EventUuid = EventUuid, EventName = "Đà Lạt", IsClosed = true, Rows = [Row("Cường", -500_000m)]
+        };
+
+        var exception = await Assert.ThrowsAsync<ErrorException>(() =>
+            CreateService().GenerateEventMemberQrsAsync(UserUuid, EventUuid, "no-such-account"));
+
+        Assert.Equal(ErrorCodes.BankAccountNotFound, exception.Code);
+    }
+
+    [Fact]
+    public async Task GenerateEventMemberQrs_FreeCaller_Throws13003BeforeResolvingDestination()
+    {
+        _tier.PremiumFeatureCode = ErrorCodes.PremiumFeatureRequired;
+
+        var exception = await Assert.ThrowsAsync<ErrorException>(() =>
+            CreateService().GenerateEventMemberQrsAsync(UserUuid, EventUuid, null));
+
+        Assert.Equal(ErrorCodes.PremiumFeatureRequired, exception.Code);
+    }
+
     // An expense paid by "An" (PayerUuid); the passed shares are the debtor shares. Total is the SUM.
     private static ExpenseResponse ExpenseWith(params ShareResponse[] shares) =>
         new()

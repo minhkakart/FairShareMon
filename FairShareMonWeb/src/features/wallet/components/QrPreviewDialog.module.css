@@ -10,3 +10,12 @@
 .lightbox :global(.yarl__slide_image) {
   background-color: #ffffff;
 }
+
+/* The Captions title (member name) and the Counter (index/total) both default to
+   the top-left slide-header area and collide. Move the Counter to the BOTTOM-left,
+   clear of the caption title (top-left), the toolbar (top-right), and the caption
+   description (bottom-center). */
+.lightbox :global(.yarl__counter) {
+  top: auto;
+  bottom: 0;
+}
