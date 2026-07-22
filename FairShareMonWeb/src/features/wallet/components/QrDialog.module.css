@@ -53,6 +53,50 @@
   border-radius: var(--fs-radius-sm);
 }
 
+/* Enlarge triggers (D1) — two affordances, one preview. The whole QR is a
+   transparent focusable button; a small badge pins the explicit affordance
+   top-right. Both live inside the position:relative `.qrFrame`. */
+.enlargeSurface {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: zoom-in;
+}
+/* Inset ring so the focus outline reads over the light QR ground / clipped frame. */
+.enlargeSurface:focus-visible {
+  outline: 2px solid var(--fs-color-focus);
+  outline-offset: -2px;
+  border-radius: var(--fs-radius-sm);
+}
+
+.enlargeBadge {
+  position: absolute;
+  top: var(--fs-space-2);
+  right: var(--fs-space-2);
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  /* Solid surface + border for contrast over the white QR ground. */
+  background: var(--fs-color-surface-raised);
+  color: var(--fs-color-text);
+  border: 1px solid var(--fs-color-border);
+  border-radius: var(--fs-radius-md);
+  box-shadow: var(--fs-shadow-sm);
+  cursor: zoom-in;
+}
+.enlargeBadge:hover {
+  background: var(--fs-color-surface-sunken);
+}
+.enlargeBadge:focus-visible {
+  outline: 2px solid var(--fs-color-focus);
+  outline-offset: 2px;
+}
+
 /* The human-readable account block — the ACCESSIBLE channel paired with the
    decorative QR image, and the source the "copy details" action copies. */
 .accountCard {

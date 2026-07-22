@@ -22,7 +22,14 @@ import { useBankAccountsQuery } from "../hooks/useBankAccounts";
 import { useEventQrQuery, useExpenseQrQuery } from "../hooks/useQr";
 import type { BankAccountResponse } from "../api/types";
 import { maskAccount, groupAccount } from "../format";
-import { CheckIcon, CopyIcon, DownloadIcon, WalletIcon } from "./icons";
+import {
+  CheckIcon,
+  CopyIcon,
+  DownloadIcon,
+  ExpandIcon,
+  WalletIcon,
+} from "./icons";
+import { QrPreviewDialog } from "./QrPreviewDialog";
 import styles from "./QrDialog.module.css";
 
 export type QrDialogKind = "expense" | "event";
@@ -72,8 +79,13 @@ export function QrDialog({
 
   // Destination override (OQ2a). `undefined` → the implicit default account.
   const [selectedUuid, setSelectedUuid] = useState<string | undefined>(undefined);
+  // QR preview (lightbox) open state — nested over this dialog.
+  const [previewOpen, setPreviewOpen] = useState(false);
   useEffect(() => {
-    if (!open) setSelectedUuid(undefined);
+    if (!open) {
+      setSelectedUuid(undefined);
+      setPreviewOpen(false);
+    }
   }, [open]);
 
   const displayUuid = selectedUuid ?? defaultUuid;
@@ -109,6 +121,13 @@ export function QrDialog({
     setImageUrl(url);
     return () => URL.revokeObjectURL(url);
   }, [qrQuery.data]);
+
+  // If the image disappears while the preview is open (destination-switch
+  // refetch, error), close the preview — belt-and-suspenders with the preview's
+  // own R6 early-close guard.
+  useEffect(() => {
+    if (imageUrl == null) setPreviewOpen(false);
+  }, [imageUrl]);
 
   // Ownership 404 → close + toast (never a dialog state; no existence leak). A
   // one-shot ref guards against re-firing: the toast context value is recreated
@@ -162,6 +181,7 @@ export function QrDialog({
             displayUuid={displayUuid}
             onSelectDestination={setSelectedUuid}
             onRetry={() => void qrQuery.refetch()}
+            onEnlarge={() => setPreviewOpen(true)}
           />
         </div>
         <DialogFooter>
@@ -185,6 +205,12 @@ export function QrDialog({
           ) : null}
         </DialogFooter>
       </DialogContent>
+      <QrPreviewDialog
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        imageUrl={imageUrl}
+        kind={kind}
+      />
     </Dialog>
   );
 }
@@ -204,6 +230,7 @@ function QrDialogInner({
   displayUuid,
   onSelectDestination,
   onRetry,
+  onEnlarge,
 }: {
   kind: QrDialogKind;
   isPremium: boolean;
@@ -217,6 +244,7 @@ function QrDialogInner({
   displayUuid?: string;
   onSelectDestination: (uuid: string) => void;
   onRetry: () => void;
+  onEnlarge: () => void;
 }) {
   const { t } = useT();
 
@@ -312,15 +340,33 @@ function QrDialogInner({
       <div className={styles.qrWell}>
         <div className={`${styles.qrFrame} ${styles[kind]}`}>
           {isReady && imageUrl ? (
-            <img
-              className={styles.qrImage}
-              src={imageUrl}
-              alt={
-                kind === "expense"
-                  ? t("wallet:qr.imageAltExpense")
-                  : t("wallet:qr.imageAltEvent")
-              }
-            />
+            <>
+              <img
+                className={styles.qrImage}
+                src={imageUrl}
+                alt={
+                  kind === "expense"
+                    ? t("wallet:qr.imageAltExpense")
+                    : t("wallet:qr.imageAltEvent")
+                }
+              />
+              {/* Two enlarge triggers, one preview (D1): the whole image as a
+                  transparent focusable surface, plus an explicit top-right badge. */}
+              <button
+                type="button"
+                className={styles.enlargeSurface}
+                aria-label={t("wallet:qr.enlarge")}
+                onClick={onEnlarge}
+              />
+              <button
+                type="button"
+                className={styles.enlargeBadge}
+                aria-label={t("wallet:qr.enlarge")}
+                onClick={onEnlarge}
+              >
+                <ExpandIcon />
+              </button>
+            </>
           ) : (
             <Skeleton className={styles.qrSkeleton} width="auto" height="auto" />
           )}
