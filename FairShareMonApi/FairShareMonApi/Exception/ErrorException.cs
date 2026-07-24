@@ -70,6 +70,8 @@ public class ErrorException(int code, string messageKey, int? httpStatus = null,
         ErrorCodes.AdminCannotTargetSelf => StatusCodes.Status400BadRequest,
         ErrorCodes.AdminCannotTargetAdmin => StatusCodes.Status400BadRequest,
         ErrorCodes.AccountDisabled => StatusCodes.Status403Forbidden,
+        ErrorCodes.ShareLinkNotFoundOrExpired => StatusCodes.Status404NotFound,
+        ErrorCodes.EventNotClosedForShare => StatusCodes.Status400BadRequest,
         _ => StatusCodes.Status500InternalServerError
     };
 }

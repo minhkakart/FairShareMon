@@ -47,6 +47,15 @@ public interface IWalletQrService
     /// <see cref="GenerateEventQrAsync"/>. Không lưu gì.
     /// </summary>
     Task<IReadOnlyList<MemberQrResponse>> GenerateEventMemberQrsAsync(string userUuid, string eventUuid, string? bankAccountUuid, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Tạo mã QR theo từng thành viên còn nợ cho luồng CHIA SẺ CÔNG KHAI của một đợt đã chốt, dùng
+    /// <paramref name="bankSnapshot"/> (ảnh chụp ngân hàng trên liên kết, KHÔNG đọc ví). <b>Không có cổng
+    /// Premium</b> - bản báo cáo công khai không bao giờ bị chặn lại (§4 rule 9). Dựng một
+    /// <c>BankAccount</c> tạm thời (không lưu) từ ảnh chụp. Đợt chưa chốt -&gt; 16001 (phòng thủ). Không
+    /// còn ai nợ -&gt; danh sách rỗng (luồng chia sẻ làm nhẹ 12003). Không lưu gì.
+    /// </summary>
+    Task<IReadOnlyList<MemberQrResponse>> GenerateEventMemberQrsForShareAsync(string ownerUserUuid, string eventUuid, BankSnapshot bankSnapshot, CancellationToken cancellationToken = default);
 }
 
 [ScopedService(typeof(IWalletQrService))]
@@ -166,6 +175,33 @@ public sealed class WalletQrService(
         var (contextName, billed) = CollectEventBillables(balance);
         if (billed.Count == 0)
             throw new ErrorException(ErrorCodes.NoOutstandingDebtForQr, MessageKeys.Error.NoOutstandingDebtForQr);
+
+        return await BuildMemberQrsAsync(account, contextName, billed, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<MemberQrResponse>> GenerateEventMemberQrsForShareAsync(string ownerUserUuid, string eventUuid, BankSnapshot bankSnapshot, CancellationToken cancellationToken = default)
+    {
+        // No Premium gate here: the anonymous share view/QR is never re-gated (§4 rule 9).
+        // Reuse the M7 balance (miss -> EventNotFound 9000); never recompute debt.
+        var balance = await statsService.GetEventBalanceAsync(ownerUserUuid, eventUuid, cancellationToken);
+
+        // Defensive closed-only re-assertion (§4.4): a closed event stays closed, so this should always hold.
+        if (!balance.IsClosed)
+            throw new ErrorException(ErrorCodes.EventNotClosedForShare, MessageKeys.Error.EventNotClosedForShare);
+
+        // Transient (non-persisted) destination built from the link's bank snapshot - no DB row.
+        var account = new BankAccount
+        {
+            BankBin = bankSnapshot.BankBin,
+            BankName = bankSnapshot.BankName,
+            AccountNumber = bankSnapshot.AccountNumber,
+            AccountHolderName = bankSnapshot.AccountHolderName
+        };
+
+        var (contextName, billed) = CollectEventBillables(balance);
+        // Share path softens 12003: an empty debtor set is a valid shared report -> empty list.
+        if (billed.Count == 0)
+            return [];
 
         return await BuildMemberQrsAsync(account, contextName, billed, cancellationToken);
     }

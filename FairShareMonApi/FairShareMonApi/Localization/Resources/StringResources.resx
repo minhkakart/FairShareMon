@@ -69,6 +69,9 @@
   <data name="Feature.Qr" xml:space="preserve">
     <value>tạo mã QR</value>
   </data>
+  <data name="Feature.Share" xml:space="preserve">
+    <value>chia sẻ đợt (chỉ xem)</value>
+  </data>
   <data name="Qr.Header.Bank" xml:space="preserve">
     <value>Ngân hàng</value>
   </data>
@@ -204,6 +207,12 @@
   <data name="Error.TagNameDuplicate" xml:space="preserve">
     <value>Tên nhãn đã tồn tại.</value>
   </data>
+  <data name="Error.ShareLinkNotFoundOrExpired" xml:space="preserve">
+    <value>Liên kết chia sẻ không tồn tại hoặc đã hết hạn.</value>
+  </data>
+  <data name="Error.EventNotClosedForShare" xml:space="preserve">
+    <value>Chỉ có thể chia sẻ đợt đã chốt.</value>
+  </data>
   <data name="Envelope.ValidationFailed" xml:space="preserve">
     <value>Dữ liệu gửi lên không hợp lệ.</value>
   </data>
@@ -284,6 +293,9 @@
   </data>
   <data name="Success.TagDeleted" xml:space="preserve">
     <value>Đã xóa nhãn.</value>
+  </data>
+  <data name="Success.ShareLinkRevoked" xml:space="preserve">
+    <value>Đã thu hồi liên kết chia sẻ.</value>
   </data>
   <data name="Validation.Auth.CurrentPasswordRequired" xml:space="preserve">
     <value>Mật khẩu hiện tại không được để trống.</value>

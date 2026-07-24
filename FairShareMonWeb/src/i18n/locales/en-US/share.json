@@ -1,0 +1,98 @@
+{
+  "action": {
+    "share": "Share"
+  },
+  "dialog": {
+    "title": "Share settlement report",
+    "description": "Create a public, read-only link so anyone can view this event's balances without signing in. The link expires automatically after 1 day."
+  },
+  "premium": {
+    "gateTitle": "Premium feature",
+    "gateBody": "Sharing a settlement report link is a Premium feature. Premium is granted manually by an administrator — contact the operator to unlock it."
+  },
+  "create": {
+    "destinationLabel": "Receiving account",
+    "destinationPlaceholder": "Choose a receiving account",
+    "destinationHint": "The transfer QR on the public page will point to this account.",
+    "noBankTitle": "No receiving account yet",
+    "noBankHint": "You can still create a link (without a QR). Add a bank account in Wallet to enable the transfer QR on the public page.",
+    "toWallet": "Go to Wallet",
+    "submit": "Create link"
+  },
+  "link": {
+    "urlLabel": "Share link",
+    "copy": "Copy link",
+    "copied": "Copied",
+    "expiresAt": "Expires at {{time}}",
+    "expiredTitle": "Link expired",
+    "expiredBody": "This share link has expired. Regenerate it to get a new link.",
+    "bank": "Bank",
+    "accountNumber": "Account number",
+    "holder": "Account holder",
+    "noQrHint": "This link has no QR (no receiving account was chosen at creation).",
+    "revoke": "Revoke",
+    "regenerate": "Regenerate",
+    "confirmRevoke": "Revoke the link? Anyone holding the old link will no longer be able to view it.",
+    "confirmRevokeConfirm": "Confirm revoke",
+    "confirmRegenerate": "Regenerate the link? The old link stops working immediately.",
+    "confirmRegenerateConfirm": "Confirm regenerate",
+    "cancel": "Cancel",
+    "created": "Share link created.",
+    "revoked": "Share link revoked.",
+    "regenerated": "Share link regenerated."
+  },
+  "notClosed": {
+    "title": "Event not closed",
+    "body": "A settlement report can only be shared after the event is closed. Close the event and try again."
+  },
+  "error": {
+    "title": "Could not load the link",
+    "retry": "Retry",
+    "qrTitle": "Could not load the QR",
+    "qrBody": "Something went wrong loading the QR. Please try again."
+  },
+  "qr": {
+    "emptyTitle": "No QR available",
+    "emptyBody": "No members currently owe anything, so there is no QR to show."
+  },
+  "public": {
+    "documentTitle": "Settlement report",
+    "closedAt": "Closed at {{time}}",
+    "summaryOutstanding": "Total outstanding",
+    "summaryOwing": "Owing",
+    "summarySettled": "Settled",
+    "memberUnit": "members",
+    "member": "Member",
+    "advanced": "Advanced",
+    "owed": "Owed",
+    "balance": "Balance",
+    "outstanding": "Outstanding",
+    "positiveLabel": "to receive",
+    "negativeLabel": "to pay",
+    "zeroLabel": "settled up",
+    "ownerRep": "representative",
+    "deletedTag": "(deleted)",
+    "statusColumn": "Status",
+    "statusSettled": "Settled",
+    "statusOwing": "Owing",
+    "qrColumn": "QR",
+    "expand": "View {{name}}'s details",
+    "collapse": "Collapse {{name}}'s details",
+    "showQr": "Show {{name}}'s QR",
+    "caption": "Per-member debt balances for the event",
+    "emptyTitle": "No data yet",
+    "emptyBody": "This event has no expenses to settle yet.",
+    "loading": "Loading report…"
+  },
+  "breakdown": {
+    "title": "{{name}}'s shares",
+    "advancedAsPayer": "Advanced (payer): {{amount}}",
+    "paidBy": "Paid by: {{name}}",
+    "settledTag": "settled",
+    "empty": "This member has no shares in the event."
+  },
+  "expired": {
+    "title": "Link unavailable",
+    "body": "This link has expired, was revoked, or does not exist. Contact whoever shared it for a new link."
+  }
+}

@@ -177,12 +177,13 @@ public class LocalizationResourceTests
     }
 
     [Fact]
-    public void MessageKeys_CoversAllOneHundredTwentyNineKeys()
+    public void MessageKeys_CoversAllOneHundredThirtyThreeKeys()
     {
-        // Sanity anchor on the documented key count (129 = the prior 127 + the 2 Success.*SettledUpdated
-        // keys added by settled-per-member) so an accidental key deletion/addition surfaces here rather
-        // than as a silent gap.
-        Assert.Equal(129, CollectMessageKeyConstants().Count);
+        // Sanity anchor on the documented key count (133 = the prior 129 + the 4 keys added by
+        // event-share-link: Feature.Share, Error.ShareLinkNotFoundOrExpired, Error.EventNotClosedForShare,
+        // and Success.ShareLinkRevoked) so an accidental key deletion/addition surfaces here rather than
+        // as a silent gap.
+        Assert.Equal(133, CollectMessageKeyConstants().Count);
     }
 
     // ---- QR-image-header labels: present in both resx and culture-distinct ------------------------

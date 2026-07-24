@@ -42,6 +42,8 @@ public partial class AppDbContext : DbContext
 
     public DbSet<TierGrant> TierGrants => Set<TierGrant>();
 
+    public DbSet<EventShareLink> EventShareLinks => Set<EventShareLink>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -63,6 +65,7 @@ public partial class AppDbContext : DbContext
         AuditLog.ConfigureModel(modelBuilder);
         BankAccount.ConfigureModel(modelBuilder);
         TierGrant.ConfigureModel(modelBuilder);
+        EventShareLink.ConfigureModel(modelBuilder);
 
         ConfigureQueryFilters(modelBuilder);
     }

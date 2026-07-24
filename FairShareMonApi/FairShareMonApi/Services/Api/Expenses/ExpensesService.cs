@@ -22,6 +22,9 @@ public interface IExpensesService
 
     Task<ExpenseResponse> GetAsync(string userUuid, string expenseUuid, CancellationToken cancellationToken = default);
 
+    /// <summary>Resource-owned full-detail list (with per-share breakdown) of an event's expenses, sorted expense_time DESC. Backs the public share read (planning/event-share-link.md OQ2a); no N+1.</summary>
+    Task<IReadOnlyList<ExpenseResponse>> ListDetailedByEventAsync(string userUuid, string eventUuid, CancellationToken cancellationToken = default);
+
     Task<ExpenseResponse> CreateAsync(string userUuid, CreateExpenseRequest request, CancellationToken cancellationToken = default);
 
     Task<ExpenseResponse> UpdateAsync(string userUuid, string expenseUuid, UpdateExpenseRequest request, CancellationToken cancellationToken = default);
@@ -59,6 +62,12 @@ public sealed class ExpensesService(
             ?? throw ExpenseNotFound();
 
         return mapper.Map<ExpenseResponse>(expense);
+    }
+
+    public async Task<IReadOnlyList<ExpenseResponse>> ListDetailedByEventAsync(string userUuid, string eventUuid, CancellationToken cancellationToken = default)
+    {
+        var expenses = await expenseRepository.ListDetailedByEventAsync(userUuid, eventUuid, cancellationToken);
+        return mapper.Map<IReadOnlyList<ExpenseResponse>>(expenses);
     }
 
     public async Task<ExpenseResponse> CreateAsync(string userUuid, CreateExpenseRequest request, CancellationToken cancellationToken = default)

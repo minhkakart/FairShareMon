@@ -25,6 +25,7 @@ import { AdminDashboardPage } from "@/features/admin/pages/AdminDashboardPage";
 import { AdminRevenuePage } from "@/features/admin/pages/AdminRevenuePage";
 import { AdminUsersPage } from "@/features/admin/pages/AdminUsersPage";
 import { AdminUserDetailPage } from "@/features/admin/pages/AdminUserDetailPage";
+import { PublicSharePage } from "@/features/share/pages/PublicSharePage";
 
 export const router = createBrowserRouter([
   {
@@ -109,6 +110,9 @@ export const router = createBrowserRouter([
           },
         ],
       },
+      // Public, unauthenticated share report on its own minimal layout — a
+      // SIBLING of the guards so it is neither auth-gated nor bounced.
+      { path: "share/:token", element: <PublicSharePage /> },
       // Ownership 404s + unknown paths.
       { path: "*", element: <NotFound /> },
     ],

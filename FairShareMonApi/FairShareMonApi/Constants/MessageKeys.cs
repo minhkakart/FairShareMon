@@ -53,12 +53,15 @@ public static class MessageKeys
         public const string UnsupportedExportFormat = "Error.UnsupportedExportFormat";
         public const string TagNotFound = "Error.TagNotFound";
         public const string TagNameDuplicate = "Error.TagNameDuplicate";
+        public const string ShareLinkNotFoundOrExpired = "Error.ShareLinkNotFoundOrExpired";
+        public const string EventNotClosedForShare = "Error.EventNotClosedForShare";
     }
 
     public static class Feature
     {
         public const string Wallet = "Feature.Wallet";
         public const string Qr = "Feature.Qr";
+        public const string Share = "Feature.Share";
     }
 
     public static class Qr
@@ -109,6 +112,7 @@ public static class MessageKeys
         public const string HealthOk = "Success.HealthOk";
         public const string MemberDeleted = "Success.MemberDeleted";
         public const string TagDeleted = "Success.TagDeleted";
+        public const string ShareLinkRevoked = "Success.ShareLinkRevoked";
     }
 
     public static class Validation

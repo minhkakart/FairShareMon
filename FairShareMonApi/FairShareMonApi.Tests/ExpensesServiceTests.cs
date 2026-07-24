@@ -394,6 +394,9 @@ public class ExpensesServiceTests
         public Task<Expense?> GetByUuidAsync(string userUuid, string expenseUuid, CancellationToken cancellationToken = default) =>
             Task.FromResult(StoredExpense);
 
+        public Task<IReadOnlyList<Expense>> ListDetailedByEventAsync(string userUuid, string eventUuid, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<Expense>>(StoredExpense is null ? [] : [StoredExpense]);
+
         public Task<ExpenseWriteResult<Expense>> CreateAsync(string userUuid, CreateExpenseData data, CancellationToken cancellationToken = default)
         {
             LastCreateData = data;

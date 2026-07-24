@@ -69,6 +69,9 @@
   <data name="Feature.Qr" xml:space="preserve">
     <value>QR code</value>
   </data>
+  <data name="Feature.Share" xml:space="preserve">
+    <value>event sharing (read-only)</value>
+  </data>
   <data name="Qr.Header.Bank" xml:space="preserve">
     <value>Bank</value>
   </data>
@@ -204,6 +207,12 @@
   <data name="Error.TagNameDuplicate" xml:space="preserve">
     <value>A tag with this name already exists.</value>
   </data>
+  <data name="Error.ShareLinkNotFoundOrExpired" xml:space="preserve">
+    <value>The share link does not exist or has expired.</value>
+  </data>
+  <data name="Error.EventNotClosedForShare" xml:space="preserve">
+    <value>Only a closed event can be shared.</value>
+  </data>
   <data name="Envelope.ValidationFailed" xml:space="preserve">
     <value>The submitted data is invalid.</value>
   </data>
@@ -284,6 +293,9 @@
   </data>
   <data name="Success.TagDeleted" xml:space="preserve">
     <value>The tag has been deleted.</value>
+  </data>
+  <data name="Success.ShareLinkRevoked" xml:space="preserve">
+    <value>The share link has been revoked.</value>
   </data>
   <data name="Validation.Auth.CurrentPasswordRequired" xml:space="preserve">
     <value>Current password must not be empty.</value>

@@ -1,10 +1,12 @@
 using FairShareMonApi.Models;
 using FairShareMonApi.Models.Events;
 using FairShareMonApi.Models.Expenses;
+using FairShareMonApi.Models.Share;
 using FairShareMonApi.Models.Stats;
 using FairShareMonApi.Models.Wallet;
 using FairShareMonApi.Services.Api.Events;
 using FairShareMonApi.Services.Api.Export;
+using FairShareMonApi.Services.Api.Share;
 using FairShareMonApi.Services.Api.Stats;
 using FairShareMonApi.Services.Api.Wallet;
 using FairShareMonApi.Constants;
@@ -22,7 +24,7 @@ namespace FairShareMonApi.Controllers;
 /// edit/delete are OPEN-only; a closed event rejects every write to its expenses/shares except the
 /// settled flag (§4.4). Thin - all business logic in <see cref="IEventsService"/>.
 /// </summary>
-public class EventsController(IEventsService eventsService, IStatsService statsService, IExportService exportService, IWalletQrService walletQrService, IStringLocalizer<StringResources> localizer) : AppController
+public class EventsController(IEventsService eventsService, IStatsService statsService, IExportService exportService, IWalletQrService walletQrService, IEventShareService shareService, IStringLocalizer<StringResources> localizer) : AppController
 {
     [HttpGet]
     [SwaggerOperation(
@@ -133,6 +135,43 @@ public class EventsController(IEventsService eventsService, IStatsService statsS
     public async Task<IActionResult> GetMemberQrsAsync([FromRoute] string uuid, [FromQuery] string? bankAccountUuid, CancellationToken cancellationToken) =>
         ApiResult<IReadOnlyList<MemberQrResponse>>.Success(
             await walletQrService.GenerateEventMemberQrsAsync(AuthenticatedUser.Id, uuid, bankAccountUuid, cancellationToken));
+
+    [HttpPost("{uuid}/share")]
+    [SwaggerOperation(
+        Summary = "Tạo liên kết chia sẻ công khai (chỉ xem) cho đợt đã chốt",
+        Description = "Tạo một liên kết công khai chỉ-xem cho một đợt đã chốt: bất kỳ ai có liên kết đều xem được báo cáo đợt (cân bằng theo thành viên, chi tiết phần gánh từng phiếu, mã QR theo từng thành viên còn nợ) mà không cần đăng nhập. Liên kết tự hết hạn sau 1 ngày. Chỉ dành cho tài khoản Premium (403 nếu Free) và chỉ áp dụng cho đợt đã chốt (400 nếu đợt đang mở). Đích nhận QR được ảnh chụp tại thời điểm tạo: dùng bankAccountUuid chỉ định, hoặc tài khoản mặc định; nếu không có tài khoản nào thì liên kết vẫn được tạo nhưng không kèm QR (hasQr=false). Nếu đã có liên kết còn hiệu lực thì tái sử dụng liên kết đó (bỏ qua bankAccountUuid khác); đặt regenerate=true để thu hồi và cấp liên kết mới. Chỉ đọc quyền sở hữu - đợt không thuộc tài khoản trả về 404.")]
+    [SwaggerResponse(StatusCodes.Status200OK, "Tạo/lấy liên kết chia sẻ thành công.", typeof(ApiResult<ShareLinkResponse>))]
+    [SwaggerResponse(StatusCodes.Status400BadRequest, "Dữ liệu không hợp lệ hoặc đợt chưa chốt.", typeof(ApiResult))]
+    [SwaggerResponse(StatusCodes.Status401Unauthorized, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", typeof(ApiResult))]
+    [SwaggerResponse(StatusCodes.Status403Forbidden, "Tính năng chia sẻ đợt chỉ dành cho tài khoản Premium (nâng cấp để sử dụng).", typeof(ApiResult))]
+    [SwaggerResponse(StatusCodes.Status404NotFound, "Không tìm thấy đợt chi tiêu hoặc tài khoản ngân hàng.", typeof(ApiResult))]
+    public async Task<IActionResult> CreateShareAsync([FromRoute] string uuid, [FromBody] CreateShareLinkRequest request, CancellationToken cancellationToken) =>
+        ApiResult<ShareLinkResponse>.Success(
+            await shareService.CreateAsync(AuthenticatedUser.Id, uuid, request, cancellationToken));
+
+    [HttpGet("{uuid}/share")]
+    [SwaggerOperation(
+        Summary = "Xem liên kết chia sẻ đang hoạt động của đợt",
+        Description = "Trả về liên kết chia sẻ công khai đang hoạt động của đợt (để sao chép), hoặc data=null nếu đợt chưa được chia sẻ (đây là trạng thái bình thường, không phải lỗi). Chỉ đọc quyền sở hữu - đợt không thuộc tài khoản trả về 404.")]
+    [SwaggerResponse(StatusCodes.Status200OK, "Lấy liên kết chia sẻ thành công (data=null nếu chưa chia sẻ).", typeof(ApiResult<ShareLinkResponse>))]
+    [SwaggerResponse(StatusCodes.Status401Unauthorized, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", typeof(ApiResult))]
+    [SwaggerResponse(StatusCodes.Status404NotFound, "Không tìm thấy đợt chi tiêu.", typeof(ApiResult))]
+    public async Task<IActionResult> GetShareAsync([FromRoute] string uuid, CancellationToken cancellationToken) =>
+        ApiResult<ShareLinkResponse?>.Success(
+            await shareService.GetActiveAsync(AuthenticatedUser.Id, uuid, cancellationToken));
+
+    [HttpDelete("{uuid}/share")]
+    [SwaggerOperation(
+        Summary = "Thu hồi liên kết chia sẻ của đợt",
+        Description = "Thu hồi liên kết chia sẻ công khai đang hoạt động của đợt: sau khi thu hồi, mở liên kết công khai sẽ trả về 404. Idempotent - không có liên kết nào đang hoạt động vẫn trả về thành công. Chỉ đọc quyền sở hữu - đợt không thuộc tài khoản trả về 404.")]
+    [SwaggerResponse(StatusCodes.Status200OK, "Đã thu hồi liên kết chia sẻ.", typeof(ApiResult))]
+    [SwaggerResponse(StatusCodes.Status401Unauthorized, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", typeof(ApiResult))]
+    [SwaggerResponse(StatusCodes.Status404NotFound, "Không tìm thấy đợt chi tiêu.", typeof(ApiResult))]
+    public async Task<IActionResult> RevokeShareAsync([FromRoute] string uuid, CancellationToken cancellationToken)
+    {
+        await shareService.RevokeAsync(AuthenticatedUser.Id, uuid, cancellationToken);
+        return ApiResult.SuccessMessage(localizer[MessageKeys.Success.ShareLinkRevoked].Value);
+    }
 
     [HttpPut("{uuid}/close")]
     [SwaggerOperation(

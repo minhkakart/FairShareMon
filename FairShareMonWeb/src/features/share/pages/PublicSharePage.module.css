@@ -1,0 +1,98 @@
+/* Standalone minimal layout for the anonymous public report. Tokens only. */
+
+.page {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--fs-color-canvas, var(--fs-color-surface-sunken));
+  color: var(--fs-color-text);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--fs-space-3);
+  padding: var(--fs-space-4) var(--fs-space-5);
+  border-bottom: 1px solid var(--fs-color-border);
+  background-color: var(--fs-color-surface);
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.brandName {
+  font-weight: var(--fs-weight-bold);
+  font-size: var(--fs-text-lg);
+}
+.brandTagline {
+  font-size: var(--fs-text-xs);
+  color: var(--fs-color-text-secondary);
+}
+
+.main {
+  flex: 1;
+  width: 100%;
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: var(--fs-space-6) var(--fs-space-5);
+}
+
+.report {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-5);
+}
+
+.reportHeader {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-1);
+}
+
+.title {
+  margin: 0;
+  font-size: var(--fs-text-2xl, 1.5rem);
+  font-weight: var(--fs-weight-bold);
+  overflow-wrap: anywhere;
+}
+
+.closedAt {
+  margin: 0;
+  font-size: var(--fs-text-sm);
+  color: var(--fs-color-text-secondary);
+}
+
+.summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--fs-space-3);
+  margin: 0;
+}
+
+.summaryItem {
+  flex: 1 1 12rem;
+  padding: var(--fs-space-3) var(--fs-space-4);
+  border: 1px solid var(--fs-color-border);
+  border-radius: var(--fs-radius-lg);
+  background-color: var(--fs-color-surface);
+}
+
+.summaryLabel {
+  font-size: var(--fs-text-xs);
+  color: var(--fs-color-text-secondary);
+}
+
+.summaryValue {
+  margin: var(--fs-space-1) 0 0;
+  font-size: var(--fs-text-lg);
+  font-weight: var(--fs-weight-semibold);
+}
+
+.summarySkeleton {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--fs-space-3);
+}

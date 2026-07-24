@@ -27,7 +27,8 @@ import { EventFormDialog } from "../components/EventFormDialog";
 import { DeleteEventDialog } from "../components/DeleteEventDialog";
 import { CloseEventDialog } from "../components/CloseEventDialog";
 import { QrDialog } from "@/features/wallet/components/QrDialog";
-import { QrIcon } from "@/features/wallet/components/icons";
+import { QrIcon, ShareIcon } from "@/features/wallet/components/icons";
+import { ShareEventDialog } from "@/features/share/components/ShareEventDialog";
 import { AddExpenseDialog } from "../components/AddExpenseDialog";
 import {
   DownloadIcon,
@@ -62,6 +63,7 @@ function DetailView({ event }: { event: EventResponse }) {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [closeOpen, setCloseOpen] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
 
   const closed = event.isClosed;
 
@@ -119,14 +121,24 @@ function DetailView({ event }: { event: EventResponse }) {
             {t("events:detail.export")}
           </Button>
           {closed ? (
-            <Button
-              variant="secondary"
-              size="sm"
-              iconStart={<QrIcon />}
-              onClick={() => setQrOpen(true)}
-            >
-              {t("wallet:qr.showEvent")}
-            </Button>
+            <>
+              <Button
+                variant="secondary"
+                size="sm"
+                iconStart={<QrIcon />}
+                onClick={() => setQrOpen(true)}
+              >
+                {t("wallet:qr.showEvent")}
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                iconStart={<ShareIcon />}
+                onClick={() => setShareOpen(true)}
+              >
+                {t("share:action.share")}
+              </Button>
+            </>
           ) : null}
           {!closed ? (
             <>
@@ -214,13 +226,20 @@ function DetailView({ event }: { event: EventResponse }) {
         onOpenChange={setCloseOpen}
       />
       {closed ? (
-        <QrDialog
-          open={qrOpen}
-          onOpenChange={setQrOpen}
-          kind="event"
-          targetUuid={event.uuid}
-          title={t("wallet:qr.eventTitle")}
-        />
+        <>
+          <QrDialog
+            open={qrOpen}
+            onOpenChange={setQrOpen}
+            kind="event"
+            targetUuid={event.uuid}
+            title={t("wallet:qr.eventTitle")}
+          />
+          <ShareEventDialog
+            open={shareOpen}
+            onOpenChange={setShareOpen}
+            event={event}
+          />
+        </>
       ) : null}
     </Stack>
   );

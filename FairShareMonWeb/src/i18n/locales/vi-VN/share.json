@@ -1,0 +1,98 @@
+{
+  "action": {
+    "share": "Chia sẻ"
+  },
+  "dialog": {
+    "title": "Chia sẻ báo cáo quyết toán",
+    "description": "Tạo liên kết công khai chỉ-đọc để mọi người xem công nợ của đợt này mà không cần đăng nhập. Liên kết tự hết hạn sau 1 ngày."
+  },
+  "premium": {
+    "gateTitle": "Tính năng Premium",
+    "gateBody": "Chia sẻ liên kết báo cáo quyết toán chỉ dành cho tài khoản Premium. Premium được cấp thủ công bởi quản trị viên — hãy liên hệ người vận hành để mở khóa."
+  },
+  "create": {
+    "destinationLabel": "Tài khoản nhận tiền",
+    "destinationPlaceholder": "Chọn tài khoản nhận tiền",
+    "destinationHint": "Mã QR chuyển khoản trên trang công khai sẽ trỏ về tài khoản này.",
+    "noBankTitle": "Chưa có tài khoản nhận tiền",
+    "noBankHint": "Bạn vẫn có thể tạo liên kết (không kèm mã QR). Thêm một tài khoản ngân hàng trong Ví để bật mã QR chuyển khoản trên trang công khai.",
+    "toWallet": "Tới Ví",
+    "submit": "Tạo liên kết"
+  },
+  "link": {
+    "urlLabel": "Liên kết chia sẻ",
+    "copy": "Sao chép liên kết",
+    "copied": "Đã sao chép",
+    "expiresAt": "Hết hạn lúc {{time}}",
+    "expiredTitle": "Liên kết đã hết hạn",
+    "expiredBody": "Liên kết chia sẻ này đã hết hạn. Tạo lại để lấy một liên kết mới.",
+    "bank": "Ngân hàng",
+    "accountNumber": "Số tài khoản",
+    "holder": "Chủ tài khoản",
+    "noQrHint": "Liên kết này không kèm mã QR (chưa chọn tài khoản nhận tiền lúc tạo).",
+    "revoke": "Thu hồi",
+    "regenerate": "Tạo lại",
+    "confirmRevoke": "Thu hồi liên kết? Người đang giữ liên kết cũ sẽ không xem được nữa.",
+    "confirmRevokeConfirm": "Xác nhận thu hồi",
+    "confirmRegenerate": "Tạo lại liên kết? Liên kết cũ sẽ ngừng hoạt động ngay lập tức.",
+    "confirmRegenerateConfirm": "Xác nhận tạo lại",
+    "cancel": "Huỷ",
+    "created": "Đã tạo liên kết chia sẻ.",
+    "revoked": "Đã thu hồi liên kết chia sẻ.",
+    "regenerated": "Đã tạo lại liên kết chia sẻ."
+  },
+  "notClosed": {
+    "title": "Đợt chưa được chốt",
+    "body": "Chỉ có thể chia sẻ báo cáo quyết toán sau khi chốt đợt. Hãy chốt đợt rồi thử lại."
+  },
+  "error": {
+    "title": "Không tải được liên kết",
+    "retry": "Thử lại",
+    "qrTitle": "Không tải được mã QR",
+    "qrBody": "Đã xảy ra lỗi khi tải mã QR. Vui lòng thử lại."
+  },
+  "qr": {
+    "emptyTitle": "Không có mã QR",
+    "emptyBody": "Hiện không còn thành viên nào nợ để tạo mã QR."
+  },
+  "public": {
+    "documentTitle": "Báo cáo quyết toán",
+    "closedAt": "Đã chốt lúc {{time}}",
+    "summaryOutstanding": "Tổng còn nợ",
+    "summaryOwing": "Còn nợ",
+    "summarySettled": "Đã trả",
+    "memberUnit": "thành viên",
+    "member": "Thành viên",
+    "advanced": "Đã ứng",
+    "owed": "Phải gánh",
+    "balance": "Cân bằng",
+    "outstanding": "Còn nợ",
+    "positiveLabel": "được nhận lại",
+    "negativeLabel": "phải trả",
+    "zeroLabel": "đã cân bằng",
+    "ownerRep": "đại diện",
+    "deletedTag": "(đã xóa)",
+    "statusColumn": "Trạng thái",
+    "statusSettled": "Đã trả",
+    "statusOwing": "Còn nợ",
+    "qrColumn": "Mã QR",
+    "expand": "Xem chi tiết của {{name}}",
+    "collapse": "Thu gọn chi tiết của {{name}}",
+    "showQr": "Xem mã QR của {{name}}",
+    "caption": "Bảng công nợ của các thành viên trong đợt",
+    "emptyTitle": "Chưa có dữ liệu",
+    "emptyBody": "Đợt này chưa có chi tiêu nào để quyết toán.",
+    "loading": "Đang tải báo cáo…"
+  },
+  "breakdown": {
+    "title": "Chi tiết phần gánh của {{name}}",
+    "advancedAsPayer": "Đã ứng (người trả): {{amount}}",
+    "paidBy": "Người trả: {{name}}",
+    "settledTag": "đã trả",
+    "empty": "Thành viên này không có phần gánh nào trong đợt."
+  },
+  "expired": {
+    "title": "Liên kết không khả dụng",
+    "body": "Liên kết này đã hết hạn, bị thu hồi, hoặc không tồn tại. Hãy liên hệ người chia sẻ để nhận liên kết mới."
+  }
+}
