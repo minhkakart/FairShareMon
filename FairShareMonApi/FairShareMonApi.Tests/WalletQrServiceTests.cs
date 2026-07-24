@@ -767,6 +767,122 @@ public class WalletQrServiceTests
         Assert.Equal(ErrorCodes.PremiumFeatureRequired, exception.Code);
     }
 
+    // ---- Public share per-member QR list (GenerateEventMemberQrsForShareAsync) --------------------
+
+    // Distinct from any DB account so a payload check proves the transient snapshot destination was used.
+    private static readonly Models.Wallet.BankSnapshot Snapshot =
+        new(BankBin: "970422", BankName: "MB Bank", AccountNumber: "9998887776", AccountHolderName: "Tran Thi B");
+
+    [Fact]
+    public async Task GenerateEventMemberQrsForShare_NoPremiumGate_RendersEvenWhenTierWouldBlock()
+    {
+        // A Free tier would 13003 on the authed paths; the anonymous share path is NEVER re-gated
+        // (§4 rule 9) - it must still render. No DB account is added: the snapshot is the only destination.
+        _tier.PremiumFeatureCode = ErrorCodes.PremiumFeatureRequired;
+        _stats.Balance = new EventBalanceResponse
+        {
+            EventUuid = EventUuid, EventName = "Đà Lạt", IsClosed = true,
+            Rows = [Row("Cường", -500_000m), Row("Dũng", -125_000m)]
+        };
+
+        var result = await CreateService().GenerateEventMemberQrsForShareAsync(UserUuid, EventUuid, Snapshot);
+
+        Assert.Equal(2, result.Count);
+        Assert.Equal("Cường", result[0].MemberName);
+        Assert.Equal(500_000m, result[0].Amount);
+        Assert.StartsWith("data:image/png;base64,", result[0].Image);
+    }
+
+    [Fact]
+    public async Task GenerateEventMemberQrsForShare_BuildsTransientAccountFromSnapshotNotDbAccount()
+    {
+        // A DB default account exists with a DIFFERENT bank/number; the share path must ignore it and use
+        // the snapshot (54 amount rides the payload; 38>01>00 BIN + 01 account number come from the snapshot).
+        AddDefaultAccount(bin: "970436", number: "0123456789");
+        _stats.Balance = new EventBalanceResponse
+        {
+            EventUuid = EventUuid, EventName = "Đà Lạt", IsClosed = true, Rows = [Row("Cường", -500_000m)]
+        };
+
+        await CreateService().GenerateEventMemberQrsForShareAsync(UserUuid, EventUuid, Snapshot);
+
+        var payload = Assert.Single(_images.SinglePayloads);
+        Assert.Equal("500000", ParseTlv(payload)["54"]);
+        var beneficiary = ParseTlv(ParseTlv(ParseTlv(payload)["38"])["01"]);
+        Assert.Equal("970422", beneficiary["00"]);   // snapshot BIN, not the DB account's 970436
+        Assert.Equal("9998887776", beneficiary["01"]); // snapshot account number, not 0123456789
+    }
+
+    [Fact]
+    public async Task GenerateEventMemberQrsForShare_OneEntryPerOutstandingMemberInRowsOrder()
+    {
+        _stats.Balance = new EventBalanceResponse
+        {
+            EventUuid = EventUuid, EventName = "Đà Lạt", IsClosed = true,
+            Rows =
+            [
+                Row("Bình", 300_000m),          // positive -> excluded
+                Row("An", 0m),                  // zero -> excluded
+                Row("Cường", -500_000m),        // owing -> included
+                SettledRow("Én", -100_000m),    // cleared (Outstanding 0) -> excluded
+                Row("Dũng", -125_000m)          // owing -> included
+            ]
+        };
+
+        var result = await CreateService().GenerateEventMemberQrsForShareAsync(UserUuid, EventUuid, Snapshot);
+
+        Assert.Equal(new[] { "Cường", "Dũng" }, result.Select(entry => entry.MemberName).ToArray());
+        Assert.Equal(new[] { 500_000m, 125_000m }, result.Select(entry => entry.Amount).ToArray());
+    }
+
+    [Fact]
+    public async Task GenerateEventMemberQrsForShare_OpenEvent_Throws16001()
+    {
+        _stats.Balance = new EventBalanceResponse
+        {
+            EventUuid = EventUuid, EventName = "Đà Lạt", IsClosed = false, Rows = [Row("Cường", -500_000m)]
+        };
+
+        var exception = await Assert.ThrowsAsync<ErrorException>(() =>
+            CreateService().GenerateEventMemberQrsForShareAsync(UserUuid, EventUuid, Snapshot));
+
+        Assert.Equal(ErrorCodes.EventNotClosedForShare, exception.Code); // defensive closed-only re-assertion
+        Assert.Empty(_images.SinglePayloads);
+    }
+
+    [Fact]
+    public async Task GenerateEventMemberQrsForShare_NobodyOwes_ReturnsEmptyListNot12003()
+    {
+        // The share path softens the authed 12003: a valid shared report can legitimately have zero debtors.
+        _stats.Balance = new EventBalanceResponse
+        {
+            EventUuid = EventUuid, EventName = "Đà Lạt", IsClosed = true,
+            Rows = [Row("Bình", 300_000m), SettledRow("Cường", -500_000m)]
+        };
+
+        var result = await CreateService().GenerateEventMemberQrsForShareAsync(UserUuid, EventUuid, Snapshot);
+
+        Assert.Empty(result);
+        Assert.Empty(_images.SinglePayloads);
+    }
+
+    [Fact]
+    public async Task GenerateEventMemberQrsForShare_ImageDecodesToPngMagicBytes()
+    {
+        _stats.Balance = new EventBalanceResponse
+        {
+            EventUuid = EventUuid, EventName = "Đà Lạt", IsClosed = true, Rows = [Row("Cường", -500_000m)]
+        };
+
+        var result = await CreateService().GenerateEventMemberQrsForShareAsync(UserUuid, EventUuid, Snapshot);
+
+        const string prefix = "data:image/png;base64,";
+        var only = Assert.Single(result);
+        Assert.StartsWith(prefix, only.Image);
+        var bytes = Convert.FromBase64String(only.Image[prefix.Length..]);
+        Assert.Equal(new byte[] { 0x89, 0x50, 0x4E, 0x47 }, bytes);
+    }
+
     // An expense paid by "An" (PayerUuid); the passed shares are the debtor shares. Total is the SUM.
     private static ExpenseResponse ExpenseWith(params ShareResponse[] shares) =>
         new()
@@ -861,6 +977,7 @@ public class WalletQrServiceTests
         }
 
         public Task<IReadOnlyList<ExpenseSummaryResponse>> ListAsync(string userUuid, ExpenseFilter filter, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<ExpenseResponse>> ListDetailedByEventAsync(string userUuid, string eventUuid, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<ExpenseResponse> CreateAsync(string userUuid, CreateExpenseRequest request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<ExpenseResponse> UpdateAsync(string userUuid, string expenseUuid, UpdateExpenseRequest request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task DeleteAsync(string userUuid, string expenseUuid, CancellationToken cancellationToken = default) => throw new NotSupportedException();

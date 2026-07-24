@@ -1,0 +1,84 @@
+/* Per-member drill-in — a quiet nested list under the expanded row. Tokens only. */
+
+.breakdown {
+  padding: var(--fs-space-3) var(--fs-space-2);
+}
+
+.title {
+  margin: 0 0 var(--fs-space-3);
+  font-size: var(--fs-text-sm);
+  font-weight: var(--fs-weight-semibold);
+  color: var(--fs-color-text-secondary);
+}
+
+.empty {
+  margin: 0;
+  font-size: var(--fs-text-sm);
+  color: var(--fs-color-text-secondary);
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-2);
+}
+
+.item {
+  padding: var(--fs-space-2) var(--fs-space-3);
+  border: 1px solid var(--fs-color-border);
+  border-radius: var(--fs-radius-md);
+  background-color: var(--fs-color-surface);
+}
+
+.itemMain {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--fs-space-3);
+}
+
+.expenseName {
+  font-weight: var(--fs-weight-medium);
+  overflow-wrap: anywhere;
+}
+
+.shareAmount {
+  flex: none;
+}
+
+.itemMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--fs-space-2);
+  margin-top: 0.15rem;
+  font-size: var(--fs-text-xs);
+  color: var(--fs-color-text-secondary);
+}
+
+.time {
+  white-space: nowrap;
+}
+
+.payer {
+  overflow-wrap: anywhere;
+}
+
+.settledTag {
+  flex: none;
+  padding: 0.05rem var(--fs-space-2);
+  border-radius: var(--fs-radius-pill);
+  font-weight: var(--fs-weight-medium);
+  color: var(--fs-color-text-secondary);
+  background-color: var(--fs-color-surface-sunken);
+  white-space: nowrap;
+}
+
+.advanced {
+  margin-top: var(--fs-space-2);
+  font-size: var(--fs-text-xs);
+  color: var(--fs-color-text-secondary);
+}

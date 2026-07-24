@@ -1,0 +1,126 @@
+/* Owner-side Share dialog. Tokens only; light + dark come free. */
+
+.body {
+  min-height: 4rem;
+}
+
+.create {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-4);
+}
+
+.noBank {
+  display: flex;
+  gap: var(--fs-space-3);
+  padding: var(--fs-space-3) var(--fs-space-4);
+  border: 1px solid var(--fs-color-border);
+  border-radius: var(--fs-radius-md);
+  background-color: var(--fs-color-surface-sunken);
+}
+.noBankIcon {
+  flex: none;
+  color: var(--fs-color-text-secondary);
+}
+.noBankTitle {
+  margin: 0 0 var(--fs-space-1);
+  font-weight: var(--fs-weight-semibold);
+}
+.noBankBody {
+  margin: 0 0 var(--fs-space-2);
+  font-size: var(--fs-text-sm);
+  color: var(--fs-color-text-secondary);
+}
+
+.link {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-4);
+}
+
+.urlField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-1);
+}
+.fieldLabel {
+  font-size: var(--fs-text-sm);
+  font-weight: var(--fs-weight-medium);
+}
+.urlRow {
+  display: flex;
+  gap: var(--fs-space-2);
+  align-items: stretch;
+}
+.urlInput {
+  flex: 1;
+  min-width: 0;
+  padding: var(--fs-space-2) var(--fs-space-3);
+  border: 1px solid var(--fs-color-border);
+  border-radius: var(--fs-radius-md);
+  background-color: var(--fs-color-surface-sunken);
+  color: var(--fs-color-text);
+  font-family: inherit;
+  font-size: var(--fs-text-sm);
+}
+.urlInput:focus-visible {
+  outline: 2px solid var(--fs-color-focus);
+  outline-offset: 1px;
+}
+
+.expiry {
+  margin: 0;
+  font-size: var(--fs-text-sm);
+  color: var(--fs-color-text-secondary);
+}
+
+.bank {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--fs-space-1) var(--fs-space-3);
+  margin: 0;
+  padding: var(--fs-space-3) var(--fs-space-4);
+  border: 1px solid var(--fs-color-border);
+  border-radius: var(--fs-radius-md);
+  background-color: var(--fs-color-surface-sunken);
+}
+.bankTerm {
+  font-size: var(--fs-text-sm);
+  color: var(--fs-color-text-secondary);
+}
+.bankValue {
+  margin: 0;
+  font-size: var(--fs-text-sm);
+  overflow-wrap: anywhere;
+}
+.bankNumber {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+.noQrHint {
+  margin: 0;
+  font-size: var(--fs-text-sm);
+  color: var(--fs-color-text-secondary);
+}
+
+.confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fs-space-2);
+  padding: var(--fs-space-3);
+  border: 1px solid var(--fs-color-border);
+  border-radius: var(--fs-radius-md);
+  background-color: var(--fs-color-surface-sunken);
+}
+.confirmText {
+  margin: 0;
+  font-size: var(--fs-text-sm);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--fs-space-2);
+  justify-content: flex-end;
+}

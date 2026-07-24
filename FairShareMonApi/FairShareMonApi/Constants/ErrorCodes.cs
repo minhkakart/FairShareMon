@@ -169,4 +169,13 @@ public static class ErrorCodes
     // ShareNotFound (7000) / ExpenseNotFound (6000) / EventNotFound (9000) / MemberNotFound (3000, also
     // the non-participant case, settled-per-member OQ12a). No codes are defined yet; this block is
     // reserved for any future settled-per-member-specific failure state.
+
+    // 16xxx - Event share link (block claimed by planning/event-share-link.md; 15xxx stays reserved by
+    // settled-per-member, so this feature takes the next free block, OQ1a).
+
+    /// <summary>The public share token is unknown, expired, or revoked (HTTP 404, never leaks which). Used by the anonymous public read / QR routes.</summary>
+    public const int ShareLinkNotFoundOrExpired = 16000;
+
+    /// <summary>A share link was requested for an event that is not closed - only closed events may be shared (§4.4, HTTP 400).</summary>
+    public const int EventNotClosedForShare = 16001;
 }

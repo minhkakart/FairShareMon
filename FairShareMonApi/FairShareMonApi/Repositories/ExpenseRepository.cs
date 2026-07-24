@@ -27,6 +27,9 @@ public interface IExpenseRepository : IBaseRepository, IQueryRepository<Expense>
     /// <summary>Resource-owned full load (shares + members, category, payer, tags). Null on an ownership miss.</summary>
     Task<Expense?> GetByUuidAsync(string userUuid, string expenseUuid, CancellationToken cancellationToken = default);
 
+    /// <summary>Resource-owned full-detail list of the event's expenses (same include graph as <see cref="GetByUuidAsync"/>, filtered by event), sorted expense_time DESC. Empty when the event is empty or not owned. Single query, no N+1 (planning/event-share-link.md OQ2a).</summary>
+    Task<IReadOnlyList<Expense>> ListDetailedByEventAsync(string userUuid, string eventUuid, CancellationToken cancellationToken = default);
+
     /// <summary>Atomic create with shares + tags + audit (§4.5); defaults + link-validation per the Step-5 flow.</summary>
     Task<ExpenseWriteResult<Expense>> CreateAsync(string userUuid, CreateExpenseData data, CancellationToken cancellationToken = default);
 
@@ -103,6 +106,25 @@ public sealed class ExpenseRepository(AppDbContext dbContext, IAuditLogFactory a
             .Include(expense => expense.ExpenseTags).ThenInclude(link => link.Tag)
             .Include(expense => expense.Event)
             .FirstOrDefaultAsync(expense => expense.Uuid == expenseUuid && expense.User.Uuid == userUuid, ct), cancellationToken);
+
+    public Task<IReadOnlyList<Expense>> ListDetailedByEventAsync(string userUuid, string eventUuid, CancellationToken cancellationToken = default) =>
+        ExecuteQueryAsync(async (_, ct) =>
+        {
+            var expenses = await Query()
+                .Where(expense => expense.User.Uuid == userUuid && expense.Event != null && expense.Event.Uuid == eventUuid)
+                .Include(expense => expense.Category)
+                .Include(expense => expense.PayerMember)
+                .Include(expense => expense.Shares).ThenInclude(share => share.Member)
+                .Include(expense => expense.ExpenseTags).ThenInclude(link => link.Tag)
+                .Include(expense => expense.Event)
+                // Two collection includes (Shares + ExpenseTags) across many expenses would multiply rows
+                // in one SQL statement; split to avoid a cartesian blow-up on this anonymous public read.
+                .AsSplitQuery()
+                .OrderByDescending(expense => expense.ExpenseTime)
+                .ThenByDescending(expense => expense.CreatedAt)
+                .ToListAsync(ct);
+            return (IReadOnlyList<Expense>)expenses;
+        }, cancellationToken);
 
     public Task<ExpenseWriteResult<Expense>> CreateAsync(string userUuid, CreateExpenseData data, CancellationToken cancellationToken = default) =>
         ExecuteTransactionAsync(async (db, transaction) =>

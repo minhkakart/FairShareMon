@@ -379,6 +379,9 @@ public class ExportServiceTests
         public Task<IReadOnlyList<ExpenseSummaryResponse>> ListAsync(string userUuid, ExpenseFilter filter, CancellationToken cancellationToken = default) =>
             Task.FromResult((IReadOnlyList<ExpenseSummaryResponse>)Summaries);
 
+        public Task<IReadOnlyList<ExpenseResponse>> ListDetailedByEventAsync(string userUuid, string eventUuid, CancellationToken cancellationToken = default) =>
+            Task.FromResult((IReadOnlyList<ExpenseResponse>)Expenses.Values.ToList());
+
         public Task<ExpenseResponse> CreateAsync(string userUuid, CreateExpenseRequest request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<ExpenseResponse> UpdateAsync(string userUuid, string expenseUuid, UpdateExpenseRequest request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task DeleteAsync(string userUuid, string expenseUuid, CancellationToken cancellationToken = default) => throw new NotSupportedException();

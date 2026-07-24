@@ -63,6 +63,10 @@ export const ErrorCodes = {
   AdminCannotTargetSelf: 14001,
   AdminCannotTargetAdmin: 14002,
   AccountDisabled: 14003,
+
+  // 16xxx — event share links
+  ShareLinkNotFoundOrExpired: 16000,
+  EventNotClosedForShare: 16001,
 } as const;
 
 export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes];

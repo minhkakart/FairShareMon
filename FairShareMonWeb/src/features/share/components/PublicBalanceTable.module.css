@@ -1,0 +1,103 @@
+/* Public read-only balance table — reuses the EventBalanceTable cell semantics.
+   Tokens only; light + dark come free through the semantic tokens. */
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.memberCell {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--fs-space-2);
+  min-width: 0;
+}
+.memberName {
+  overflow-wrap: anywhere;
+}
+
+.repTag {
+  flex: none;
+  padding: 0.05rem var(--fs-space-2);
+  border: 1px solid var(--fs-color-border);
+  border-radius: var(--fs-radius-pill);
+  font-size: var(--fs-text-xs);
+  font-weight: var(--fs-weight-medium);
+  color: var(--fs-color-text-secondary);
+  background-color: var(--fs-color-surface-sunken);
+  white-space: nowrap;
+}
+
+.deletedTag {
+  font-size: var(--fs-text-sm);
+  font-style: italic;
+  color: var(--fs-color-text-secondary);
+  white-space: nowrap;
+}
+
+.balanceCell {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.1rem;
+}
+.polarity {
+  font-size: var(--fs-text-xs);
+  font-weight: var(--fs-weight-regular);
+  color: var(--fs-color-text-secondary);
+  white-space: nowrap;
+}
+
+.muted {
+  color: var(--fs-color-text-secondary);
+}
+
+/* Expand/collapse chevron button (a real button — aria-expanded/-controls). */
+.expandButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--fs-radius-sm);
+  background: none;
+  color: var(--fs-color-text-secondary);
+  cursor: pointer;
+}
+.expandButton:hover {
+  background-color: var(--fs-color-surface-sunken);
+  color: var(--fs-color-text);
+}
+.expandButton:focus-visible {
+  outline: 2px solid var(--fs-color-focus);
+  outline-offset: 2px;
+}
+
+.chevron {
+  display: inline-flex;
+  transition: transform var(--fs-duration-fast) var(--fs-ease-standard);
+}
+.chevronOpen {
+  transform: rotate(90deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chevron {
+    transition: none;
+  }
+}
+
+.breakdownRegion {
+  background-color: var(--fs-color-surface-sunken);
+  border-radius: var(--fs-radius-md);
+}

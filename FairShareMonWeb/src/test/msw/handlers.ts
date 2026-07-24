@@ -1116,6 +1116,186 @@ function ensureDestructiveAllowed(
   return null;
 }
 
+// --- Event share-link store (event-share-link) ----------------------------
+// A public token → owner+event+bank-snapshot, so an ANONYMOUS public GET can
+// resolve the report without an Authorization header. The 1-day TTL is stored
+// but never blocks in the mock (an unknown token → 16000, which drives both the
+// public expired screen and the not-found case).
+interface ShareLinkRecord {
+  token: string;
+  username: string;
+  eventUuid: string;
+  createdAt: string;
+  expiresAt: string;
+  bankAccountUuid: string | null;
+}
+const shareLinksByToken = new Map<string, ShareLinkRecord>();
+let shareSeq = 0;
+
+function activeShareFor(
+  username: string,
+  eventUuid: string,
+): ShareLinkRecord | undefined {
+  for (const rec of shareLinksByToken.values()) {
+    if (rec.username === username && rec.eventUuid === eventUuid) return rec;
+  }
+  return undefined;
+}
+
+function shareLinkResponse(rec: ShareLinkRecord) {
+  const account = rec.bankAccountUuid
+    ? getBankAccounts(rec.username).find((a) => a.uuid === rec.bankAccountUuid)
+    : undefined;
+  return {
+    token: rec.token,
+    expiresAt: rec.expiresAt,
+    createdAt: rec.createdAt,
+    hasQr: Boolean(account),
+    bankName: account?.bankName ?? null,
+    accountNumber: account?.accountNumber ?? null,
+    accountHolderName: account?.accountHolderName ?? null,
+  };
+}
+
+// One-shot demo seed for the browser-mock `admin` (Premium) user: a CLOSED event
+// with two expenses so the balance has still-owing members — makes the owner
+// Share dialog + the public report demonstrable end-to-end. Scoped to username
+// "admin" so Vitest stores (fresh usernames) are never affected.
+let adminDemoSeeded = false;
+function ensureAdminShareDemo(username: string): void {
+  if (username !== "admin" || adminDemoSeeded) return;
+  adminDemoSeeded = true;
+  const members = getMembers(username);
+  const cats = getCategories(username);
+  const ownerRep = members.find((m) => m.isOwnerRepresentative);
+  const an = members.find((m) => m.name === "An Nguyễn");
+  const binh = members.find((m) => m.name === "Bình Trần");
+  if (!ownerRep || !an || !binh) return;
+  const now = "2026-07-20T10:00:00.000Z";
+  const evUuid = `e-demo-${rand()}`;
+  getEvents(username).push({
+    uuid: evUuid,
+    name: "Chuyến Đà Lạt",
+    description: "Đợt demo để chia sẻ báo cáo quyết toán.",
+    startDate: "2026-07-01T00:00:00.000Z",
+    endDate: "2026-07-05T23:59:59.999Z",
+    isClosed: true,
+    closedAt: now,
+    createdAt: now,
+    updatedAt: now,
+  });
+  const share = (memberUuid: string, amount: number) => ({
+    uuid: `s-${rand()}`,
+    memberUuid,
+    amount,
+    note: null as string | null,
+    isSettled: false,
+    settledAt: null as string | null,
+    createdAt: now,
+  });
+  const expenses = getExpenses(username);
+  expenses.push({
+    uuid: `e-${rand()}`,
+    name: "Khách sạn",
+    description: null,
+    expenseTime: "2026-07-02T12:00:00.000Z",
+    payerMemberUuid: an.uuid,
+    categoryUuid: cats[0].uuid,
+    tagUuids: [],
+    isSettled: false,
+    settledAt: null,
+    shares: [
+      share(an.uuid, 300000),
+      share(binh.uuid, 300000),
+      share(ownerRep.uuid, 300000),
+    ],
+    eventUuid: evUuid,
+    createdAt: now,
+  });
+  expenses.push({
+    uuid: `e-${rand()}`,
+    name: "Ăn tối",
+    description: null,
+    expenseTime: "2026-07-03T19:00:00.000Z",
+    payerMemberUuid: ownerRep.uuid,
+    categoryUuid: cats[0].uuid,
+    tagUuids: [],
+    isSettled: false,
+    settledAt: null,
+    shares: [share(binh.uuid, 200000), share(ownerRep.uuid, 200000)],
+    eventUuid: evUuid,
+    createdAt: now,
+  });
+}
+
+// A self-contained canned public payload for the fixed demo token, so the public
+// page (table / expand / QR carousel / expired screen) is verifiable with NO
+// auth and NO create-flow. Visiting `/share/demo` renders this; any OTHER
+// uncreated token → 16000 (the friendly expired/not-found screen).
+function cannedPublicShare() {
+  const mk = (
+    memberUuid: string,
+    memberName: string,
+    advanced: number,
+    owed: number,
+    outstanding: number,
+    isSettled: boolean,
+    isOwnerRepresentative = false,
+  ) => ({
+    memberUuid,
+    memberName,
+    isOwnerRepresentative,
+    isDeleted: false,
+    advanced,
+    owed,
+    balance: advanced - owed,
+    outstanding,
+    isSettled,
+    settledAt: null as string | null,
+  });
+  return {
+    eventName: "Chuyến Đà Lạt (demo)",
+    closedAt: "2026-07-20T10:00:00.000Z",
+    rows: [
+      mk("m-rep", "Chủ đợt", 200000, 500000, 300000, false, true),
+      mk("m-an", "An Nguyễn", 900000, 300000, 0, false),
+      mk("m-binh", "Bình Trần", 0, 500000, 500000, false),
+      mk("m-chi", "Chi Lê", 0, 200000, 0, true),
+    ],
+    expenses: [
+      {
+        uuid: "x-1",
+        name: "Khách sạn",
+        payerMemberUuid: "m-an",
+        payerName: "An Nguyễn",
+        expenseTime: "2026-07-02T12:00:00.000Z",
+        total: 900000,
+        shares: [
+          { memberUuid: "m-an", memberName: "An Nguyễn", amount: 300000, isSettled: false, note: null },
+          { memberUuid: "m-binh", memberName: "Bình Trần", amount: 300000, isSettled: false, note: null },
+          { memberUuid: "m-rep", memberName: "Chủ đợt", amount: 300000, isSettled: false, note: null },
+        ],
+      },
+      {
+        uuid: "x-2",
+        name: "Ăn tối",
+        payerMemberUuid: "m-rep",
+        payerName: "Chủ đợt",
+        expenseTime: "2026-07-03T19:00:00.000Z",
+        total: 400000,
+        shares: [
+          { memberUuid: "m-binh", memberName: "Bình Trần", amount: 200000, isSettled: false, note: null },
+          { memberUuid: "m-chi", memberName: "Chi Lê", amount: 200000, isSettled: true, note: null },
+        ],
+      },
+    ],
+    totalOutstanding: 800000,
+    owingMemberCount: 2,
+    settledMemberCount: 1,
+    hasQr: true,
+  };
+}
+
 export const handlers = [
   http.post("*/api/v1/auth/register", async ({ request }) => {
     const body = (await request.json()) as RegisterRequest;
@@ -2078,6 +2258,7 @@ export const handlers = [
     if (!username) {
       return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
     }
+    ensureAdminShareDemo(username);
     const closed = new URL(request.url).searchParams.get("closed");
     let list = getEvents(username).slice();
     if (closed === "true") list = list.filter((e) => e.isClosed);
@@ -2157,6 +2338,7 @@ export const handlers = [
     if (!username) {
       return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
     }
+    ensureAdminShareDemo(username);
     const ev = eventByUuid(username, String(params.uuid));
     if (!ev) return fail(9000, "Không tìm thấy đợt chi tiêu.", 404);
     return ok(computeBalance(username, ev));
@@ -2248,6 +2430,7 @@ export const handlers = [
     if (!username) {
       return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
     }
+    ensureAdminShareDemo(username);
     const ev = eventByUuid(username, String(params.uuid));
     if (!ev) return fail(9000, "Không tìm thấy đợt chi tiêu.", 404);
     return ok(eventResponse(username, ev));
@@ -2636,6 +2819,145 @@ export const handlers = [
         image: `data:image/png;base64,${PNG_1x1_BASE64}`,
       })),
     );
+  }),
+
+  // --- Event share links (event-share-link) — Premium (403 13003) ----------
+  // Authed owner endpoints. Create snapshots the chosen bank (optional); GET
+  // returns the active link or `data:null` ("not shared yet", OQ1); DELETE revokes.
+  http.post("*/api/v1/events/:uuid/share", async ({ request, params }) => {
+    const username = usernameFromAuthHeader(request.headers.get("Authorization"));
+    if (!username) {
+      return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
+    }
+    if (!isPremiumUser(username)) return premiumGate();
+    ensureAdminShareDemo(username);
+    const ev = eventByUuid(username, String(params.uuid));
+    if (!ev) return fail(9000, "Không tìm thấy đợt chi tiêu.", 404);
+    if (!ev.isClosed) {
+      return fail(16001, "Chỉ có thể chia sẻ sau khi chốt đợt.", 400);
+    }
+    const body = (await request.json().catch(() => ({}))) as {
+      bankAccountUuid?: string;
+      regenerate?: boolean;
+    };
+    let bankUuid: string | null = null;
+    if (body.bankAccountUuid) {
+      const acc = getBankAccounts(username).find(
+        (a) => a.uuid === body.bankAccountUuid,
+      );
+      if (!acc) return fail(12000, "Không tìm thấy tài khoản ngân hàng.", 404);
+      bankUuid = acc.uuid;
+    }
+    const existing = activeShareFor(username, ev.uuid);
+    if (existing) shareLinksByToken.delete(existing.token);
+    const now = new Date();
+    const rec: ShareLinkRecord = {
+      token: `sh-${++shareSeq}-${rand()}`,
+      username,
+      eventUuid: ev.uuid,
+      createdAt: now.toISOString(),
+      expiresAt: new Date(now.getTime() + 24 * 3600 * 1000).toISOString(),
+      bankAccountUuid: bankUuid,
+    };
+    shareLinksByToken.set(rec.token, rec);
+    return ok(shareLinkResponse(rec));
+  }),
+
+  http.get("*/api/v1/events/:uuid/share", ({ request, params }) => {
+    const username = usernameFromAuthHeader(request.headers.get("Authorization"));
+    if (!username) {
+      return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
+    }
+    if (!isPremiumUser(username)) return premiumGate();
+    ensureAdminShareDemo(username);
+    const ev = eventByUuid(username, String(params.uuid));
+    if (!ev) return fail(9000, "Không tìm thấy đợt chi tiêu.", 404);
+    const rec = activeShareFor(username, ev.uuid);
+    return ok(rec ? shareLinkResponse(rec) : null);
+  }),
+
+  http.delete("*/api/v1/events/:uuid/share", ({ request, params }) => {
+    const username = usernameFromAuthHeader(request.headers.get("Authorization"));
+    if (!username) {
+      return fail(1002, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
+    }
+    if (!isPremiumUser(username)) return premiumGate();
+    const ev = eventByUuid(username, String(params.uuid));
+    if (!ev) return fail(9000, "Không tìm thấy đợt chi tiêu.", 404);
+    const rec = activeShareFor(username, ev.uuid);
+    if (rec) shareLinksByToken.delete(rec.token);
+    return ok({ message: "Đã thu hồi liên kết chia sẻ." });
+  }),
+
+  // Anonymous public report + per-member QR. No Authorization header; an unknown
+  // token → 16000 (the friendly expired/not-found screen). `demo` is a canned,
+  // auth-free payload for direct verification of `/share/demo`.
+  http.get("*/api/v1/public/shares/:token/qr/members", ({ params }) => {
+    const token = String(params.token);
+    const toQr = (r: { memberUuid: string; memberName: string; outstanding: number }) => ({
+      memberUuid: r.memberUuid,
+      memberName: r.memberName,
+      amount: r.outstanding,
+      image: `data:image/png;base64,${PNG_1x1_BASE64}`,
+    });
+    if (token === "demo") {
+      return ok(
+        cannedPublicShare()
+          .rows.filter((r) => r.outstanding > 0)
+          .map(toQr),
+      );
+    }
+    const rec = shareLinksByToken.get(token);
+    if (!rec) {
+      return fail(16000, "Liên kết không tồn tại hoặc đã hết hạn.", 404);
+    }
+    if (!rec.bankAccountUuid) return ok([]);
+    const ev = eventByUuid(rec.username, rec.eventUuid);
+    if (!ev) return fail(16000, "Liên kết không tồn tại hoặc đã hết hạn.", 404);
+    return ok(
+      computeBalance(rec.username, ev)
+        .rows.filter((r) => r.outstanding > 0)
+        .map(toQr),
+    );
+  }),
+
+  http.get("*/api/v1/public/shares/:token", ({ params }) => {
+    const token = String(params.token);
+    if (token === "demo") return ok(cannedPublicShare());
+    const rec = shareLinksByToken.get(token);
+    if (!rec) {
+      return fail(16000, "Liên kết không tồn tại hoặc đã hết hạn.", 404);
+    }
+    const ev = eventByUuid(rec.username, rec.eventUuid);
+    if (!ev) return fail(16000, "Liên kết không tồn tại hoặc đã hết hạn.", 404);
+    const balance = computeBalance(rec.username, ev);
+    const expenses = getExpenses(rec.username)
+      .filter((e) => e.eventUuid === ev.uuid)
+      .map((e) => ({
+        uuid: e.uuid,
+        name: e.name,
+        payerMemberUuid: e.payerMemberUuid,
+        payerName: memberByUuid(rec.username, e.payerMemberUuid)?.name ?? "(không rõ)",
+        expenseTime: e.expenseTime,
+        total: expenseTotal(e),
+        shares: e.shares.map((s) => ({
+          memberUuid: s.memberUuid,
+          memberName: memberByUuid(rec.username, s.memberUuid)?.name ?? "(không rõ)",
+          amount: s.amount,
+          isSettled: s.isSettled,
+          note: s.note,
+        })),
+      }));
+    return ok({
+      eventName: ev.name,
+      closedAt: ev.closedAt,
+      rows: balance.rows,
+      expenses,
+      totalOutstanding: balance.totalOutstanding,
+      owingMemberCount: balance.owingMemberCount,
+      settledMemberCount: balance.settledMemberCount,
+      hasQr: Boolean(rec.bankAccountUuid),
+    });
   }),
 
   // --- Bank directory (our own endpoint, ApiResult<T> envelope) ------------
