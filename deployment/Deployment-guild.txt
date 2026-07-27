@@ -101,27 +101,44 @@ Cloudflare Tunnel ingress:
 (Run cloudflared on the `wsl-net` network so `nginx` resolves.)
 
 --------------------------------------------------------------------------------
-6. BUILD AND BRING UP THE STACK
+6. PULL THE IMAGES AND BRING UP THE STACK
 --------------------------------------------------------------------------------
-Validate the compose file, then build the images and start everything:
+The api and web images are built and pushed by CI (.github/workflows/ci.yml) —
+this host only PULLS them. Set API_VERSION / WEB_VERSION in .env to the tags you
+want (see RELEASING below), then:
 
     docker compose config          # sanity-check the merged config + .env
-    docker compose up -d --build
+    docker compose pull            # fetch the published api/web images
+    docker compose up -d
 
 MariaDB creates the `fairsharemon` database on first boot (config/mariadb/
 init_database.sql). The api waits for MariaDB + Redis to be healthy, then applies
-the EF Core schema automatically on startup (see A) — so `docker compose up` is
-the whole deploy.
+the EF Core schema on startup if you enabled the flag (see A) — so `docker compose
+up` is the whole deploy.
+
+    Note: `docker compose up -d --build` also works, but it builds the images
+    LOCALLY from the working tree and overwrites the tag you pulled — so you are no
+    longer running the artifact CI tested and published. Use it only for local
+    experiments, never on the deploy host.
 
 ================================================================================
 AFTER THE FIRST BRING-UP
 ================================================================================
 
-A) DATABASE SCHEMA — applied automatically
-   The api applies EF Core migrations on startup (App__RunMigrationsOnStartup=true
-   in docker-compose.yml), from the migrations compiled into the image — so the
-   schema is brought current by `docker compose up`, with no manual step. A
-   redeploy (see Operations) auto-applies any new migrations in a release.
+A) DATABASE SCHEMA — applied on startup, but ONLY IF YOU ENABLE IT
+   The api applies EF Core migrations on startup when App:RunMigrationsOnStartup is
+   true, from the migrations compiled into the image — so the schema is brought
+   current by `docker compose up`, with no manual step, and a redeploy (see
+   Operations) auto-applies any new migrations in a release.
+
+   IMPORTANT: that flag is NOT set in docker-compose.yml, and the committed
+   appsettings.json default is FALSE. You must set it yourself in the host-mounted
+
+       FairShareMonApi/FairShareMonApi/appsettings.Production.local.json
+
+   as instructed in step 2b:  "App": { "RunMigrationsOnStartup": true }
+   (or add App__RunMigrationsOnStartup=true to the api service's environment).
+   Leave it false and the api will start against an un-migrated database.
 
    SCALING: keep migrate-on-startup on a SINGLE api instance. EF has no
    cross-instance migration lock for MySQL — if you scale the api, apply
@@ -151,6 +168,61 @@ B) VERIFY
    Then browse https://fairsharemon.minhkakart.com and register/login.
 
 ================================================================================
+RELEASING  (CI builds and publishes the images — see .github/workflows/ci.yml)
+================================================================================
+You never build api/web on a host any more. GitHub Actions builds both images and
+pushes them to docker-registry.minhkakart.com. api and web are versioned
+INDEPENDENTLY, so shipping one never re-tags the other.
+
+What each git ref publishes:
+
+    git push origin api-v1.4.0   ->  fairsharemon-api:1.4.0, :1.4, :latest, :sha-<sha>
+    git push origin web-v2.1.0   ->  fairsharemon-web:2.1.0, :2.1, :latest, :sha-<sha>
+    merge a PR into master       ->  :edge, :sha-<sha>        (never :latest)
+    open a pull request          ->  image built, nothing pushed
+
+So `latest` is always the newest deliberate RELEASE; `edge` is the tip of master.
+
+Cutting a release:
+
+    1. Merge to master. CI publishes :edge — smoke-test it on a staging host if you
+       have one (set API_VERSION=edge / WEB_VERSION=edge there).
+    2. Tag only what you actually shipped, semver, from master:
+           git tag api-v1.4.0 && git push origin api-v1.4.0
+           git tag web-v2.1.0 && git push origin web-v2.1.0
+    3. On this host, set the version in .env and roll it out:
+           docker compose pull && docker compose up -d
+       (Or pin API_VERSION=latest / WEB_VERSION=latest to always take the newest
+       release without editing .env — at the cost of not knowing what you run.)
+
+Rollback: set the version in .env back to any previously published tag and re-pull.
+Beware that a rollback does NOT revert database migrations — if the release you are
+backing out added a migration, the old image runs against the newer schema.
+
+Checking what a tag actually points at:
+
+    docker buildx imagetools inspect docker-registry.minhkakart.com/fairsharemon-api:latest
+
+Gates before a push happens — nothing is published unless the matching gate is green:
+    web   `pnpm lint`, `pnpm build` (tsc -b), `pnpm test` (vitest)
+    api   `dotnet test FairShareMonApi.sln`, run against throwaway mariadb:11.7 +
+          redis:7.4 service containers that CI creates and destroys per run. CI
+          never touches this host's database. Migrations are applied to the
+          throwaway DB first (`dotnet ef database update`), because the test
+          harness opens a transaction but does not create the schema.
+Note the CI Redis has no password (GitHub service containers cannot take the
+`--requirepass` argument this stack uses) — that only affects the test run, never
+this deployment.
+
+CI needs these configured once in GitHub → Settings → Secrets and variables:
+    Variable  REGISTRY           = docker-registry.minhkakart.com
+    Variable  VITE_API_BASE_URL  = https://fairsharemon-api.minhkakart.com
+    Secret    REGISTRY_USERNAME  / REGISTRY_PASSWORD
+
+Note: VITE_API_BASE_URL is inlined into the web bundle at BUILD time, so a web
+image serves exactly one API origin and cannot be promoted between environments.
+
+================================================================================
 OPERATIONS
 ================================================================================
 Logs:        docker compose logs -f api        (or nginx / web / mariadb / redis)
@@ -158,8 +230,10 @@ Logs:        docker compose logs -f api        (or nginx / web / mariadb / redis
 fail2ban:    docker compose exec fail2ban fail2ban-client status fsm-auth-login
              ...unban:  fail2ban-client set fsm-auth-login unbanip <ip>
              live bans: data/blocked/banned.conf  (nginx auto-reloads ~10s)
-Redeploy:    git pull && docker compose up -d --build   (auto-applies any new
-             migrations on api startup)
+Redeploy:    set API_VERSION / WEB_VERSION in .env to the tag you want, then
+                 docker compose pull && docker compose up -d
+             (auto-applies any new migrations on api startup when the flag in A is
+             on). Do NOT use `--build` here — see the note in step 6.
 Restart one: docker compose restart nginx
 Tune limits: edit the zones in config/nginx/nginx.conf and the thresholds in
              data/fail2ban/jail.d/fairsharemon.conf, then `docker compose up -d`.

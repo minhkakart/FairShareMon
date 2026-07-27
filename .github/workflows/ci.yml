@@ -1,0 +1,367 @@
+name: CI
+
+# Builds the two deployable images and publishes them to the private registry.
+#
+# Versioning contract (see deployment/.env.example):
+#   push tag api-v1.4.0  ->  fairsharemon-api:1.4.0, :1.4, :latest, :sha-<sha>
+#   push tag web-v2.1.0  ->  fairsharemon-web:2.1.0, :2.1, :latest, :sha-<sha>
+#   push to master       ->  :edge, :sha-<sha>          (never :latest)
+#   pull request         ->  image is BUILT but not pushed (compile/Dockerfile gate)
+#
+# `latest` therefore always points at the newest RELEASE, never at an unreleased
+# master build. api and web are tagged independently, so shipping the API never
+# re-tags the web image.
+#
+# Gates — nothing is pushed until the matching gate passes:
+#   api  ->  dotnet test against throwaway mariadb/redis service containers
+#   web  ->  pnpm lint + pnpm build (tsc -b) + pnpm test (vitest)
+
+on:
+  push:
+    branches: [master]
+    tags:
+      - 'api-v*.*.*'
+      - 'web-v*.*.*'
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+    inputs:
+      component:
+        description: 'Which image(s) to build and publish as :edge'
+        type: choice
+        options: [both, api, web]
+        default: both
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  # Cancel superseded PR runs; never cancel a release/master publish midway.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  # Mirrors the compose default in deployment/docker-compose.yml. Override with the
+  # repository variable REGISTRY.
+  REGISTRY: ${{ vars.REGISTRY || 'docker-registry.minhkakart.com' }}
+
+jobs:
+  # ── Decide which images this ref actually needs ────────────────────────────
+  scope:
+    name: Scope
+    runs-on: ubuntu-latest
+    outputs:
+      api: ${{ steps.decide.outputs.api }}
+      web: ${{ steps.decide.outputs.web }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history so the diff range below can be resolved.
+          fetch-depth: 0
+
+      - name: Decide
+        id: decide
+        env:
+          EVENT: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          SHA: ${{ github.sha }}
+          BEFORE: ${{ github.event.before }}
+          BASE_REF: ${{ github.base_ref }}
+          COMPONENT: ${{ github.event.inputs.component }}
+        run: |
+          set -euo pipefail
+          api=false
+          web=false
+
+          case "$EVENT:$REF" in
+            # A component-scoped release tag builds exactly that component.
+            push:refs/tags/api-v*)
+              api=true
+              ;;
+            push:refs/tags/web-v*)
+              web=true
+              ;;
+            *)
+              if [ "$EVENT" = workflow_dispatch ]; then
+                case "$COMPONENT" in
+                  api) api=true ;;
+                  web) web=true ;;
+                  *)   api=true; web=true ;;
+                esac
+              else
+                # Diff range: PR -> merge-base with the target branch; push -> previous tip.
+                range=""
+                if [ "$EVENT" = pull_request ]; then
+                  range="origin/${BASE_REF}...HEAD"
+                elif [ -n "${BEFORE:-}" ] \
+                  && [ "$BEFORE" != "0000000000000000000000000000000000000000" ] \
+                  && git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
+                  range="${BEFORE}..${SHA}"
+                fi
+
+                if [ -z "$range" ]; then
+                  # Unknown history (force-push, first push) — build everything rather
+                  # than silently skipping a component.
+                  echo "No usable diff range; building both components."
+                  api=true
+                  web=true
+                else
+                  changed="$(git diff --name-only "$range")"
+                  echo "Changed files in $range:"
+                  echo "$changed"
+                  echo "$changed" | grep -q '^FairShareMonApi/' && api=true || true
+                  echo "$changed" | grep -q '^FairShareMonWeb/' && web=true || true
+                  # A change to this workflow must exercise both image builds.
+                  echo "$changed" | grep -q '^\.github/workflows/ci\.yml$' \
+                    && { api=true; web=true; } || true
+                fi
+              fi
+              ;;
+          esac
+
+          echo "api=$api" >> "$GITHUB_OUTPUT"
+          echo "web=$web" >> "$GITHUB_OUTPUT"
+          echo "Decision: api=$api web=$web"
+
+  # ── Web quality gate (no backend / no database needed — MSW-mocked) ────────
+  web-checks:
+    name: Web checks
+    needs: scope
+    if: needs.scope.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: FairShareMonWeb
+    steps:
+      - uses: actions/checkout@v4
+
+      # pnpm must be installed BEFORE setup-node, otherwise `cache: pnpm` cannot
+      # resolve the store path. Version comes from package.json "packageManager".
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: FairShareMonWeb/package.json
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: FairShareMonWeb/.node-version
+          cache: pnpm
+          cache-dependency-path: FairShareMonWeb/pnpm-lock.yaml
+
+      # pnpm-workspace.yaml carries the `allowBuilds: msw` approval — without it
+      # pnpm 11 fails the install with ERR_PNPM_IGNORED_BUILDS.
+      - run: pnpm install --frozen-lockfile
+
+      - name: Lint (oxlint)
+        run: pnpm lint
+
+      - name: Type-check + build (tsc -b && vite build)
+        run: pnpm build
+        env:
+          # Not required for `vite build` to succeed, but keeps this check identical
+          # to the image build.
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+
+      - name: Unit + component tests (vitest)
+        run: pnpm test
+
+  # ── API quality gate (throwaway MariaDB + Redis service containers) ────────
+  # The integration suite talks to a REAL database. These containers are created
+  # and destroyed with the job, so CI never touches the production database.
+  api-tests:
+    name: API tests
+    needs: scope
+    if: needs.scope.outputs.api == 'true'
+    runs-on: ubuntu-latest # service containers are Linux-runner only
+
+    services:
+      mariadb:
+        image: mariadb:11.7 # same pin as deployment/docker-compose.yml
+        env:
+          # Throwaway literal, NOT a secret: this container lives for the length of
+          # the job and is reachable only from this runner. Do not move it into
+          # GitHub secrets — that would only obscure it.
+          MARIADB_ROOT_PASSWORD: ci-throwaway
+          # Replaces deployment/config/mariadb/init_database.sql, which cannot be
+          # mounted here: service containers start BEFORE actions/checkout runs, so
+          # the workspace is still empty. The database-level charset does not matter
+          # — the migrations pin utf8mb4/utf8mb4_unicode_ci per column.
+          MARIADB_DATABASE: fairsharemon
+        ports:
+          # REQUIRED: the steps below run on the runner VM, not in a container, so
+          # the services are only reachable via mapped host ports. (If this job ever
+          # gains a `container:`, drop the port maps and address the services by
+          # name instead — `Server=mariadb`, `redis:6379`.)
+          - 3306:3306
+        options: >-
+          --health-cmd="mariadb-admin ping -h 127.0.0.1 --password=ci-throwaway"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+          --health-start-period=20s
+
+      redis:
+        # No password: GitHub's `services` block has no `command:` key, so
+        # `--requirepass` (used in docker-compose.yml) cannot be passed here.
+        image: redis:7.4-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      # 127.0.0.1, never `localhost` — on the runner `localhost` can resolve to ::1
+      # and MySqlConnector then fails to connect.
+      #
+      # Two pairs are needed: ConnectionStrings__Default / Redis__Configuration for
+      # the WebApplicationFactory tests (they boot real Program.cs and read config
+      # normally), and FSM_TEST_* for the fixture probes
+      # (FairShareMonApi.Tests/Infrastructure/DatabaseFixture.cs, RedisFixture.cs).
+      # Set only one pair and the other half of the suite hits the dev config.
+      ConnectionStrings__Default: Server=127.0.0.1;Port=3306;Database=fairsharemon;User=root;Password=ci-throwaway
+      Redis__Configuration: 127.0.0.1:6379,abortConnect=false
+      FSM_TEST_CONNECTION: Server=127.0.0.1;Port=3306;Database=fairsharemon;User=root;Password=ci-throwaway
+      FSM_TEST_REDIS: 127.0.0.1:6379,abortConnect=false
+
+    defaults:
+      run:
+        working-directory: FairShareMonApi
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: FairShareMonApi/global.json # pins SDK 8.0.414
+
+      # dotnet-ef 8.0.28, from FairShareMonApi/.config/dotnet-tools.json
+      - run: dotnet tool restore
+
+      # IntegrationTestBase only opens a per-test transaction — nothing creates the
+      # schema. Without this, every integration test fails on a missing table.
+      # Works because AppDbContextDesignTimeFactory calls AddEnvironmentVariables(),
+      # so ConnectionStrings__Default above wins over the committed dev value.
+      - name: Apply migrations
+        run: dotnet ef database update --project FairShareMonApi/FairShareMonApi.csproj
+
+      - name: Test
+        run: dotnet test FairShareMonApi.sln -c Release --logger "trx;LogFileName=api.trx"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: api-test-results
+          path: FairShareMonApi/**/TestResults/*.trx
+
+  # ── API image ─────────────────────────────────────────────────────────────
+  image-api:
+    name: Image · api
+    needs: [scope, api-tests]
+    if: needs.scope.outputs.api == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to the registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Derive tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/fairsharemon-api
+          # `latest` is driven explicitly below — auto-latest would fire on any tag.
+          flavor: latest=false
+          # type=match (not type=semver): the semver parser cannot read the `api-` prefix.
+          tags: |
+            type=match,pattern=api-v(\d+\.\d+\.\d+),group=1
+            type=match,pattern=api-v(\d+\.\d+),group=1
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/api-v') }}
+            type=raw,value=edge,enable=${{ github.ref == 'refs/heads/master' }}
+            type=sha,format=short,prefix=sha-
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          # Context is the SOLUTION dir, matching deployment/docker-compose.yml:
+          # the Dockerfile does COPY ["FairShareMonApi/FairShareMonApi.csproj", ...]
+          # and will not build from the repo root.
+          context: FairShareMonApi
+          file: FairShareMonApi/FairShareMonApi/Dockerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
+          # A plain Docker Registry 2.x can reject the extra OCI attestation manifest.
+          provenance: false
+
+  # ── Web image ─────────────────────────────────────────────────────────────
+  image-web:
+    name: Image · web
+    needs: [scope, web-checks]
+    if: needs.scope.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Vite inlines VITE_API_BASE_URL at build time and the Dockerfile hard-fails
+      # without it — check before spending minutes on the build.
+      - name: Require VITE_API_BASE_URL
+        env:
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${VITE_API_BASE_URL:-}" ]; then
+            echo "::error::Repository variable VITE_API_BASE_URL is not set. Vite inlines it into the bundle at build time, so the web image cannot be built without it (expected e.g. https://fairsharemon-api.minhkakart.com)."
+            exit 1
+          fi
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to the registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Derive tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/fairsharemon-web
+          flavor: latest=false
+          tags: |
+            type=match,pattern=web-v(\d+\.\d+\.\d+),group=1
+            type=match,pattern=web-v(\d+\.\d+),group=1
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/web-v') }}
+            type=raw,value=edge,enable=${{ github.ref == 'refs/heads/master' }}
+            type=sha,format=short,prefix=sha-
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: FairShareMonWeb
+          file: FairShareMonWeb/Dockerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # Baked into the bundle — this is what makes the web image
+          # environment-specific (one image per API origin).
+          build-args: |
+            VITE_API_BASE_URL=${{ vars.VITE_API_BASE_URL }}
+            VITE_ENABLE_MOCKS=false
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+          provenance: false
