@@ -203,6 +203,24 @@ exactly one API origin and cannot be promoted between environments.
   graph, service definitions, env pairs, and every referenced path resolve.
 - Not verified locally: the image builds and the registry push (no `docker`), and the `api-tests`
   job (no `dotnet` on this machine). First CI run exercises all three.
+- Landed the pipeline on `master` by fast-forward (`fccd952`) and cut the first CI-published
+  release, **2.0.0 for both components**. Three runs, all green:
+
+  | Run | Ref | Outcome |
+  |---|---|---|
+  | #1 | `master` | all 5 jobs success → `:edge`, `:sha-fccd952` for both images |
+  | #2 | `web-v2.0.0` | success; api jobs correctly skipped → web `:2.0.0 :2.0 :latest :sha-fccd952` |
+  | #3 | `api-v2.0.0` | success; web jobs correctly skipped → api `:2.0.0 :2.0 :latest :sha-fccd952` |
+
+  Confirmed by this: registry authentication and push work from a GitHub-hosted runner; the registry
+  accepts the manifests with `provenance: false`; the Cloudflare layer-size concern did not
+  materialise; component scoping means a release tag rebuilds only its own image; and the
+  service-container test gate passes on both a master push and a release tag. Test-log review
+  cleared the `SkippableFact` false-green risk — the integration tests really ran.
+
+  Note on content: `fccd952` changes only CI config and documentation, so 2.0.0 is functionally
+  identical to the previously deployed build — a repackage, not a feature release, and it carries no
+  new migrations.
 
 ## Final outcome
 
@@ -213,10 +231,10 @@ lint + type-check + vitest, api on `dotnet test` against throwaway MariaDB/Redis
 Deployment is unchanged: the host still runs `docker compose pull && docker compose up -d`, and
 rollback is re-pinning a previously published version tag.
 
-Not yet verified against the live registry, and the `api-tests` job has not run yet — the first
-`master` push exercises authentication, the push path, and the service-container wiring for real.
-Steps 3–7 of the plan's verification section cover that. On that first run, check the test summary
-for an unexpected skip count: `SkippableFact` would hide a connectivity problem as a green run.
+**Verified in production on 2026-07-27** by the first three runs (see Progress Log). Registry
+authentication, the push path, component scoping, and the service-container test gate all worked on
+first use. The `SkippableFact` false-green risk was checked against the run log and cleared — the
+integration tests genuinely executed.
 
 ## Future improvements
 
