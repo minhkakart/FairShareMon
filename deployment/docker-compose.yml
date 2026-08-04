@@ -114,7 +114,7 @@
     depends_on:
       fsm-mariadb:
         condition: service_healthy
-      redis:
+      fsm-redis:
         condition: service_healthy
   fsm-web:
     # Pinned, registry-qualified image. Bump WEB_VERSION in .env per update pack.
