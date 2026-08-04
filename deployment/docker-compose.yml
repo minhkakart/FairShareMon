@@ -84,6 +84,7 @@
     # Pinned, registry-qualified image. `docker compose build` tags this, `push` uploads it,
     # and the deploy host `pull`s this exact version. Bump API_VERSION in .env per update pack.
     image: ${REGISTRY:-docker-registry.minhkakart.com}/fairsharemon-api:${API_VERSION:-1.0.0}
+    container_name: fairsharemon-api-1
     build:
       context: ../FairShareMonApi
       dockerfile: FairShareMonApi/Dockerfile
@@ -119,6 +120,7 @@
   fsm-web:
     # Pinned, registry-qualified image. Bump WEB_VERSION in .env per update pack.
     image: ${REGISTRY:-docker-registry.minhkakart.com}/fairsharemon-web:${WEB_VERSION:-1.0.0}
+    container_name: fairsharemon-web-1
     build:
       context: ../FairShareMonWeb
       dockerfile: Dockerfile
