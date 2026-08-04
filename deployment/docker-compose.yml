@@ -1,6 +1,7 @@
 ﻿services:
-  nginx:
+  fsm-nginx:
     image: nginx:stable-alpine
+    container_name: fsm-nginx
     # Custom entrypoint reloads nginx when fail2ban updates the deny-list (no Docker socket).
     entrypoint: ["/bin/sh", "/etc/nginx/reload-on-ban.sh"]
     expose:
@@ -18,10 +19,11 @@
       - wsl-net
     restart: unless-stopped
     depends_on:
-      - api
-      - web
-  fail2ban:
+      - fsm-api
+      - fsm-web
+  fsm-fail2ban:
     image: crazymax/fail2ban:latest
+    container_name: fsm-fail2ban
     # Bans via the nginx deny-list (a shared file), not iptables — so no host
     # networking and no NET_ADMIN/NET_RAW are needed (least privilege).
     volumes:
@@ -33,11 +35,12 @@
       - wsl-net
     restart: unless-stopped
     depends_on:
-      - nginx
-  mariadb:
+      - fsm-nginx
+  fsm-mariadb:
     # Pinned to match the MariaDbServerVersion(11, 7, 2) in Program.cs / the design-time factory
     # (avoids the floating `11` tag resolving to a version Pomelo generates mismatched SQL for).
     image: mariadb:11.7
+    container_name: fsm-mariadb
     expose:
       - "3306"
     environment:
@@ -55,8 +58,9 @@
     networks:
       - wsl-net
     restart: unless-stopped
-  redis:
+  fsm-redis:
     image: redis:7.4-alpine
+    container_name: fsm-redis
     expose:
       - "6379"
     # Persistence/eviction live in redis.conf; the password is passed here to keep the secret
@@ -76,13 +80,15 @@
     networks:
       - wsl-net
     restart: unless-stopped
-  api:
+  fsm-api:
     # Pinned, registry-qualified image. `docker compose build` tags this, `push` uploads it,
     # and the deploy host `pull`s this exact version. Bump API_VERSION in .env per update pack.
     image: ${REGISTRY:-docker-registry.minhkakart.com}/fairsharemon-api:${API_VERSION:-1.0.0}
     build:
       context: ../FairShareMonApi
       dockerfile: FairShareMonApi/Dockerfile
+      tags:
+        - ${API_VERSION:-1.0.0}
     expose:
       - "8080"
     environment:
@@ -91,8 +97,8 @@
       # those passwords (also consumed by the mariadb/redis containers) — and override the file (env
       # wins), so the password is never duplicated in the mounted file.
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
-      ConnectionStrings__Default: "Server=mariadb;Port=3306;Database=fairsharemon;User=root;Password=${MARIADB_ROOT_PASSWORD}"
-      Redis__Configuration: "redis:6379,password=${REDIS_PASSWORD}"
+      ConnectionStrings__Default: "Server=fsm-mariadb;Port=3306;Database=fairsharemon;User=root;Password=${MARIADB_ROOT_PASSWORD}"
+      Redis__Configuration: "fsm-redis:6379,password=${REDIS_PASSWORD}"
     volumes:
       # App config (CORS, Admin, migrations, Auth, Tiers, ...) — gitignored, mounted read-only, never
       # baked into the image. Do NOT put the DB/Redis password here; it comes from .env above. Create
@@ -106,11 +112,11 @@
       - wsl-net
     restart: unless-stopped
     depends_on:
-      mariadb:
+      fsm-mariadb:
         condition: service_healthy
       redis:
         condition: service_healthy
-  web:
+  fsm-web:
     # Pinned, registry-qualified image. Bump WEB_VERSION in .env per update pack.
     image: ${REGISTRY:-docker-registry.minhkakart.com}/fairsharemon-web:${WEB_VERSION:-1.0.0}
     build:
@@ -118,6 +124,8 @@
       dockerfile: Dockerfile
       args:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+      tags:
+        - ${WEB_VERSION:-1.0.0}
     expose:
       - "5173"
     networks:
