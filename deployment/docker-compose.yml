@@ -9,6 +9,9 @@
     volumes:
       - ./config/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./config/nginx/conf.d:/etc/nginx/conf.d:ro
+      # Shared snippets `include`d from conf.d (https_only.conf). Without this mount the
+      # includes resolve to nothing and nginx refuses to start.
+      - ./config/nginx/snippets:/etc/nginx/snippets:ro
       - ./config/nginx/reload-on-ban.sh:/etc/nginx/reload-on-ban.sh:ro
       # fail2ban deny-list (real client IPs), included by nginx.conf.
       - ./data/blocked:/etc/nginx/blocked:ro

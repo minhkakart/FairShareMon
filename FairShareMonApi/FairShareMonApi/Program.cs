@@ -209,6 +209,10 @@ if (!app.Environment.IsProduction())
 }
 
 app.UseRouting();
+// Before UseCors on purpose: CorsMiddleware short-circuits a preflight with a bare 204 and no
+// Access-Control-* headers when the origin is rejected, so nothing downstream would ever see it
+// (planning/https-scheme-enforcement.md).
+app.UseMiddleware<CorsOriginLoggingMiddleware>();
 // CORS must run after routing and before authentication/authorization so preflight and
 // cross-origin responses carry the Access-Control-* headers (planning/cors-configuration.md).
 app.UseCors(CorsExtensions.DefaultCorsPolicyName);

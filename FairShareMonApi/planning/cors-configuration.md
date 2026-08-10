@@ -49,6 +49,43 @@ The concern with a straight port: quick-ordering's local-origin auto-allow is **
 - Added `App:AllowedOrigins` to `appsettings.json` and `appsettings.production.local.json`.
 - `dotnet build` succeeded (0 errors).
 
+### 2026-08-10 — origin rejections are now logged
+
+A production login failure on Safari traced back to this policy doing exactly what it was
+configured to do — silently. The device loaded the SPA over `http://` rather than `https://`,
+so its `Origin` was `http://fairsharemon.minhkakart.com`; `NormalizeOrigin` compares
+`GetLeftPart(UriPartial.Authority)`, which includes the scheme, so the origin failed the
+`["https://fairsharemon.minhkakart.com"]` allowlist and every preflight was rejected.
+
+The policy behaved correctly. The problem was that **nothing said so**:
+
+- ASP.NET Core's `CorsMiddleware` answers *any* preflight with `204` once a policy exists,
+  and merely omits `Access-Control-Allow-Origin` when the origin is not allowed — so a
+  rejection and a success are byte-identical in an access log.
+- The framework's own `OriginNotAllowed` message
+  (`Microsoft.AspNetCore.Cors.Infrastructure.CorsService`) is **Information**-level, dropped
+  first by `"Microsoft.AspNetCore": "Warning"` in `Logging:LogLevel` and again by the NLog
+  rule `{"logger": "Microsoft.*", "maxLevel": "Info", "final": true}` (a blackhole rule with
+  no `writeTo`).
+
+Diagnosing it required Cloudflare tunnel logs. Changes made:
+
+- Added `Middlewares/CorsOriginLoggingMiddleware.cs`. It runs **before** `UseCors` (between
+  `UseRouting()` and `UseCors(...)`), logs a Warning naming any `Origin` this policy will
+  reject, and never touches the response. It calls the same
+  `CorsExtensions.IsAllowedOrigin(...)` the policy predicate uses — no second copy of the
+  matching rules, so the log cannot disagree with the actual verdict.
+- No-op when the `Origin` header is absent, so same-origin traffic stays silent.
+- Chose a dedicated middleware over unfiltering `Microsoft.AspNetCore.Cors`, because the
+  latter would also emit a success line per preflight — five or more per page load.
+- Added `FairShareMonApi.Tests/CorsOriginLoggingMiddlewareTests.cs`, including the exact
+  regression: the `http://` variant of an allowed `https://` origin must log.
+
+The allowlist itself was deliberately **not** widened — adding a plaintext origin to a
+credentialed API would put tokens on the wire in the clear. The scheme is fixed upstream
+instead (HTTP→HTTPS redirect + HSTS at the proxy, plus Cloudflare "Always Use HTTPS"); see
+the repo-root `planning/https-scheme-enforcement.md`.
+
 ## Final Outcome
 
 CORS is configured. In Development, localhost/loopback/private origins plus any `App:AllowedOrigins` entry are allowed with credentials. In non-Development, only `App:AllowedOrigins` entries are allowed. This unblocks the frontend build; deploy-time work is limited to populating `App:AllowedOrigins` with the real production web origin(s).
