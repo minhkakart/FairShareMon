@@ -8,6 +8,7 @@ import { sessionStore } from "@/lib/auth/session";
 import { queryClient } from "@/lib/query/queryClient";
 import { setActiveLocale } from "@/lib/api/runtime";
 import i18n from "@/i18n";
+import { useEventBalanceQuery } from "@/features/events/hooks/useEvents";
 import { SettledToggle } from "./components/SettledToggle";
 
 /**
@@ -35,6 +36,28 @@ function fail(code: number, message: string, status: number) {
 }
 
 const UUID = "e-1";
+const EVENT_UUID = "ev-toggle";
+
+/** Subscribes to the event balance query so its invalidation (or lack thereof)
+ *  is observable via the mocked GET's request count — mirrors the
+ *  `useEvents.test.tsx`/`memberSettled.test.tsx` counters+Probe pattern. */
+function BalanceProbe({ uuid }: { uuid: string }) {
+  useEventBalanceQuery(uuid);
+  return null;
+}
+
+function emptyBalance() {
+  return {
+    eventUuid: EVENT_UUID,
+    eventName: "Đà Lạt",
+    isClosed: false,
+    rows: [],
+    totalOutstanding: 0,
+    owingMemberCount: 0,
+    settledMemberCount: 0,
+    partiallySettledMemberCount: 0,
+  };
+}
 
 function seedSession() {
   const future = new Date(Date.now() + 3_600_000).toISOString();
@@ -145,5 +168,90 @@ describe("SettledToggle regression", () => {
     ).not.toBeInTheDocument();
     // The switch is usable again after the failed mutation settles.
     await waitFor(() => expect(screen.getByRole("switch")).toBeEnabled());
+  });
+});
+
+describe("SettledToggle event cross-invalidation (event-expense-settlement-sync M2.2/M2.5)", () => {
+  it("SettledToggle_MarkSettled_OnEventExpense_AlsoInvalidatesEventBalance", async () => {
+    // The M2.2 regression: with `eventUuid` set, a successful whole-expense
+    // settle now also credits/claws back the event balance overlay's
+    // `clearedAmount`, so the mutation's onSuccess must additionally invalidate
+    // `eventsKeys.balance(eventUuid)`. Mount a live `useEventBalanceQuery`
+    // subscriber (the counters+Probe pattern) so that invalidation has an
+    // ACTIVE query to refetch, and count the GETs it fires.
+    let balanceRequests = 0;
+    server.use(
+      http.put(`*/api/v1/expenses/${UUID}/settled`, () =>
+        ok({ message: "Đã cập nhật trạng thái đã trả." }),
+      ),
+      http.get(`*/api/v1/events/${EVENT_UUID}/balance`, () => {
+        balanceRequests += 1;
+        return ok(emptyBalance());
+      }),
+    );
+    const user = userEvent.setup();
+    renderWithProviders(
+      <>
+        <SettledToggle
+          uuid={UUID}
+          isSettled={false}
+          contextName="Thuê xe"
+          eventUuid={EVENT_UUID}
+        />
+        <BalanceProbe uuid={EVENT_UUID} />
+      </>,
+      { queryClient },
+    );
+
+    await waitFor(() => expect(balanceRequests).toBe(1));
+
+    await user.click(screen.getByRole("switch"));
+
+    // The "synced" toast copy (distinct from the plain toastOn/toastOff pair)
+    // confirms the `eventUuid`-gated toast branch fired.
+    expect(
+      await screen.findByText(
+        "Đã cập nhật đã trả — số dư còn nợ của đợt đã được đồng bộ tương ứng.",
+      ),
+    ).toBeInTheDocument();
+    // Before the M2.2 fix, `eventsKeys.balance` was never reached — the fix's
+    // whole point is that a second GET now fires.
+    await waitFor(() => expect(balanceRequests).toBeGreaterThanOrEqual(2));
+  });
+
+  it("SettledToggle_LooseExpense_NoEventUuid_NeverRequestsEventBalance", async () => {
+    // Regression for "no event, no invalidation": a loose expense (`eventUuid`
+    // undefined) must not touch `eventsKeys.balance` at all — the plain
+    // toastOn/toastOff pair stays, and the probe's balance query is never
+    // refetched by this mutation.
+    let balanceRequests = 0;
+    server.use(
+      http.put(`*/api/v1/expenses/${UUID}/settled`, () =>
+        ok({ message: "Đã cập nhật trạng thái đã trả." }),
+      ),
+      http.get(`*/api/v1/events/${EVENT_UUID}/balance`, () => {
+        balanceRequests += 1;
+        return ok(emptyBalance());
+      }),
+    );
+    const user = userEvent.setup();
+    renderWithProviders(
+      <>
+        <SettledToggle uuid={UUID} isSettled={false} contextName="Thuê xe" />
+        <BalanceProbe uuid={EVENT_UUID} />
+      </>,
+      { queryClient },
+    );
+
+    await waitFor(() => expect(balanceRequests).toBe(1));
+
+    await user.click(screen.getByRole("switch"));
+
+    expect(
+      await screen.findByText("Đã đánh dấu là đã trả."),
+    ).toBeInTheDocument();
+    // No `eventUuid` prop → the mutation's `if (eventUuid)` branch never runs →
+    // the balance probe's request count stays exactly at its initial mount GET.
+    expect(balanceRequests).toBe(1);
   });
 });

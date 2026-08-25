@@ -58,6 +58,18 @@
   pointer-events: auto;
 }
 
+/* Opens downward instead of upward — for a trigger at the very top of a
+   scrolling container, where an upward bubble would be clipped (M2.3). */
+.bubbleBottom {
+  bottom: auto;
+  top: calc(100% + var(--fs-space-2));
+  transform: translate(-50%, -2px);
+}
+.root:hover .bubbleBottom,
+.root:focus-within .bubbleBottom {
+  transform: translate(-50%, 0);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .bubble {
     transition: none;

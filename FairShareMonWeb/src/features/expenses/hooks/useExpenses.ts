@@ -95,19 +95,48 @@ export function useDeleteExpense() {
   });
 }
 
+/**
+ * Whole-expense settled toggle (B3). Invalidates the expenses caches, and —
+ * since event-expense-settlement-sync (2026-08-25, Direction 2) — when the
+ * expense belongs to an event (`eventUuid` present), also invalidates the event
+ * balance overlay: a whole-expense settle/un-settle now credits/claws back
+ * `ClearedAmount` on every eligible debtor member's event balance row.
+ * (Superseded assumption: this hook used to invalidate the expenses caches
+ * only, since Layer A/gross flips didn't change the balance overlay — Direction
+ * 2 makes that false.)
+ */
 export function useSetSettled() {
   return useMutation({
-    mutationFn: ({ uuid, body }: { uuid: string; body: SetSettledRequest }) =>
-      expensesApi.setSettled(uuid, body),
-    onSuccess: (_data, { uuid }) => invalidateExpense(uuid),
+    mutationFn: ({
+      uuid,
+      body,
+    }: {
+      uuid: string;
+      body: SetSettledRequest;
+      eventUuid?: string | null;
+    }) => expensesApi.setSettled(uuid, body),
+    onSuccess: (_data, { uuid, eventUuid }) => {
+      invalidateExpense(uuid);
+      if (eventUuid) {
+        void queryClient.invalidateQueries({
+          queryKey: eventsKeys.balance(eventUuid),
+        });
+        void queryClient.invalidateQueries({ queryKey: eventsKeys.all });
+      }
+    },
   });
 }
 
 /**
- * Per-share settled toggle (Layer A). Invalidates the expenses caches ONLY
- * (OQ7a): the event overlay `outstanding` is Layer-B (net) driven, so a
- * per-share (gross) flip does not change the balance overlay. The expense-detail
- * refetch surfaces any backend recompute of the whole-expense `isSettled`.
+ * Per-share settled toggle (Layer A). Invalidates the expenses caches, and —
+ * since event-expense-settlement-sync (2026-08-25, Direction 2) — when the
+ * expense belongs to an event (`eventUuid` present), also invalidates the event
+ * balance overlay: a per-share settle/un-settle now credits/claws back
+ * `ClearedAmount` on every eligible debtor member's event balance row. The
+ * expense-detail refetch surfaces any backend recompute of the whole-expense
+ * `isSettled`. (Superseded assumption: this hook's doc comment used to assert
+ * OQ7a — "a per-share (gross) flip does not change the balance overlay" —
+ * Direction 2 makes that false.)
  */
 export function useSetShareSettled() {
   return useMutation({
@@ -119,8 +148,17 @@ export function useSetShareSettled() {
       expenseUuid: string;
       shareUuid: string;
       body: SetSettledRequest;
+      eventUuid?: string | null;
     }) => expensesApi.setShareSettled(expenseUuid, shareUuid, body),
-    onSuccess: (_data, { expenseUuid }) => invalidateExpense(expenseUuid),
+    onSuccess: (_data, { expenseUuid, eventUuid }) => {
+      invalidateExpense(expenseUuid);
+      if (eventUuid) {
+        void queryClient.invalidateQueries({
+          queryKey: eventsKeys.balance(eventUuid),
+        });
+        void queryClient.invalidateQueries({ queryKey: eventsKeys.all });
+      }
+    },
   });
 }
 

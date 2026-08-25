@@ -81,3 +81,11 @@
   color: var(--fs-color-text-secondary);
   overflow-wrap: anywhere;
 }
+
+/* A column header label + a one-time `HelpHint` trigger, side by side
+   (event-expense-settlement-sync M2.3 — the "Còn nợ" column's net-model note). */
+.headerHint {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fs-space-1);
+}

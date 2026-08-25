@@ -51,6 +51,8 @@ const PAYLOAD: PublicEventShareResponse = {
       isSettled: false,
       settledAt: null,
       isEligibleForAutoCascade: true,
+      clearedAmount: 0,
+      settlementStatus: "Unsettled",
     },
     {
       memberUuid: "m-binh",
@@ -64,6 +66,8 @@ const PAYLOAD: PublicEventShareResponse = {
       isSettled: false,
       settledAt: null,
       isEligibleForAutoCascade: false,
+      clearedAmount: 0,
+      settlementStatus: "Unsettled",
     },
   ],
   expenses: [],

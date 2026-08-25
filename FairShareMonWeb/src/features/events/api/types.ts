@@ -97,6 +97,19 @@ export interface MemberBalanceRow {
    * exists to prevent).
    */
   isEligibleForAutoCascade: boolean;
+  /**
+   * Cumulative amount credited via Direction 2 (expense/share settle → partial
+   * event-level credit), VND, capped at this member's net owed amount. Rendered
+   * verbatim (D2 — never client-derived).
+   */
+  clearedAmount: number;
+  /**
+   * Service-derived tri-state overlay status (Unsettled/PartiallySettled/Settled),
+   * computed by the backend from `clearedAmount`/net owed/`isSettled` — never
+   * re-derived client-side. Wire format: `string` (OQ1, resolved — see planning
+   * doc Decision Log entry 1), not the raw C# enum.
+   */
+  settlementStatus: "Unsettled" | "PartiallySettled" | "Settled";
 }
 
 /**
@@ -115,6 +128,8 @@ export interface EventBalanceResponse {
   owingMemberCount: number;
   /** Count of owing members (`balance < 0`) marked settled on their net debt. */
   settledMemberCount: number;
+  /** Count of owing members whose net debt is partially, but not fully, cleared. */
+  partiallySettledMemberCount: number;
 }
 
 /** `SetSettledRequest` — the per-member net-clearance toggle body (OQ10a). */

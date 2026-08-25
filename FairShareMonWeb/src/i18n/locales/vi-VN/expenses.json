@@ -116,6 +116,7 @@
     "settledAriaNamed": "Trạng thái đã trả phần gánh của {{name}}",
     "settledToastOn": "Đã đánh dấu phần gánh là đã trả.",
     "settledToastOff": "Đã bỏ đánh dấu đã trả phần gánh.",
+    "settledToastSynced": "Đã cập nhật đã trả — số dư còn nợ của đợt đã được đồng bộ tương ứng.",
     "rollupAll": "Đã trả toàn bộ",
     "rollupPartial": "Đã trả một phần ({{settled}}/{{total}} phần)",
     "rollupNone": "Chưa trả"
@@ -126,7 +127,8 @@
     "aria": "Trạng thái đã trả",
     "ariaNamed": "Trạng thái đã trả của {{name}}",
     "toastOn": "Đã đánh dấu là đã trả.",
-    "toastOff": "Đã bỏ đánh dấu đã trả."
+    "toastOff": "Đã bỏ đánh dấu đã trả.",
+    "toastSynced": "Đã cập nhật đã trả — số dư còn nợ của đợt đã được đồng bộ tương ứng."
   },
   "detail": {
     "back": "Về danh sách",

@@ -105,7 +105,20 @@ function balancePayload() {
   const rows = BASE.map((r) => {
     const marked = settled.has(r.memberUuid);
     const outstanding = r.balance < 0 && !marked ? -r.balance : 0;
-    return { ...r, outstanding, isSettled: marked, settledAt: null };
+    // event-expense-settlement-sync M2: this fixture only ever exercises the
+    // fully-settled/fully-unsettled cases (no partial-credit scenario), so
+    // `clearedAmount`/`settlementStatus` mirror `outstanding`'s own derivation
+    // exactly — mechanical fixture completion, not new test authorship.
+    const clearedAmount = r.balance < 0 && marked ? -r.balance : 0;
+    const settlementStatus = r.balance < 0 && marked ? "Settled" : "Unsettled";
+    return {
+      ...r,
+      outstanding,
+      isSettled: marked,
+      settledAt: null,
+      clearedAmount,
+      settlementStatus,
+    };
   });
   return {
     eventUuid: UUID,
@@ -115,6 +128,7 @@ function balancePayload() {
     totalOutstanding: rows.reduce((s, r) => s + r.outstanding, 0),
     owingMemberCount: rows.filter((r) => r.outstanding > 0).length,
     settledMemberCount: rows.filter((r) => r.balance < 0 && r.isSettled).length,
+    partiallySettledMemberCount: 0,
   };
 }
 
@@ -203,7 +217,16 @@ function creditorBalancePayload() {
   const rows = CREDITOR_ROWS.map((r) => {
     const marked = creditorSettled.has(r.memberUuid);
     const outstanding = r.balance < 0 && !marked ? -r.balance : 0;
-    return { ...r, outstanding, isSettled: marked, settledAt: null };
+    const clearedAmount = r.balance < 0 && marked ? -r.balance : 0;
+    const settlementStatus = r.balance < 0 && marked ? "Settled" : "Unsettled";
+    return {
+      ...r,
+      outstanding,
+      isSettled: marked,
+      settledAt: null,
+      clearedAmount,
+      settlementStatus,
+    };
   });
   return {
     eventUuid: CREDITOR_UUID,
@@ -213,6 +236,7 @@ function creditorBalancePayload() {
     totalOutstanding: rows.reduce((s, r) => s + r.outstanding, 0),
     owingMemberCount: rows.filter((r) => r.outstanding > 0).length,
     settledMemberCount: rows.filter((r) => r.balance < 0 && r.isSettled).length,
+    partiallySettledMemberCount: 0,
   };
 }
 
@@ -292,8 +316,9 @@ describe("EventBalanceTable overlay (Layer B)", () => {
       /200\.000/,
     );
 
-    // Color-independent status: the owing rows carry the "Còn nợ" WORD.
-    expect(within(an).getAllByText("Còn nợ").length).toBeGreaterThanOrEqual(1);
+    // Color-independent status: the owing rows carry the "Chưa trả" WORD
+    // (renamed from "Còn nợ", OQ6 — the amount-column header keeps that wording).
+    expect(within(an).getAllByText("Chưa trả").length).toBeGreaterThanOrEqual(1);
 
     // The footer summary reads the API totals verbatim (X-of-Y + total còn nợ).
     const totalRow = screen.getByText("Tổng").closest("tr") as HTMLElement;

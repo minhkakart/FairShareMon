@@ -8,6 +8,14 @@ import { SettledSwitch } from "./SettledSwitch";
 export type ShareSettledToggleProps = {
   expenseUuid: string;
   share: ShareResponse;
+  /**
+   * The owning event's uuid, when this expense belongs to one (event-expense-
+   * settlement-sync, Direction 2). When present, a successful toggle also
+   * credits/claws back this member's event-level `ClearedAmount`, so the toast
+   * copy and cache invalidation both change accordingly. A loose expense
+   * (absent) keeps today's plain behavior.
+   */
+  eventUuid?: string | null;
 };
 
 /**
@@ -16,10 +24,13 @@ export type ShareSettledToggleProps = {
  * {shareUuid}/settled`. Exempt from the closed-event `disabled` gate (the sole
  * write allowed on a closed event, R6). Refetch-based (OQ6a): disabled while
  * pending, reconciles from the expense-detail refetch; error → toast (verbatim).
+ * When the expense belongs to an event (Direction 2), this flip also credits/
+ * claws back the event's per-member `ClearedAmount` overlay.
  */
 export function ShareSettledToggle({
   expenseUuid,
   share,
+  eventUuid,
 }: ShareSettledToggleProps) {
   const { t } = useT();
   const toast = useToast();
@@ -32,12 +43,15 @@ export function ShareSettledToggle({
         expenseUuid,
         shareUuid: share.uuid,
         body: { isSettled: next },
+        eventUuid,
       });
       toast.push({
         tone: "success",
-        title: next
-          ? t("expenses:shares.settledToastOn")
-          : t("expenses:shares.settledToastOff"),
+        title: eventUuid
+          ? t("expenses:shares.settledToastSynced")
+          : next
+            ? t("expenses:shares.settledToastOn")
+            : t("expenses:shares.settledToastOff"),
       });
     } catch (error) {
       toast.push({ tone: "danger", title: resolveErrorMessage(error, t) });

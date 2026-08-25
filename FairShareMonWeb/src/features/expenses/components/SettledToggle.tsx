@@ -9,6 +9,14 @@ export type SettledToggleProps = {
   isSettled: boolean;
   /** Optional accessible name suffix (e.g. the expense name) for list rows. */
   contextName?: string;
+  /**
+   * The owning event's uuid, when this expense belongs to one (event-expense-
+   * settlement-sync, Direction 2). When present, a successful toggle also
+   * credits/claws back this member's event-level `ClearedAmount`, so the toast
+   * copy and cache invalidation both change accordingly. A loose expense
+   * (absent) keeps today's plain behavior.
+   */
+  eventUuid?: string | null;
 };
 
 /**
@@ -19,12 +27,14 @@ export type SettledToggleProps = {
  * on a closed-event expense (R4), so it is never disabled by the closed-event
  * guard. Error → toast (verbatim server message); the invalidate-on-success
  * refetch reconciles the displayed state. The backend cascades this flag to every
- * billable share (OQ3a).
+ * billable share (OQ3a) and, when the expense belongs to an event (Direction 2),
+ * credits/claws back the event's per-member `ClearedAmount` overlay too.
  */
 export function SettledToggle({
   uuid,
   isSettled,
   contextName,
+  eventUuid,
 }: SettledToggleProps) {
   const { t } = useT();
   const toast = useToast();
@@ -37,12 +47,14 @@ export function SettledToggle({
   async function onToggle() {
     const next = !isSettled;
     try {
-      await setSettled.mutateAsync({ uuid, body: { isSettled: next } });
+      await setSettled.mutateAsync({ uuid, body: { isSettled: next }, eventUuid });
       toast.push({
         tone: "success",
-        title: next
-          ? t("expenses:settled.toastOn")
-          : t("expenses:settled.toastOff"),
+        title: eventUuid
+          ? t("expenses:settled.toastSynced")
+          : next
+            ? t("expenses:settled.toastOn")
+            : t("expenses:settled.toastOff"),
       });
     } catch (error) {
       toast.push({ tone: "danger", title: resolveErrorMessage(error, t) });

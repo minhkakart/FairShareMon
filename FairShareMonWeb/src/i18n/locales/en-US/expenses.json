@@ -116,6 +116,7 @@
     "settledAriaNamed": "Settled status of {{name}}'s share",
     "settledToastOn": "Share marked as settled.",
     "settledToastOff": "Share marked as unsettled.",
+    "settledToastSynced": "Settled status updated — the event's outstanding balance was synced accordingly.",
     "rollupAll": "Fully settled",
     "rollupPartial": "Partially settled ({{settled}}/{{total}} shares)",
     "rollupNone": "Not settled"
@@ -126,7 +127,8 @@
     "aria": "Settled status",
     "ariaNamed": "Settled status of {{name}}",
     "toastOn": "Marked as settled.",
-    "toastOff": "Marked as unsettled."
+    "toastOff": "Marked as unsettled.",
+    "toastSynced": "Settled status updated — the event's outstanding balance was synced accordingly."
   },
   "detail": {
     "back": "Back to list",

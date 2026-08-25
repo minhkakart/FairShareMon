@@ -21,6 +21,11 @@ import {
 import { useT } from "@/i18n/useT";
 import { formatMoneyVnd } from "@/i18n/format";
 import { resolveErrorMessage } from "@/lib/api/http-error-handling";
+import { SettlementMeter } from "@/features/expenses/components/SettlementMeter";
+import {
+  SettlementStatusBadge,
+  type SettlementTriState,
+} from "@/features/expenses/components/SettlementStatusBadge";
 import type { EventBalanceResponse, MemberBalanceRow } from "../api/types";
 import { useEventBalanceQuery } from "../hooks/useEvents";
 import { MemberSettledToggle } from "./MemberSettledToggle";
@@ -60,14 +65,19 @@ const COLUMN_COUNT = 6;
  * members): advanced / owed / balance rendered via `Money` (verbatim, never
  * re-computed) — those columns and the sum-to-zero `TableFoot` total stay PURE
  * and untouched. Additive overlay columns render `outstanding` (còn nợ) + a
- * đã-trả/còn-nợ status with a per-member settled toggle for owing members
- * (`balance < 0`, OQ5a) — and, since event-expense-settlement-sync (2026-08-25,
- * Direction 1), for net-creditor members eligible for the auto-cascade too
- * (`balance >= 0 && isEligibleForAutoCascade`, M1-R2/OQ2) — plus a
- * `totalOutstanding`/X-of-Y summary read verbatim from the API. Shown for open
- * AND closed events (OQ8a/OQ9a); the per-member toggle is enabled on both (the
- * sole closed-event write, R6). An event with no expenses shows a calm empty
- * note.
+ * per-member settled toggle for owing members (`balance < 0`, OQ5a) — and,
+ * since event-expense-settlement-sync (2026-08-25, Direction 1), for net-
+ * creditor members eligible for the auto-cascade too (`balance >= 0 &&
+ * isEligibleForAutoCascade`, M1-R2/OQ2) — plus a `totalOutstanding`/X-of-Y
+ * summary read verbatim from the API. Since Direction 2 (M2-R4/R5), the owing-
+ * row status is a 3-state `SettlementStatusBadge` (`Unsettled`/
+ * `PartiallySettled`/`Settled`, driven by `row.settlementStatus`, never re-
+ * derived), and a `PartiallySettled` row's "Còn nợ" cell renders a
+ * `SettlementMeter` fraction (`clearedAmount` / `clearedAmount + outstanding`)
+ * instead of the plain `<Money>` figure; the footer also surfaces
+ * `partiallySettledMemberCount`. Shown for open AND closed events (OQ8a/OQ9a);
+ * the per-member toggle is enabled on both (the sole closed-event write, R6).
+ * An event with no expenses shows a calm empty note.
  */
 export function EventBalanceTable({ uuid }: EventBalanceTableProps) {
   const { t } = useT();
@@ -137,7 +147,15 @@ function BalanceHeadRow() {
       <TableHeaderCell numeric>{t("events:balance.owed")}</TableHeaderCell>
       <TableHeaderCell numeric>{t("events:balance.balance")}</TableHeaderCell>
       <TableHeaderCell numeric>
-        {t("events:balance.outstanding")}
+        <span className={styles.headerHint}>
+          {t("events:balance.outstanding")}
+          <HelpHint
+            label={t("events:balance.clearedModelHint")}
+            placement="bottom"
+          >
+            {t("events:balance.clearedModelHint")}
+          </HelpHint>
+        </span>
       </TableHeaderCell>
       <TableHeaderCell>{t("events:balance.statusColumn")}</TableHeaderCell>
     </TableRow>
@@ -145,16 +163,33 @@ function BalanceHeadRow() {
 }
 
 /**
+ * Maps the wire tri-state (`MemberBalanceRow.settlementStatus`, PascalCase) to
+ * `SettlementStatusBadge`'s local, decoupled `SettlementTriState` union. Falls
+ * back to `"unsettled"` for any unrecognized value (defensive only — the API
+ * always returns one of the three named states).
+ */
+function toSettlementTriState(
+  status: MemberBalanceRow["settlementStatus"],
+): SettlementTriState {
+  if (status === "Settled") return "settled";
+  if (status === "PartiallySettled") return "partial";
+  return "unsettled";
+}
+
+/**
  * The overlay status cell (OQ4a/OQ5a, extended by event-expense-settlement-sync
- * M1-R2/OQ2): for an owing member (`balance < 0`, unchanged), a
- * color-independent đã-trả/còn-nợ badge (icon + text) plus the per-member settled
- * toggle. For a net creditor (`balance >= 0`) that is Direction-1
- * auto-cascade-eligible, the same badge + toggle is shown, paired with a
- * `HelpHint` explaining the cascade. For a net creditor that is NOT eligible
- * (holds a debtor-share elsewhere in the event), the toggle is hidden entirely
- * and the muted "—" is replaced by a `HelpHint` explaining why. A true net-zero
- * balance stays exactly as today: plain muted "—", no hint (never folded into
- * the ineligible-creditor branch).
+ * M1-R2/OQ2 and M2-R4): for an owing member (`balance < 0`, unchanged branch),
+ * the color-independent 3-state `SettlementStatusBadge` (Unsettled/
+ * PartiallySettled/Settled, driven by `row.settlementStatus`, never re-derived)
+ * plus the per-member settled toggle. For a net creditor (`balance >= 0`) that
+ * is Direction-1 auto-cascade-eligible, the plain (binary) `Badge` + toggle is
+ * shown unchanged from Milestone 1, paired with a `HelpHint` explaining the
+ * cascade — Milestone 2's partial-credit status never applies to a creditor row
+ * (`Outstanding` floors at 0 regardless). For a net creditor that is NOT
+ * eligible (holds a debtor-share elsewhere in the event), the toggle is hidden
+ * entirely and the muted "—" is replaced by a `HelpHint` explaining why. A true
+ * net-zero balance stays exactly as today: plain muted "—", no hint (never
+ * folded into the ineligible-creditor branch).
  */
 function StatusCell({
   eventUuid,
@@ -168,14 +203,12 @@ function StatusCell({
   if (row.balance < 0) {
     return (
       <div className={styles.statusCell}>
-        <Badge
-          tone={row.isSettled ? "settled" : "warning"}
-          icon={row.isSettled ? <CheckIcon /> : <ClockIcon />}
-        >
-          {row.isSettled
-            ? t("events:balance.statusSettled")
-            : t("events:balance.statusOwing")}
-        </Badge>
+        <SettlementStatusBadge
+          status={toSettlementTriState(row.settlementStatus)}
+          labelUnsettled={t("events:balance.statusOwing")}
+          labelPartial={t("events:balance.statusPartial")}
+          labelSettled={t("events:balance.statusSettled")}
+        />
         <MemberSettledToggle
           eventUuid={eventUuid}
           memberUuid={row.memberUuid}
@@ -289,7 +322,16 @@ function BalanceRows({
                 <BalanceAmount amount={row.balance} />
               </TableCell>
               <TableCell numeric data-testid="outstanding-amount">
-                {row.outstanding > 0 ? (
+                {row.settlementStatus === "PartiallySettled" ? (
+                  <SettlementMeter
+                    clearedAmount={row.clearedAmount}
+                    netOwed={row.clearedAmount + row.outstanding}
+                    format={formatMoneyVnd}
+                    accessibleLabel={t("events:balance.clearedAriaNamed", {
+                      name: row.memberName,
+                    })}
+                  />
+                ) : row.outstanding > 0 ? (
                   <Money amount={row.outstanding} format={formatMoneyVnd} />
                 ) : (
                   <span className={styles.muted}>—</span>
@@ -332,6 +374,13 @@ function BalanceRows({
                   amount: formatMoneyVnd(balance.totalOutstanding),
                 })}
               </span>
+              {balance.partiallySettledMemberCount > 0 ? (
+                <span className={styles.summary}>
+                  {t("events:balance.summaryPartial", {
+                    count: balance.partiallySettledMemberCount,
+                  })}
+                </span>
+              ) : null}
             </TableCell>
           </TableRow>
         </TableFoot>

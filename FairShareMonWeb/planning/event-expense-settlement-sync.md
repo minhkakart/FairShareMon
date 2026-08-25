@@ -930,14 +930,232 @@ Extend existing files (per the task brief's named starting set):
   `SettlementMeter`/`partiallySettledMemberCount`) is untouched, per the task brief — that's Step M2.5,
   gated on the API's Milestone 2 shipping.
 
+### 2026-08-25 (Milestone 2 implemented — Steps M2.1-M2.5, `web-implementer`)
+
+- Confirmed the API's Milestone 2 has shipped before starting: read
+  `FairShareMonApi/Models/Stats/{MemberBalanceRow,EventBalanceResponse}.cs` directly — `ClearedAmount`
+  (`decimal`) and `SettlementStatus` (`string`, confirmed NOT a raw enum — no `JsonStringEnumConverter`
+  concern, matches OQ1/Decision Log entry 1 exactly) are real fields on `MemberBalanceRow`;
+  `PartiallySettledMemberCount` (`int`) is a real field on `EventBalanceResponse`. Property names/casing
+  match the plan's Step M2.1 snippet verbatim (`clearedAmount`/`settlementStatus`/
+  `partiallySettledMemberCount` on the camelCase wire).
+- **M2.1** — added `clearedAmount: number` and `settlementStatus: "Unsettled" | "PartiallySettled" |
+  "Settled"` to `MemberBalanceRow`, and `partiallySettledMemberCount: number` to `EventBalanceResponse`
+  (`features/events/api/types.ts`), doc comments verbatim from the plan.
+- **M2.2** — GitNexus's `mcp__gitnexus__impact` worked this time (unlike the M1.2 gap) for `useSetSettled`:
+  1 direct caller (`SettledToggle`), matching the doc's expected blast radius exactly — but the tool
+  reported **risk: HIGH** because its traversal counts the full page-render call chain
+  (`ExpensesTable`/`ExpenseDetailPage` → their parent pages) as "impacted," not because the change itself is
+  risky. Per `CLAUDE.md` this is flagged here as required, but proceeded: the change only adds an optional
+  `eventUuid` field to the mutation variables and an `if (eventUuid)`-gated extra invalidation — every
+  existing caller (none of which pass `eventUuid` yet) is behaviorally unchanged, confirmed by the full
+  green test suite afterward. `useSetShareSettled` was "not found" by GitNexus (same intermittent TS-symbol
+  gap M1.2 hit) — fell back to a manual grep, confirming its one caller is `ShareSettledToggle.tsx`, matching
+  the doc's expectation.
+  - `features/expenses/hooks/useExpenses.ts`: both `useSetSettled` and `useSetShareSettled` now accept an
+    optional `eventUuid?: string | null` mutation variable and, when truthy, additionally invalidate
+    `eventsKeys.balance(eventUuid)` + `eventsKeys.all` in `onSuccess`. Doc comments rewritten to delete the
+    now-false OQ7a "does not change the balance overlay" claim.
+  - `features/expenses/components/{SettledToggle.tsx,ShareSettledToggle.tsx}`: added the `eventUuid?:
+    string | null` prop, threaded into `mutateAsync`, and branched the success toast — when `eventUuid` is
+    truthy, both use the new unconditional "synced" copy (`expenses:settled.toastSynced` /
+    `expenses:shares.settledToastSynced`); a loose expense keeps the existing on/off toast pair unchanged.
+  - Call sites threaded `eventUuid`: `features/expenses/pages/ExpenseDetailPage.tsx`
+    (`expense.eventUuid`), `features/expenses/components/ExpensesTable.tsx` (row-level `expense.eventUuid`),
+    `features/expenses/components/SharesSection.tsx` (`expense.eventUuid`).
+  - i18n: added `expenses:settled.toastSynced` and `expenses:shares.settledToastSynced` to both
+    `i18n/locales/{vi-VN,en-US}/expenses.json` (vi-VN copy verbatim from the plan's M2-R1 draft, natural
+    en-US mirror).
+- **M2.3** — `EventBalanceTable.tsx` wiring (components already built, no new component work):
+  - Owing-row branch (`balance < 0`, unchanged branch) now renders `SettlementStatusBadge` instead of the
+    inline `Badge`, via a new local `toSettlementTriState` mapper (`"Settled"→"settled"`,
+    `"PartiallySettled"→"partial"`, else `"unsettled"`). The eligible-creditor branch (`balance > 0 &&
+    isEligibleForAutoCascade`) keeps its Milestone-1 plain `Badge` unchanged, per the plan (partial-credit
+    status never applies to a creditor row).
+  - The "Còn nợ" cell renders `SettlementMeter` (`clearedAmount={row.clearedAmount}`,
+    `netOwed={row.clearedAmount + row.outstanding}`, `format={formatMoneyVnd}`,
+    `accessibleLabel={t("events:balance.clearedAriaNamed", {name: row.memberName})}`) when
+    `row.settlementStatus === "PartiallySettled"`; `Unsettled`/`Settled` rows keep the plain `<Money>` cell.
+    No `COLUMN_COUNT` change.
+  - Added a single column-header `HelpHint` next to "Còn nợ" (`events:balance.clearedModelHint`), not
+    per-row.
+  - `TableFoot` extended with a second summary line surfacing `partiallySettledMemberCount`
+    (`events:balance.summaryPartial`), rendered only when `> 0` (guards against stale/incomplete balance
+    fixtures rendering a literal "undefined" — a defensive nicety, not a business-logic override; the real
+    API always returns the field).
+  - i18n: renamed `events:balance.statusOwing` "Còn nợ"/"Owing" → "Chưa trả"/"Unsettled" in both locales
+    (OQ6) — confirmed this also updates `MemberSettledToggle`'s `labelOff` and the Milestone-1
+    eligible-creditor branch's badge text "for free" since both read the same key, per the plan. Added
+    `statusPartial`, `clearedAriaNamed`, `clearedModelHint`, `summaryPartial` under `events:balance` in both
+    locales.
+  - **Deviation (flagged, not a silent default): fixed a real rendering bug found while visually verifying
+    the new header `HelpHint`.** `HelpHint`'s bubble opens upward by default (`bottom: calc(100% + gap)`,
+    `HelpHint.module.css`); placed at the very top row of the table's `overflow-x: auto` scroll container
+    (`Table.module.css`'s `.scroll`), the upward bubble was clipped (screenshot showed only a solid sliver,
+    no readable text) since `overflow-x: auto` computes `overflow-y` to `auto` too per the CSS spec, and
+    there is no scroll room above the header. This is a genuine implementation necessity, not a business/
+    design ambiguity, so it was fixed rather than escalated: added an optional `placement?: "top" |
+    "bottom"` prop to `HelpHint` (default `"top"`, zero behavior change for the three existing call sites —
+    the two Milestone-1 creditor-row hints and any other consumer), plus a `.bubbleBottom` CSS variant
+    (`HelpHint.module.css`) that opens downward instead. The column-header call site passes
+    `placement="bottom"`. Re-verified via a hover screenshot after the fix — the bubble now renders fully
+    visible with the correct locked copy. This is the one file outside `features/events`/`features/expenses`
+    touched this milestone.
+- **M2.4** — confirmed zero code change needed: read `features/wallet/components/QrDialog.tsx` and
+  `features/wallet/api/qrApi.ts` directly — neither reads `MemberBalanceRow.outstanding`/`clearedAmount` nor
+  duplicates any billing-amount computation client-side; `QrDialog` only branches on the `12003`
+  "no-outstanding-debt" error code. The backend's Milestone 2 overlay-math change (now billing the
+  post-partial-credit remainder) reaches the QR flow with no web change, confirming the doc's claim exactly.
+  No files touched.
+- **Mechanical fixture fixes** (sanctioned by the task brief, not new test authorship): five existing test
+  files construct `MemberBalanceRow`/`EventBalanceResponse`-shaped fixtures now missing the two new required
+  `MemberBalanceRow` fields —
+  - `features/events/eventBalanceTable.test.tsx` (`ROWS` fixture): added `clearedAmount: 0,
+    settlementStatus: "Unsettled"` to all three rows (mechanical completion — none of this file's existing
+    scenarios exercise partial credit); also updated the two `getAllByText("Còn nợ")` assertions (creditor +
+    debtor status-cell shape regression test) to `"Chưa trả"`, per OQ6's rename — re-verified against the
+    current file rather than trusting the doc's stale line-number pointer, per the task brief.
+  - `features/events/memberSettled.test.tsx`: `balancePayload()`/`creditorBalancePayload()` (both derive
+    rows from a `settled: Set<string>` at request time) now also derive `clearedAmount`/`settlementStatus`
+    mirroring the exact same `balance < 0 && marked` condition `outstanding` already uses (so a
+    fully-settled member's badge/meter correctly flips to "Đã trả" after a toggle, not stuck at a stale
+    "Unsettled" default) and `partiallySettledMemberCount: 0` on both response objects. Updated the one
+    `getAllByText("Còn nợ")` status assertion (line ~320, was ~177 pre-M1 per the doc's own stale pointer —
+    re-verified against current code, confirmed this is the "An Nguyễn" debtor row's status word) to
+    `"Chưa trả"`; left the `outstanding`-column comment/assertions and the unrelated
+    `statusCellFor`/`getByTestId("outstanding-amount")` doc-comment references to "Còn nợ" untouched (they
+    describe the amount column, not the status word, per OQ6's explicit scoping).
+  - `features/share/publicBalanceTable.test.tsx` (`mkRow` helper) and `features/share/publicSharePage.test.tsx`
+    (`PAYLOAD.rows`): added `clearedAmount: 0, settlementStatus: "Unsettled"` defaults. The `share` feature's
+    own product code/i18n (`share:public.statusOwing`, `PublicBalanceTable.tsx`) is untouched — confirmed
+    out of scope per the doc's Assumptions and OQ6's explicit "Future Improvements" carry-forward.
+- **Verification**: `pnpm lint` clean (only the same pre-existing, unrelated `only-export-components`
+  warnings noted in every prior entry), `tsc -b` clean, `pnpm build` succeeds, `pnpm test` green — 114 files
+  / **956 tests** passing (same count as post-M1.6 — M2's own new-test authorship is Step M2.5, deferred to
+  `web-test-engineer` per the task brief; only mechanical fixture edits landed here, net zero new/removed
+  test cases). Ran the app for real: started `pnpm dev` with `VITE_ENABLE_MOCKS=true`, logged in as the
+  seeded `admin` user (Playwright driving a real Chromium instance, since no `claude-in-chrome`/
+  `chromium-cli` tool was available in this session — noted for a future `/run-skill-generator` pass), opened
+  the pre-seeded "Chuyến Đà Lạt" event. Temporarily patched the MSW `computeBalance` helper in-place
+  (`src/test/msw/handlers.ts`) to compute a plausible `clearedAmount`/`settlementStatus`/
+  `partiallySettledMemberCount` (crediting half the net-owed amount to one owing member) purely to exercise
+  the 3-state UI visually — reverted via `git checkout` immediately after (confirmed clean diff) so Step
+  M2.5's MSW work is untouched, same pattern as the M1.1-M1.5 entry. Screenshots confirmed: a fully-unsettled
+  debtor row renders the `warning`-tone clock badge "Chưa trả" with a plain `<Money>` "Còn nợ" cell; a
+  partially-cleared debtor row renders the `partial`-tone half-check badge "Đã trả một phần" plus the
+  `SettlementMeter` fraction ("250.000 đ / 750.000 đ") and fill bar in the same cell; the eligible-creditor
+  row (Milestone 1) is visually unchanged; the footer shows both the existing "Đã trả 0/2 thành viên · Còn
+  nợ 600.000 đ" line and the new "1 thành viên đã trả một phần" line; hovering the column-header hint (after
+  the `placement="bottom"` fix) shows the exact locked `clearedModelHint` copy, fully visible. Also verified
+  M2.2 live: opened an expense belonging to the (closed) event and toggled its whole-expense settled switch
+  — the toast read exactly "Đã cập nhật đã trả — số dư còn nợ của đợt đã được đồng bộ tương ứng." (the new
+  synced copy, confirming `eventUuid` threading + the toast branch), and the pre-existing OQ3a cascade to
+  the per-share toggle was unaffected.
+- **Open Questions added: none.** The one implementation-necessity fix (`HelpHint`'s `placement` prop) was a
+  mechanical, backward-compatible bug fix discovered during verification, not a business/design ambiguity —
+  documented above rather than escalated, per the task's own guidance to fix straightforward rendering
+  defects found while wiring already-built primitives.
+- **Deviations from the doc: one**, recorded above (the `HelpHint` `placement` prop + `.bubbleBottom` CSS
+  variant, and the `TableFoot`'s partial-count line being conditionally rendered on `> 0` rather than always
+  visible). Everything else followed the plan's code snippets and locked copy as written.
+
+### 2026-08-25 (Step M2.5 — tests added, `web-test-engineer`)
+
+- Read Step M2.5's exact test list, the implemented M2.1-M2.4 code
+  (`features/events/api/types.ts`'s `clearedAmount`/`settlementStatus`/`partiallySettledMemberCount`,
+  `hooks/useExpenses.ts`'s `useSetSettled`/`useSetShareSettled` `eventUuid` threading,
+  `SettledToggle.tsx`/`ShareSettledToggle.tsx`'s synced-toast branch, `EventBalanceTable.tsx`'s
+  `SettlementStatusBadge`/`SettlementMeter`/header-`HelpHint`/footer wiring), and both locales'
+  `statusPartial`/`clearedAriaNamed`/`clearedModelHint`/`summaryPartial`/`toastSynced`/`settledToastSynced`
+  copy before writing anything, per the task brief.
+- **`src/test/msw/handlers.ts`** — extended (the prerequisite for every other file below):
+  - `computeBalance` now derives `clearedAmount` (`min(rawCredit, netOwed)`) and the tri-state
+    `settlementStatus` (`Settled` when the Layer-B override is set OR the credit fully covers `netOwed`;
+    `PartiallySettled` when `0 < clearedAmount < netOwed`; else `Unsettled`) per row, from a new
+    `clearedCreditByUser` store (`username → eventUuid → memberUuid → raw credited amount`, uncapped —
+    the cap is a read-side derivation, mirroring the API's storage-vs-derived split). `outstanding` is now
+    `isSettled ? 0 : max(0, netOwed - clearedAmount)` (was the old binary `balance<0 && !isSettled ? -balance
+    : 0`). `partiallySettledMemberCount` is computed alongside the existing count rollups and returned on
+    the response.
+  - Added the shared `applyShareCredit(username, expense, share, next)` helper — the ONE code path both the
+    whole-expense (`PUT /expenses/:uuid/settled`) and per-share (`PUT /expenses/:uuid/shares/:shareUuid/
+    settled`) handlers now call per share transition (only on an ACTUAL `isSettled` flip, checked at each
+    call site, so a flip is credited/clawed back exactly once): a no-op for a loose expense or a non-billable
+    share (the payer's own share, or 0đ); otherwise credits (`next===true`) or claws back (`next===false`)
+    the share's amount to/from that member's raw credit in that event, floored at 0.
+  - Confirmed no other test file's assertions regressed from this change (full suite green — see below); the
+    per-member Layer-B settled handler is untouched (Direction 1 stays orthogonal to Direction 2's credit
+    store, per the plan).
+- **`src/features/expenses/settledToggle.test.tsx`** — extended:
+  `SettledToggle_MarkSettled_OnEventExpense_AlsoInvalidatesEventBalance` (mounts a live
+  `useEventBalanceQuery` subscriber alongside `SettledToggle`, counters+Probe pattern, and asserts a second
+  `GET /events/{uuid}/balance` fires after the whole-expense settle succeeds, plus the "synced" toast copy)
+  and `SettledToggle_LooseExpense_NoEventUuid_NeverRequestsEventBalance` (regression: no `eventUuid` prop →
+  the balance probe's request count never grows past its initial mount fetch).
+- **`src/features/expenses/shareSettled.test.tsx`** — extended: the same pattern, share-level trigger —
+  `ShareSettledToggle_ShareOnEventExpense_AlsoInvalidatesEventBalance` and (an extra beyond the doc's named
+  list, cheap symmetry regression) `ShareSettledToggle_LooseExpense_NoEventUuid_NeverRequestsEventBalance`.
+- **`src/features/expenses/expenseSettledReconcile.test.tsx`** — extended: gave the file's shared
+  `freshExpense()` fixture an `eventUuid` (previously loose; verified this doesn't perturb either
+  pre-existing test's assertions), added a local `clearedCreditByUser`-style credit tracker + a
+  `GET /events/{uuid}/balance` handler to `installMutableStore()`, and added
+  `ShareSettledToggle_TogglingShare_UpdatesClearedAmountOnCoRenderedEventBalanceTableWithoutManualRerender` —
+  mounts BOTH `ExpenseDetailPage` and `EventBalanceTable` against the same `queryClient` and event; toggling
+  the rendered share (300.000 of An's 500.000 net debt, the remaining 200.000 modeled as a second,
+  unrendered expense in the same event so the result is a genuine PARTIAL clearance, not an
+  Unsettled→Settled jump) flips the co-rendered table's badge to "Đã trả một phần" and renders the
+  `SettlementMeter` fraction — with NO manual refetch call in the test, proving the M2.2 cross-cache wiring
+  end-to-end (not just that the hook invalidates the right key in isolation).
+- **`src/features/events/eventBalanceTable.test.tsx`** — extended: `stubBalance` now also computes
+  `partiallySettledMemberCount` (mechanical completion — required by the response type). Added a
+  `PARTIAL_ROWS` fixture (one row per tri-state: `PartiallySettled`, plain `Unsettled`, fully `Settled`, plus
+  the unaffected creditor row) backing
+  `EventBalanceTable_PartiallySettledRow_RendersMeterWithComposedNetOwedAndStatusBadge`: asserts the
+  `PartiallySettled` row renders `SettlementStatusBadge` (locked "Đã trả một phần" copy) + `SettlementMeter`
+  (`role="progressbar"`, `aria-valuemax`/`aria-valuenow` matching `clearedAmount`/`netOwed`, fraction text)
+  in place of the plain `<Money>` cell, with `netOwed` composed as `clearedAmount + outstanding` (the OQ-L
+  rule); the `Unsettled` row keeps the plain positive `<Money>` cell and the `Settled` row keeps the muted
+  "—" (both — no meter); the column-header `HelpHint` renders exactly once across four rows; the footer
+  surfaces `partiallySettledMemberCount` verbatim.
+- **`src/features/events/settledQrFilter.test.ts`** — extended: a new `seedClosedEventWithSplitDebtorAndControl`
+  fixture (An owes across two expenses so a single settle produces a genuine partial clearance; Bình is an
+  untouched still-owing control so the event doesn't go all-cleared prematurely) backs
+  `EventQr_PartialCreditViaExpenseSettle_BillsExactRemainderOnPerMemberQr` (settling one of An's two expenses
+  bills them exactly the 200.000 remainder via `qrApi.eventMemberQrs`, not the full 500.000 nor zero) and
+  `EventQr_FullCreditClearsMember_DropsFromQrThenAllClearedYields12003` (fully crediting An drops them from
+  the per-member QR set while Bình stays billed; crediting Bình too reaches all-cleared → the pre-existing
+  `12003` behavior, unchanged by partial credit).
+- **Verification**: `pnpm lint` clean (only the same pre-existing, unrelated `only-export-components`
+  warnings noted in every prior entry), `tsc -b` clean, `pnpm test` green — 114 files / **964 tests** passing
+  (956 pre-existing + 8 new: 2 in `settledToggle.test.tsx`, 2 in `shareSettled.test.tsx`, 1 in
+  `expenseSettledReconcile.test.tsx`, 1 in `eventBalanceTable.test.tsx`, 2 in `settledQrFilter.test.ts`), no
+  regressions.
+- **No product-code bugs found** — every M2.1-M2.4 branch behaved exactly per the plan; no fix was routed
+  back to `web-implementer`. The one "fix" in this step was entirely on the test-double side (the MSW
+  handlers' `clearedAmount`/credit derivation), which is this role's own territory per the task brief, not a
+  product-code change.
+- **Coverage gaps / deferred, explicitly out of this step's scope**: the doc's Step M2.5 test list is fully
+  covered; two small extras were added beyond it (the loose-expense non-invalidation regression in
+  `shareSettled.test.tsx`, and PARTIAL_ROWS's plain-`Unsettled`/fully-`Settled` companion assertions in
+  `eventBalanceTable.test.tsx`) as cheap, directly-relevant regressions, not scope creep. Not exercised (out
+  of this step's named list): an un-settle claw-back assertion on the event balance overlay (the credit
+  store's reversal path is implemented and exercised implicitly via the shared `applyShareCredit` helper's
+  own logic, but no test asserts un-settling a share reduces `clearedAmount` back down) — a reasonable
+  low-cost follow-up, not required by the doc's own checklist. `share:public.statusOwing` terminology parity
+  and the other Future Improvements items remain untouched, as before.
+
 ## Final Outcome
 
-**Milestone 1 (Steps M1.1-M1.6) implemented and tested 2026-08-25.** Types, cache invalidation, the
-creditor-row affordance, i18n, cascade-aware toast copy, and Step M1.6's test coverage are all in per the
-locked plan; `pnpm lint`/`tsc -b`/`pnpm build`/`pnpm test` are all green (956 tests, no regressions) and the
-feature was exercised end-to-end in a running app (screenshots + a live toggle-and-toast check, M1.1-M1.5
-entry). Milestone 2 (Steps M2.1-M2.5) remains unstarted, gated on the API's Milestone 2 (`ClearedAmount`
-migration + overlay math) shipping — per the Assumptions section, unchanged.
+**Both milestones (Steps M1.1-M1.6 and M2.1-M2.5) implemented and tested 2026-08-25.** Milestone 1: types,
+cache invalidation, the creditor-row affordance, i18n, cascade-aware toast copy, and its test coverage.
+Milestone 2: types, the `useSetSettled`/`useSetShareSettled` cross-invalidation fix + synced toast copy, the
+3-state `SettlementStatusBadge`/`SettlementMeter` wiring in `EventBalanceTable`, the `statusOwing` rename
+(OQ6), the footer's `partiallySettledMemberCount` line, a small backward-compatible `HelpHint` placement
+fix discovered during visual verification, AND its own test coverage (Step M2.5, incl. the MSW handlers'
+realistic partial-credit computation). `pnpm lint`/`tsc -b`/`pnpm test` are all green (964 tests, no
+regressions) and both milestones were exercised end-to-end (Milestone 1/2 in a running app per their own
+entries; Milestone 2's cross-cache wiring additionally proven by an automated co-rendered-components test,
+`expenseSettledReconcile.test.tsx`). Nothing remains open for this feature cycle.
 
 Prior planning-only outcome (superseded by the above once implementation started): **Planning complete —
 zero Open Questions remain.** This doc is now the final planning deliverable for this feature cycle: both

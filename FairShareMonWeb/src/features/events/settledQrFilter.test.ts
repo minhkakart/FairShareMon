@@ -7,6 +7,7 @@ import { ApiError } from "@/lib/api/errors";
 import { membersApi } from "@/features/members/api/membersApi";
 import { eventsApi } from "./api/eventsApi";
 import { expensesApi } from "@/features/expenses/api/expensesApi";
+import { qrApi } from "@/features/wallet/api/qrApi";
 
 /**
  * QR "who still owes" (OQ8a) — an end-to-end contract test over the REAL committed
@@ -65,6 +66,57 @@ async function seedClosedEventWithTwoOwing() {
 
   await eventsApi.close(event.uuid);
   return { eventUuid: event.uuid, anUuid: an.uuid, binhUuid: binh.uuid };
+}
+
+/**
+ * Build a closed event where An owes across TWO expenses (300.000 + 200.000 =
+ * 500.000 net) and Bình owes on a third, single expense (150.000) — needed so
+ * settling ONE of An's expenses produces a genuine PARTIAL clearance (some,
+ * not all, of An's net debt) via Direction 2 (event-expense-settlement-sync,
+ * M2), while Bình stays untouched as a still-owing control for the "drops from
+ * the QR" assertion (so the event doesn't go all-cleared, hence 12003,
+ * prematurely).
+ */
+async function seedClosedEventWithSplitDebtorAndControl() {
+  const members = await membersApi.list(false);
+  const an = members.find((m) => m.name === "An Nguyễn")!;
+  const binh = members.find((m) => m.name === "Bình Trần")!;
+
+  const event = await eventsApi.create({
+    name: "Đà Lạt",
+    description: null,
+    startDate: "2026-07-15T12:00:00.000Z",
+    endDate: "2026-07-15T12:00:00.000Z",
+  });
+
+  const expenseA = await expensesApi.create({
+    name: "Thuê xe",
+    expenseTime: "2026-07-15T08:00:00.000Z",
+    eventUuid: event.uuid,
+    shares: [{ memberUuid: an.uuid, amount: 300000 }],
+  });
+  const expenseB = await expensesApi.create({
+    name: "Ăn tối",
+    expenseTime: "2026-07-15T19:00:00.000Z",
+    eventUuid: event.uuid,
+    shares: [{ memberUuid: an.uuid, amount: 200000 }],
+  });
+  const expenseC = await expensesApi.create({
+    name: "Cà phê",
+    expenseTime: "2026-07-15T10:00:00.000Z",
+    eventUuid: event.uuid,
+    shares: [{ memberUuid: binh.uuid, amount: 150000 }],
+  });
+
+  await eventsApi.close(event.uuid);
+  return {
+    eventUuid: event.uuid,
+    anUuid: an.uuid,
+    binhUuid: binh.uuid,
+    expenseAUuid: expenseA.uuid,
+    expenseBUuid: expenseB.uuid,
+    expenseCUuid: expenseC.uuid,
+  };
 }
 
 /** Resolves to the QR error code, or 0 when the QR was generated (blob). */
@@ -146,5 +198,78 @@ describe("Event QR outstanding filter (OQ8a)", () => {
       code = error instanceof ApiError ? error.code : -1;
     }
     expect(code).toBe(3000);
+  });
+});
+
+describe("Event QR partial-credit filter (event-expense-settlement-sync, M2)", () => {
+  it("EventQr_PartialCreditViaExpenseSettle_BillsExactRemainderOnPerMemberQr", async () => {
+    await bootPremiumUser();
+    const { eventUuid, anUuid, expenseAUuid } =
+      await seedClosedEventWithSplitDebtorAndControl();
+
+    // Before any credit: An owes the full 500.000 net (two shares, two expenses).
+    let balance = await eventsApi.balance(eventUuid);
+    let an = balance.rows.find((r) => r.memberUuid === anUuid)!;
+    expect(an.clearedAmount).toBe(0);
+    expect(an.settlementStatus).toBe("Unsettled");
+    expect(an.outstanding).toBe(500000);
+
+    // Settle the WHOLE first expense — An's only billable share there
+    // (300.000) — which credits exactly that amount to An's event-level
+    // `clearedAmount` (Direction 2), leaving the 200.000 remainder from the
+    // second (untouched) expense outstanding.
+    await expensesApi.setSettled(expenseAUuid, { isSettled: true });
+
+    balance = await eventsApi.balance(eventUuid);
+    an = balance.rows.find((r) => r.memberUuid === anUuid)!;
+    expect(an.clearedAmount).toBe(300000);
+    expect(an.settlementStatus).toBe("PartiallySettled");
+    expect(an.outstanding).toBe(200000);
+
+    // The event's per-member QR bills An EXACTLY the remainder — not the full
+    // 500.000, and not zero.
+    const billed = await qrApi.eventMemberQrs(eventUuid);
+    const anBilled = billed.find((b) => b.memberUuid === anUuid);
+    expect(anBilled?.amount).toBe(200000);
+  });
+
+  it("EventQr_FullCreditClearsMember_DropsFromQrThenAllClearedYields12003", async () => {
+    await bootPremiumUser();
+    const {
+      eventUuid,
+      anUuid,
+      binhUuid,
+      expenseAUuid,
+      expenseBUuid,
+      expenseCUuid,
+    } = await seedClosedEventWithSplitDebtorAndControl();
+
+    // Credit An via BOTH of their expenses — reaching full clearance of their
+    // 500.000 net debt.
+    await expensesApi.setSettled(expenseAUuid, { isSettled: true });
+    await expensesApi.setSettled(expenseBUuid, { isSettled: true });
+
+    const balance = await eventsApi.balance(eventUuid);
+    const an = balance.rows.find((r) => r.memberUuid === anUuid)!;
+    expect(an.clearedAmount).toBe(500000);
+    expect(an.settlementStatus).toBe("Settled");
+    expect(an.outstanding).toBe(0);
+
+    // Reaching full clearance drops An from the QR set exactly as today
+    // (Bình still owes 150.000 → the set stays non-empty, no premature 12003).
+    const billed = await qrApi.eventMemberQrs(eventUuid);
+    expect(billed.some((b) => b.memberUuid === anUuid)).toBe(false);
+    expect(billed.some((b) => b.memberUuid === binhUuid)).toBe(true);
+
+    // Now credit Bình's share fully too — everyone cleared → the existing
+    // no-outstanding-debt behavior (12003) is unchanged by partial credit.
+    await expensesApi.setSettled(expenseCUuid, { isSettled: true });
+    let code = -1;
+    try {
+      await qrApi.eventMemberQrs(eventUuid);
+    } catch (error) {
+      code = error instanceof ApiError ? error.code : -1;
+    }
+    expect(code).toBe(12003);
   });
 });

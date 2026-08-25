@@ -114,6 +114,7 @@ function DetailView({ expense }: { expense: ExpenseResponse }) {
             uuid={expense.uuid}
             isSettled={expense.isSettled}
             contextName={expense.name}
+            eventUuid={expense.eventUuid}
           />
           <Button
             variant="secondary"

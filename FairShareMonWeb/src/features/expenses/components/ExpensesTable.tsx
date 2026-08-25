@@ -89,6 +89,7 @@ export function ExpensesTable({ expenses }: ExpensesTableProps) {
                 uuid={expense.uuid}
                 isSettled={expense.isSettled}
                 contextName={expense.name}
+                eventUuid={expense.eventUuid}
               />
             </TableCell>
             <TableCell data-label={t("expenses:list.event")}>

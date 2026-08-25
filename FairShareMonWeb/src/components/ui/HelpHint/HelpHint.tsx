@@ -8,6 +8,14 @@ export type HelpHintProps = {
   /** The hint text shown in the bubble. Keep it short — one or two sentences. */
   children: ReactNode;
   className?: string;
+  /**
+   * Which side the bubble opens toward. Defaults to `"top"` (unchanged
+   * behavior for every existing call site). Use `"bottom"` when the trigger
+   * sits at the very top of a scrolling container (e.g. a table header row) —
+   * an upward bubble would be clipped by the container's `overflow` box
+   * (event-expense-settlement-sync M2.3, the "Còn nợ" column-header hint).
+   */
+  placement?: "top" | "bottom";
 };
 
 /**
@@ -25,7 +33,12 @@ export type HelpHintProps = {
  * of a member's individually-settled bills — without a modal or help page.
  * Reusable anywhere a short "why" note belongs next to a control or figure.
  */
-export function HelpHint({ label, children, className }: HelpHintProps) {
+export function HelpHint({
+  label,
+  children,
+  className,
+  placement = "top",
+}: HelpHintProps) {
   const id = useId();
   return (
     <span className={cx(styles.root, className)}>
@@ -45,7 +58,14 @@ export function HelpHint({ label, children, className }: HelpHintProps) {
           <path d="M10 2a8 8 0 100 16 8 8 0 000-16zm0 4.2a1 1 0 011 1v5a1 1 0 11-2 0v-5a1 1 0 011-1zm0-3.4a1.15 1.15 0 110 2.3 1.15 1.15 0 010-2.3z" />
         </svg>
       </button>
-      <span role="tooltip" id={id} className={styles.bubble}>
+      <span
+        role="tooltip"
+        id={id}
+        className={cx(
+          styles.bubble,
+          placement === "bottom" && styles.bubbleBottom,
+        )}
+      >
         {children}
       </span>
     </span>

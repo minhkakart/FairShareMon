@@ -8,6 +8,7 @@ import { sessionStore } from "@/lib/auth/session";
 import { queryClient } from "@/lib/query/queryClient";
 import { setActiveLocale } from "@/lib/api/runtime";
 import i18n from "@/i18n";
+import { useEventBalanceQuery } from "@/features/events/hooks/useEvents";
 import { SharesSection } from "./components/SharesSection";
 import type { ExpenseResponse, ShareResponse } from "./api/types";
 import type { MemberResponse } from "@/features/members/api/types";
@@ -139,6 +140,29 @@ function renderShares(expense = makeExpense(), disabled = false) {
 function rollupScope(): HTMLElement {
   return screen.getByRole("heading", { name: "Phần gánh" })
     .parentElement as HTMLElement;
+}
+
+const EVENT_UUID = "ev-share";
+
+/** Subscribes to the event balance query so its invalidation (or lack thereof)
+ *  is observable via the mocked GET's request count — mirrors the
+ *  `settledToggle.test.tsx`/`memberSettled.test.tsx` counters+Probe pattern. */
+function BalanceProbe({ uuid }: { uuid: string }) {
+  useEventBalanceQuery(uuid);
+  return null;
+}
+
+function emptyBalance() {
+  return {
+    eventUuid: EVENT_UUID,
+    eventName: "Đà Lạt",
+    isClosed: false,
+    rows: [],
+    totalOutstanding: 0,
+    owingMemberCount: 0,
+    settledMemberCount: 0,
+    partiallySettledMemberCount: 0,
+  };
 }
 
 beforeEach(async () => {
@@ -351,5 +375,95 @@ describe("SharesSection closed-event settled exception (R6)", () => {
     const user = userEvent.setup();
     await user.click(toggle);
     await waitFor(() => expect(called).toBe(true));
+  });
+});
+
+describe("ShareSettledToggle event cross-invalidation (event-expense-settlement-sync M2.2/M2.5)", () => {
+  it("ShareSettledToggle_ShareOnEventExpense_AlsoInvalidatesEventBalance", async () => {
+    // The M2.2 regression, share-level trigger: with `eventUuid` set, a
+    // successful per-share settle now also credits/claws back the event
+    // balance overlay's `clearedAmount`, so the mutation's onSuccess must
+    // additionally invalidate `eventsKeys.balance(eventUuid)`. Mount a live
+    // `useEventBalanceQuery` subscriber (counters+Probe pattern) and count the
+    // GETs it fires.
+    let balanceRequests = 0;
+    server.use(
+      http.put("*/api/v1/expenses/e-1/shares/:shareUuid/settled", () =>
+        ok({ message: "OK" }),
+      ),
+      http.get(`*/api/v1/events/${EVENT_UUID}/balance`, () => {
+        balanceRequests += 1;
+        return ok(emptyBalance());
+      }),
+    );
+    const user = userEvent.setup();
+    renderWithProviders(
+      <>
+        <SharesSection
+          expense={makeExpense({ eventUuid: EVENT_UUID })}
+          disabled={false}
+        />
+        <BalanceProbe uuid={EVENT_UUID} />
+      </>,
+      { queryClient },
+    );
+
+    await waitFor(() => expect(balanceRequests).toBe(1));
+
+    await user.click(
+      screen.getByRole("switch", {
+        name: "Trạng thái đã trả phần gánh của An Nguyễn",
+      }),
+    );
+
+    // The "synced" toast copy (distinct from the plain on/off pair) confirms
+    // the `eventUuid`-gated toast branch fired.
+    expect(
+      await screen.findByText(
+        "Đã cập nhật đã trả — số dư còn nợ của đợt đã được đồng bộ tương ứng.",
+      ),
+    ).toBeInTheDocument();
+    // Before the M2.2 fix, `eventsKeys.balance` was never reached from a
+    // per-share flip (the doc's own comment literally asserted it never would)
+    // — the fix's whole point is that a second GET now fires.
+    await waitFor(() => expect(balanceRequests).toBeGreaterThanOrEqual(2));
+  });
+
+  it("ShareSettledToggle_LooseExpense_NoEventUuid_NeverRequestsEventBalance", async () => {
+    // Regression companion: a loose expense (`eventUuid` undefined/null, the
+    // default `makeExpense()` fixture) must not touch `eventsKeys.balance` at
+    // all — the plain settledToastOn copy stays, and the probe's balance query
+    // is never refetched by this mutation.
+    let balanceRequests = 0;
+    server.use(
+      http.put("*/api/v1/expenses/e-1/shares/:shareUuid/settled", () =>
+        ok({ message: "OK" }),
+      ),
+      http.get(`*/api/v1/events/${EVENT_UUID}/balance`, () => {
+        balanceRequests += 1;
+        return ok(emptyBalance());
+      }),
+    );
+    const user = userEvent.setup();
+    renderWithProviders(
+      <>
+        <SharesSection expense={makeExpense()} disabled={false} />
+        <BalanceProbe uuid={EVENT_UUID} />
+      </>,
+      { queryClient },
+    );
+
+    await waitFor(() => expect(balanceRequests).toBe(1));
+
+    await user.click(
+      screen.getByRole("switch", {
+        name: "Trạng thái đã trả phần gánh của An Nguyễn",
+      }),
+    );
+
+    expect(
+      await screen.findByText("Đã đánh dấu phần gánh là đã trả."),
+    ).toBeInTheDocument();
+    expect(balanceRequests).toBe(1);
   });
 });

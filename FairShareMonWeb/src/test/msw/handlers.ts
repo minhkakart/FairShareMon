@@ -496,6 +496,59 @@ function getMemberSettledSet(username: string, eventUuid: string): Set<string> {
   }
   return set;
 }
+
+// --- Direction-2 partial-credit store (event-expense-settlement-sync, M2) ---
+// username -> eventUuid -> memberUuid -> cumulative RAW credited amount (VND),
+// pre-cap. `computeBalance` caps this at the member's net owed amount when
+// deriving `clearedAmount`/`outstanding`/`settlementStatus` below — mirrors the
+// API's own storage-vs-derived split (D2): the store never floors/clamps, only
+// the read side does.
+const clearedCreditByUser = new Map<string, Map<string, Map<string, number>>>();
+
+function getClearedCreditMap(
+  username: string,
+  eventUuid: string,
+): Map<string, number> {
+  let byEvent = clearedCreditByUser.get(username);
+  if (!byEvent) {
+    byEvent = new Map();
+    clearedCreditByUser.set(username, byEvent);
+  }
+  let map = byEvent.get(eventUuid);
+  if (!map) {
+    map = new Map();
+    byEvent.set(eventUuid, map);
+  }
+  return map;
+}
+
+/**
+ * Shared credit/claw-back helper — the ONE code path both the whole-expense
+ * (`PUT /expenses/:uuid/settled`) and per-share (`PUT /expenses/:uuid/shares/
+ * :shareUuid/settled`) handlers call per share transition, mirroring the API's
+ * own single-shared-code-path architecture (Step M2.5 test list). A no-op when
+ * the expense is loose (no `eventUuid`) or the share isn't billable (the
+ * payer's own share, or a 0đ share) — matches the exact "billable" definition
+ * the whole-expense cascade and the Direction-1 eligibility derivation already
+ * use. Callers must only invoke this on an ACTUAL isSettled transition (call
+ * site checks `share.isSettled !== next` first) so a flip is credited/clawed
+ * back exactly once.
+ */
+function applyShareCredit(
+  username: string,
+  expense: ExpenseRecord,
+  share: ShareRecord,
+  next: boolean,
+) {
+  if (!expense.eventUuid) return;
+  const billable =
+    share.memberUuid !== expense.payerMemberUuid && share.amount > 0;
+  if (!billable) return;
+  const credits = getClearedCreditMap(username, expense.eventUuid);
+  const current = credits.get(share.memberUuid) ?? 0;
+  const delta = next ? share.amount : -share.amount;
+  credits.set(share.memberUuid, Math.max(0, current + delta));
+}
 function expenseTotal(e: ExpenseRecord): number {
   return e.shares.reduce((sum, s) => sum + s.amount, 0);
 }
@@ -682,6 +735,8 @@ function computeBalance(username: string, ev: EventRecord) {
 
   // Layer-B (§6) overlay: which members are marked settled on their net debt.
   const settledSet = getMemberSettledSet(username, ev.uuid);
+  // Direction-2 (§6/M2) overlay: raw credited amounts from expense/share settle.
+  const creditsMap = getClearedCreditMap(username, ev.uuid);
 
   const rows = [...seen]
     .map((uuid) => {
@@ -690,9 +745,27 @@ function computeBalance(username: string, ev: EventRecord) {
       const o = owed.get(uuid) ?? 0;
       const balance = a - o;
       const isSettled = settledSet.has(uuid);
-      // outstanding = -balance for an uncleared OWING member (balance < 0), else
-      // 0 (owed/zero members, or once marked settled) — backend OQ8a (net-driven).
-      const outstanding = balance < 0 && !isSettled ? -balance : 0;
+      const netOwed = balance < 0 ? -balance : 0;
+      // clearedAmount is capped at this member's net owed amount (D2 — the API's
+      // own storage-vs-derived split; the raw store can exceed it transiently,
+      // e.g. a net creditor's billable share still gets credited on settle).
+      const rawCredit = creditsMap.get(uuid) ?? 0;
+      const clearedAmount = Math.min(rawCredit, netOwed);
+      // outstanding = max(0, netOwed - clearedAmount) for an uncleared OWING
+      // member, else 0 once marked settled via the Layer-B net-clearance override
+      // (which always wins over a lagging clearedAmount) — backend OQ8a
+      // (net-driven), extended by Direction 2's partial-credit formula.
+      const outstanding = isSettled ? 0 : Math.max(0, netOwed - clearedAmount);
+      // Tri-state overlay status (Direction 2, M2.1): the Layer-B override or a
+      // fully-credited net debt both read as `Settled`; a partial credit reads
+      // `PartiallySettled`; anything else (incl. every balance >= 0 row, where
+      // the tri-state is inert — the UI never consults it there) is `Unsettled`.
+      const settlementStatus: "Unsettled" | "PartiallySettled" | "Settled" =
+        isSettled || (netOwed > 0 && clearedAmount >= netOwed)
+          ? "Settled"
+          : netOwed > 0 && clearedAmount > 0
+            ? "PartiallySettled"
+            : "Unsettled";
       const isEligibleForAutoCascade =
         balance < 0 ? true : balance > 0 ? !billableDebtors.has(uuid) : false;
       return {
@@ -707,6 +780,8 @@ function computeBalance(username: string, ev: EventRecord) {
         isSettled,
         settledAt: null as string | null,
         isEligibleForAutoCascade,
+        clearedAmount,
+        settlementStatus,
       };
     })
     .sort((x, y) => {
@@ -722,6 +797,9 @@ function computeBalance(username: string, ev: EventRecord) {
   const settledMemberCount = rows.filter(
     (r) => r.balance < 0 && r.isSettled,
   ).length;
+  const partiallySettledMemberCount = rows.filter(
+    (r) => r.settlementStatus === "PartiallySettled",
+  ).length;
 
   return {
     eventUuid: ev.uuid,
@@ -731,6 +809,7 @@ function computeBalance(username: string, ev: EventRecord) {
     totalOutstanding,
     owingMemberCount,
     settledMemberCount,
+    partiallySettledMemberCount,
   };
 }
 
@@ -1967,10 +2046,15 @@ export const handlers = [
     expense.settledAt = now;
     // OQ3a: the whole-expense toggle cascades to every BILLABLE share (not the
     // payer's own share and amount > 0 — payer/0đ shares are settled-by-definition
-    // and left untouched).
+    // and left untouched). event-expense-settlement-sync (M2): when the expense
+    // belongs to an event, each ACTUAL transition also credits/claws back that
+    // share's amount to the member's event-level `clearedAmount` overlay via the
+    // shared `applyShareCredit` helper — the same one the per-share handler below
+    // calls, mirroring the API's single-shared-code-path architecture.
     for (const s of expense.shares) {
       const billable = s.memberUuid !== expense.payerMemberUuid && s.amount > 0;
       if (billable) {
+        if (s.isSettled !== next) applyShareCredit(username, expense, s, next);
         s.isSettled = next;
         s.settledAt = now;
       }
@@ -1995,8 +2079,12 @@ export const handlers = [
       const share = expense.shares.find((s) => s.uuid === params.shareUuid);
       if (!share) return fail(7000, "Không tìm thấy phần gánh.", 404);
       const body = (await request.json()) as { isSettled?: boolean };
-      share.isSettled = Boolean(body.isSettled);
-      share.settledAt = share.isSettled ? new Date().toISOString() : null;
+      const next = Boolean(body.isSettled);
+      // event-expense-settlement-sync (M2): the same shared `applyShareCredit`
+      // helper the whole-expense handler above calls, for the single share.
+      if (share.isSettled !== next) applyShareCredit(username, expense, share, next);
+      share.isSettled = next;
+      share.settledAt = next ? new Date().toISOString() : null;
       return ok({ message: "Đã cập nhật trạng thái đã trả phần gánh." });
     },
   ),

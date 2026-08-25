@@ -165,6 +165,7 @@ export function SharesSection({ expense, disabled }: SharesSectionProps) {
                       <ShareSettledToggle
                         expenseUuid={expense.uuid}
                         share={share}
+                        eventUuid={expense.eventUuid}
                       />
                     ) : (
                       <span className={styles.muted}>

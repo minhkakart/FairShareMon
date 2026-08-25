@@ -49,6 +49,8 @@ function mkRow(over: Partial<MemberBalanceRow> & { memberUuid: string; memberNam
     isSettled: false,
     settledAt: null,
     isEligibleForAutoCascade: false,
+    clearedAmount: 0,
+    settlementStatus: "Unsettled",
     ...over,
   };
 }
