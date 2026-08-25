@@ -547,10 +547,12 @@ describe("MemberSettledToggle creditor-row affordance (event-expense-settlement-
       }),
     ).toBeInTheDocument();
     expect(within(status).queryByText("—")).not.toBeInTheDocument();
-    // Plus the eligibility HelpHint (accessible name == the locked hint copy).
+    // Plus the eligibility HelpHint (short accessible name, distinct from the
+    // longer bubble body — the two are no longer identical, see HelpHint's
+    // own doc comment on `label` vs `children`).
     expect(
       within(status).getByRole("button", {
-        name: "Đánh dấu đã trả sẽ tự động đánh dấu tất cả phần gánh liên quan của thành viên này là đã trả.",
+        name: "Đánh dấu đã trả sẽ làm gì?",
       }),
     ).toBeInTheDocument();
   });
@@ -564,10 +566,11 @@ describe("MemberSettledToggle creditor-row affordance (event-expense-settlement-
     expect(within(status).queryByRole("switch")).not.toBeInTheDocument();
     // The muted "—" is still shown…
     expect(within(status).getByText("—")).toBeInTheDocument();
-    // …replaced-in-spirit by a HelpHint explaining why (not folded silently).
+    // …replaced-in-spirit by a HelpHint explaining why (not folded silently),
+    // its short accessible name distinct from the longer bubble body.
     expect(
       within(status).getByRole("button", {
-        name: "Thành viên này vừa có khoản được nhận vừa có khoản phải trả trong đợt, nên không thể tự động đồng bộ — hãy đánh dấu từng phiếu/phần gánh riêng.",
+        name: "Vì sao không có nút đánh dấu đã trả?",
       }),
     ).toBeInTheDocument();
   });

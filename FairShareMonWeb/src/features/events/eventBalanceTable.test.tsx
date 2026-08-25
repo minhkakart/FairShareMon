@@ -297,10 +297,11 @@ describe("EventBalanceTable", () => {
         name: "Trạng thái đã trả của An Nguyễn",
       }),
     ).toBeInTheDocument();
-    // Plus the M1-R2 eligibility HelpHint distinguishing it from a debtor row.
+    // Plus the M1-R2 eligibility HelpHint distinguishing it from a debtor row
+    // (short accessible name, distinct from the longer bubble body).
     expect(
       within(creditorRow).getByRole("button", {
-        name: "Đánh dấu đã trả sẽ tự động đánh dấu tất cả phần gánh liên quan của thành viên này là đã trả.",
+        name: "Đánh dấu đã trả sẽ làm gì?",
       }),
     ).toBeInTheDocument();
 
@@ -369,10 +370,11 @@ describe("EventBalanceTable", () => {
     expect(cuCell.textContent).toBe("—");
 
     // The column-header HelpHint is present exactly once, not per-row (four
-    // rows rendered above, one hint expected).
+    // rows rendered above, one hint expected). Short accessible name, distinct
+    // from the longer bubble body.
     expect(
       screen.getAllByRole("button", {
-        name: "Số tiền đã tất toán tính theo số dư ròng của đợt, có thể khác tổng các phần gánh đã đánh dấu đã trả nếu thành viên vừa là người trả vừa là người nợ trong đợt.",
+        name: "Vì sao số tiền này có thể khác tổng các phần gánh?",
       }),
     ).toHaveLength(1);
 

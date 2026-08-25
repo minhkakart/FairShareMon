@@ -150,7 +150,7 @@ function BalanceHeadRow() {
         <span className={styles.headerHint}>
           {t("events:balance.outstanding")}
           <HelpHint
-            label={t("events:balance.clearedModelHint")}
+            label={t("events:balance.clearedModelHintLabel")}
             placement="bottom"
           >
             {t("events:balance.clearedModelHint")}
@@ -238,7 +238,7 @@ function StatusCell({
           isSettled={row.isSettled}
           isEligibleForAutoCascade={row.isEligibleForAutoCascade}
         />
-        <HelpHint label={t("events:balance.creditorEligibleHint")}>
+        <HelpHint label={t("events:balance.creditorEligibleHintLabel")}>
           {t("events:balance.creditorEligibleHint")}
         </HelpHint>
       </div>
@@ -249,7 +249,7 @@ function StatusCell({
     return (
       <div className={styles.statusCell}>
         <span className={styles.muted}>—</span>
-        <HelpHint label={t("events:balance.creditorIneligibleHint")}>
+        <HelpHint label={t("events:balance.creditorIneligibleHintLabel")}>
           {t("events:balance.creditorIneligibleHint")}
         </HelpHint>
       </div>

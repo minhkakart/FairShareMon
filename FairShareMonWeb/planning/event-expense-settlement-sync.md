@@ -1144,6 +1144,20 @@ Extend existing files (per the task brief's named starting set):
   low-cost follow-up, not required by the doc's own checklist. `share:public.statusOwing` terminology parity
   and the other Future Improvements items remain untouched, as before.
 
+### 2026-08-25 (orchestrator — HelpHint label/body duplication fix)
+
+- **Fixed**, at the user's explicit request, the `web-code-reviewer` M1 nit that all three `HelpHint`
+  call sites (the two creditor-row hints and the column-header hint) passed the identical long sentence
+  as both `label` (the trigger's `aria-label`) and `children` (the bubble body reached via
+  `aria-describedby`) — meaning a screen-reader user heard the full sentence twice. Added four short,
+  distinct trigger labels (`creditorEligibleHintLabel`, `creditorIneligibleHintLabel`,
+  `clearedModelHintLabel` under `events:balance`, both locales) matching `HelpHint`'s own doc-comment
+  example of a short trigger name separate from a longer body; the existing long-copy keys are now used
+  only for `children`. Updated the three affected `getByRole("button", { name: ... })` assertions in
+  `memberSettled.test.tsx`/`eventBalanceTable.test.tsx` to match the new short accessible names (they
+  previously asserted the long sentence, which was the exact duplication being fixed). Verified:
+  `pnpm lint`/`tsc -b`/`pnpm build` clean, full suite **964/964 passing**, no regressions.
+
 ## Final Outcome
 
 **Both milestones (Steps M1.1-M1.6 and M2.1-M2.5) implemented and tested 2026-08-25.** Milestone 1: types,
