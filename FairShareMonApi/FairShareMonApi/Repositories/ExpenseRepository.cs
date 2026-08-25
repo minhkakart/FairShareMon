@@ -330,7 +330,7 @@ public sealed class ExpenseRepository(AppDbContext dbContext, IAuditLogFactory a
         }, cancellationToken);
 
     public Task<ExpenseWriteStatus> SetSettledAsync(string userUuid, string expenseUuid, bool isSettled, CancellationToken cancellationToken = default) =>
-        ExecuteTransactionAsync(async (_, transaction) =>
+        ExecuteTransactionAsync(async (db, transaction) =>
         {
             var expense = await Query(tracking: true)
                 .Include(entity => entity.Shares)
@@ -341,6 +341,13 @@ public sealed class ExpenseRepository(AppDbContext dbContext, IAuditLogFactory a
                 return ExpenseWriteStatus.ExpenseNotFound;
             }
 
+            // event-expense-settlement-sync Direction 2: snapshot each billable share's PRIOR flag before
+            // the cascade so the credit step only fires for shares that actually flip (structural idempotency).
+            var billableSharesBefore = expense.Shares
+                .Where(share => SettlementReconciler.IsBillable(share, expense))
+                .Select(share => (share.Id, share.MemberId, share.Amount, WasSettled: share.IsSettled))
+                .ToList();
+
             var now = AppDateTime.Now;
             expense.IsSettled = isSettled;
             expense.SettledAt = isSettled ? now : null;
@@ -348,6 +355,20 @@ public sealed class ExpenseRepository(AppDbContext dbContext, IAuditLogFactory a
             // (settled-per-member OQ3a); payer-own + 0đ shares are left untouched (OQ6a).
             SettlementReconciler.CascadeToShares(expense, isSettled, now);
             // No audit for a settled toggle (OQ11). No closed-event guard - the sole §4.4 exception (OQ13).
+
+            // Direction 2 (Step M2.3): the one shared code path both this whole-expense toggle and the
+            // per-share toggle (ShareRepository.SetSettledAsync) call - build deltas only from shares whose
+            // flag actually flipped.
+            if (expense.EventId is { } eventId)
+            {
+                var deltas = billableSharesBefore
+                    .Where(before => before.WasSettled != isSettled)
+                    .Select(before => (before.MemberId, Delta: isSettled ? before.Amount : -before.Amount))
+                    .ToList();
+                if (deltas.Count > 0)
+                    await EventSettlementCreditApplier.ApplyAsync(db, eventId, deltas, now, cancellationToken);
+            }
+
             return ExpenseWriteStatus.Success;
         }, cancellationToken);
 

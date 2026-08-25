@@ -25,6 +25,12 @@ namespace FairShareMonApi.Repositories.Stats;
 /// member (a net debtor, or a gross-pure net creditor), derived from the same canonical
 /// <c>EventSettlementClassifier</c> helper Direction 1 itself gates on.
 /// </param>
+/// <param name="ClearedAmount">
+/// Event-expense-settlement-sync Step M2.5: cumulative amount credited toward this member's net owed debt
+/// (Direction 1's manual snapshot and/or Direction 2's per-share/whole-expense credits) - the sole source
+/// of truth <c>Outstanding</c>/<c>SettlementStatus</c> derive from in <c>StatsService</c> (OQ2). Default
+/// <c>0</c> for a participant with no settlement row.
+/// </param>
 public sealed record MemberBalanceAggregate(
     string MemberUuid,
     string MemberName,
@@ -34,7 +40,8 @@ public sealed record MemberBalanceAggregate(
     decimal Owed,
     bool IsSettled,
     DateTime? SettledAt,
-    bool IsEligibleForAutoCascade);
+    bool IsEligibleForAutoCascade,
+    decimal ClearedAmount);
 
 /// <summary>Overview totals over the owner's whole ledger in a time range (OQ6): total spending (= sum of shares) and the distinct expense count.</summary>
 public sealed record OverviewAggregate(

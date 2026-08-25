@@ -45,4 +45,21 @@ public class MemberBalanceRow
     /// nợ nào khác trong đợt).
     /// </summary>
     public bool IsEligibleForAutoCascade { get; set; }
+
+    /// <summary>
+    /// Số tiền đã tất toán lũy kế cho khoản nợ ròng của thành viên này (event-expense-settlement-sync M2):
+    /// được ghi nhận khi đánh dấu đã trả thủ công ở cấp đợt (= toàn bộ số nợ ròng) và/hoặc khi đánh dấu đã
+    /// trả từng phần gánh/phiếu chi tiêu riêng lẻ (mỗi lần cộng thêm đúng số tiền phần gánh đó, giới hạn
+    /// không vượt quá số nợ ròng hiện tại và không âm). Là nguồn dữ liệu duy nhất mà <see cref="Outstanding"/>
+    /// và <see cref="SettlementStatus"/> được suy ra từ đó.
+    /// </summary>
+    public decimal ClearedAmount { get; set; }
+
+    /// <summary>
+    /// Trạng thái tất toán khoản nợ ròng của thành viên (suy ra, không lưu trữ):
+    /// <c>"Unsettled"</c> (chưa trả - không nợ ròng, hoặc nợ ròng nhưng chưa tất toán gì),
+    /// <c>"PartiallySettled"</c> (đã trả một phần), <c>"Settled"</c> (đã trả hết). Kiểu chuỗi trên API
+    /// (không phải enum thô - xem Decision Log entry 6 của tài liệu kế hoạch).
+    /// </summary>
+    public string SettlementStatus { get; set; } = string.Empty;
 }

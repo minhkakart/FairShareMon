@@ -24,6 +24,16 @@ public partial class EventMemberSettlement
     /// <summary>When last toggled settled (set on true, cleared on false). Null when not settled.</summary>
     public DateTime? SettledAt { get; set; }
 
+    /// <summary>
+    /// Cumulative amount credited toward this member's net owed debt via Direction 2 (event-expense-
+    /// settlement-sync Milestone 2: a whole-expense or per-share settle toggle), clamped to
+    /// <c>[0, NetOwed]</c> at every write. Also snapshotted by the manual Layer B toggle itself
+    /// (<c>= NetOwed</c> on <c>true</c> / <c>0</c> on <c>false</c>) - the SOLE source of truth
+    /// <see cref="IsSettled"/> is kept consistent with (<c>IsSettled == ClearedAmount &gt;= NetOwed</c>),
+    /// per Decision Log entry 2 (OQ2, option (a)). DB CHECK enforces non-negative.
+    /// </summary>
+    public decimal ClearedAmount { get; set; }
+
     public DateTime CreatedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }

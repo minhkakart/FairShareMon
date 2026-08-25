@@ -41,11 +41,19 @@ public sealed class StatsService(
 
         var rows = mapper.Map<List<MemberBalanceRow>>(aggregates);
 
-        // Derived "outstanding" overlay (settled-per-member OQ8a), computed here in one place. Layer B net:
-        // a member still owes their net |balance| unless they've been marked settled; a non-negative
-        // balance (they are owed) owes nothing. This never perturbs advanced/owed/balance (D2).
+        // Derived "outstanding"/"settlementStatus" overlay (event-expense-settlement-sync Step M2.5),
+        // computed here in one place from ClearedAmount - the sole source of truth (OQ2). This never
+        // perturbs advanced/owed/balance (D2 / M7 OQ2).
         foreach (var row in rows)
-            row.Outstanding = row.Balance < 0m && !row.IsSettled ? -row.Balance : 0m;
+        {
+            var netOwed = row.Balance < 0m ? -row.Balance : 0m;
+            row.Outstanding = Math.Max(0m, netOwed - row.ClearedAmount);
+            var status = netOwed <= 0m ? EventSettlementStatus.Unsettled
+                : row.Outstanding <= 0m ? EventSettlementStatus.Settled
+                : row.ClearedAmount > 0m ? EventSettlementStatus.PartiallySettled
+                : EventSettlementStatus.Unsettled;
+            row.SettlementStatus = status.ToString();
+        }
 
         return new EventBalanceResponse
         {
@@ -55,7 +63,8 @@ public sealed class StatsService(
             Rows = rows,
             TotalOutstanding = rows.Sum(row => row.Outstanding),
             OwingMemberCount = rows.Count(row => row.Outstanding > 0m),
-            SettledMemberCount = rows.Count(row => row.Balance < 0m && row.IsSettled)
+            SettledMemberCount = rows.Count(row => row.Balance < 0m && row.IsSettled),
+            PartiallySettledMemberCount = rows.Count(row => row.SettlementStatus == EventSettlementStatus.PartiallySettled.ToString())
         };
     }
 

@@ -79,7 +79,7 @@ public class ExpensesController(IExpensesService expensesService, ISharesService
     [HttpPut("{uuid}/settled")]
     [SwaggerOperation(
         Summary = "Cập nhật trạng thái đã trả",
-        Description = "Đánh dấu hoặc bỏ đánh dấu phiếu chi tiêu là đã trả. Đây là metadata thanh toán, không thay đổi số tiền và không ghi vào nhật ký thay đổi.")]
+        Description = "Đánh dấu hoặc bỏ đánh dấu phiếu chi tiêu là đã trả. Đây là metadata thanh toán, không thay đổi số tiền và không ghi vào nhật ký thay đổi. Nếu phiếu thuộc một đợt chi tiêu, mỗi phần gánh đổi trạng thái sẽ tự động cấn trừ (hoặc hoàn lại khi bỏ đánh dấu) đúng số tiền đó vào số dư nợ ròng của thành viên gánh phần đó trong đợt, giới hạn không vượt quá số nợ ròng hiện tại.")]
     [SwaggerResponse(StatusCodes.Status200OK, "Đã cập nhật trạng thái đã trả.", typeof(ApiResult))]
     [SwaggerResponse(StatusCodes.Status404NotFound, "Không tìm thấy phiếu chi tiêu.", typeof(ApiResult))]
     public async Task<IActionResult> SetSettledAsync([FromRoute] string uuid, [FromBody] SetSettledRequest request, CancellationToken cancellationToken)
@@ -150,7 +150,7 @@ public class ExpensesController(IExpensesService expensesService, ISharesService
     [HttpPut("{uuid}/shares/{shareUuid}/settled")]
     [SwaggerOperation(
         Summary = "Cập nhật trạng thái đã trả của phần gánh",
-        Description = "Đánh dấu hoặc bỏ đánh dấu một phần gánh là đã trả (đã trả theo từng thành viên - §6). Đây là metadata thanh toán, không thay đổi số tiền và không ghi vào nhật ký thay đổi. Cho phép cả khi đợt đã chốt (ngoại lệ §4.4). Trạng thái đã trả của cả phiếu được đồng bộ lại theo các phần gánh.")]
+        Description = "Đánh dấu hoặc bỏ đánh dấu một phần gánh là đã trả (đã trả theo từng thành viên - §6). Đây là metadata thanh toán, không thay đổi số tiền và không ghi vào nhật ký thay đổi. Cho phép cả khi đợt đã chốt (ngoại lệ §4.4). Trạng thái đã trả của cả phiếu được đồng bộ lại theo các phần gánh. Nếu phần gánh này thuộc phiếu trong một đợt chi tiêu (và không phải phần gánh của người trả), việc đổi trạng thái sẽ tự động cấn trừ (hoặc hoàn lại khi bỏ đánh dấu) đúng số tiền phần gánh vào số dư nợ ròng của thành viên trong đợt, giới hạn không vượt quá số nợ ròng hiện tại.")]
     [SwaggerResponse(StatusCodes.Status200OK, "Đã cập nhật trạng thái đã trả của phần gánh.", typeof(ApiResult))]
     [SwaggerResponse(StatusCodes.Status401Unauthorized, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", typeof(ApiResult))]
     [SwaggerResponse(StatusCodes.Status404NotFound, "Không tìm thấy phần gánh hoặc phiếu chi tiêu.", typeof(ApiResult))]

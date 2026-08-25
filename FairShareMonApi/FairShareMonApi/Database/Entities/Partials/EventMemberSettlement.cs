@@ -13,7 +13,8 @@ public partial class EventMemberSettlement
     public static void ConfigureModel(ModelBuilder modelBuilder) =>
         modelBuilder.Entity<EventMemberSettlement>(entity =>
         {
-            entity.ToTable("event_member_settlements");
+            entity.ToTable("event_member_settlements", table => table.HasCheckConstraint(
+                "ck_event_member_settlements_cleared_amount_non_negative", "cleared_amount >= 0"));
 
             // Composite PK - a per-(event, member) state row needs no surrogate key/uuid (settled-per-member OQ1a).
             entity.HasKey(settlement => new { settlement.EventId, settlement.MemberId });
@@ -26,6 +27,11 @@ public partial class EventMemberSettlement
                 .HasDefaultValue(false);
 
             entity.Property(settlement => settlement.SettledAt).HasColumnName("settled_at");
+
+            entity.Property(settlement => settlement.ClearedAmount)
+                .HasColumnName("cleared_amount")
+                .HasColumnType("decimal(18,2)")
+                .HasDefaultValue(0m);
 
             entity.Property(settlement => settlement.CreatedAt).HasColumnName("created_at");
             entity.Property(settlement => settlement.UpdatedAt)

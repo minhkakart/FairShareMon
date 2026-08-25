@@ -59,8 +59,8 @@ public class StatsServiceTests
         _stats.OwnedEvent = evt;
         _stats.BalanceAggregates =
         [
-            new MemberBalanceAggregate("m-binh", "Bình", false, false, 800_000m, 500_000m, false, null, false),
-            new MemberBalanceAggregate("m-cuong", "Cường", false, true, 0m, 500_000m, false, null, true)
+            new MemberBalanceAggregate("m-binh", "Bình", false, false, 800_000m, 500_000m, false, null, false, 0m),
+            new MemberBalanceAggregate("m-cuong", "Cường", false, true, 0m, 500_000m, false, null, true, 0m)
         ];
 
         var response = await CreateService().GetEventBalanceAsync(UserUuid, "e-1");
@@ -100,8 +100,8 @@ public class StatsServiceTests
         // Bình +300k (owed to), Cường −500k (owing, not settled).
         _stats.BalanceAggregates =
         [
-            new MemberBalanceAggregate("m-binh", "Bình", false, false, 800_000m, 500_000m, false, null, false),
-            new MemberBalanceAggregate("m-cuong", "Cường", false, false, 0m, 500_000m, false, null, true)
+            new MemberBalanceAggregate("m-binh", "Bình", false, false, 800_000m, 500_000m, false, null, false, 0m),
+            new MemberBalanceAggregate("m-cuong", "Cường", false, false, 0m, 500_000m, false, null, true, 0m)
         ];
 
         var response = await CreateService().GetEventBalanceAsync(UserUuid, "e-1");
@@ -123,8 +123,8 @@ public class StatsServiceTests
         // Cường still has balance −500k but has been marked settled (Layer B) → cleared.
         _stats.BalanceAggregates =
         [
-            new MemberBalanceAggregate("m-binh", "Bình", false, false, 800_000m, 500_000m, false, null, false),
-            new MemberBalanceAggregate("m-cuong", "Cường", false, false, 0m, 500_000m, true, new DateTime(2026, 7, 20, 0, 0, 0, DateTimeKind.Utc), true)
+            new MemberBalanceAggregate("m-binh", "Bình", false, false, 800_000m, 500_000m, false, null, false, 0m),
+            new MemberBalanceAggregate("m-cuong", "Cường", false, false, 0m, 500_000m, true, new DateTime(2026, 7, 20, 0, 0, 0, DateTimeKind.Utc), true, 500_000m)
         ];
 
         var response = await CreateService().GetEventBalanceAsync(UserUuid, "e-1");
@@ -146,8 +146,8 @@ public class StatsServiceTests
         // A valid sum-to-zero set: Bình +300k, Cường −300k (Cường marked settled).
         var aggregates = new[]
         {
-            new MemberBalanceAggregate("m-binh", "Bình", false, false, 800_000m, 500_000m, false, null, false),
-            new MemberBalanceAggregate("m-cuong", "Cường", false, false, 200_000m, 500_000m, true, DateTime.UtcNow, true)
+            new MemberBalanceAggregate("m-binh", "Bình", false, false, 800_000m, 500_000m, false, null, false, 0m),
+            new MemberBalanceAggregate("m-cuong", "Cường", false, false, 200_000m, 500_000m, true, DateTime.UtcNow, true, 300_000m)
         };
         _stats.BalanceAggregates = aggregates;
 
@@ -172,14 +172,122 @@ public class StatsServiceTests
         _stats.OwnedEvent = OwnedEvent();
         _stats.BalanceAggregates =
         [
-            new MemberBalanceAggregate("m-binh", "Bình", false, false, 200_000m, 500_000m, false, null, true),   // net debtor -> eligible
-            new MemberBalanceAggregate("m-cuong", "Cường", false, false, 800_000m, 300_000m, false, null, false) // gross-mixed creditor -> ineligible
+            new MemberBalanceAggregate("m-binh", "Bình", false, false, 200_000m, 500_000m, false, null, true, 0m),   // net debtor -> eligible
+            new MemberBalanceAggregate("m-cuong", "Cường", false, false, 800_000m, 300_000m, false, null, false, 0m) // gross-mixed creditor -> ineligible
         ];
 
         var response = await CreateService().GetEventBalanceAsync(UserUuid, "e-1");
 
         Assert.True(Assert.Single(response.Rows, row => row.MemberUuid == "m-binh").IsEligibleForAutoCascade);
         Assert.False(Assert.Single(response.Rows, row => row.MemberUuid == "m-cuong").IsEligibleForAutoCascade);
+    }
+
+    // ---- M2.5 overlay: Outstanding/SettlementStatus derived from ClearedAmount (event-expense-settlement-sync) ----
+
+    [Theory]
+    [InlineData(0, "Unsettled")]          // NetOwed 500k, ClearedAmount 0 -> nothing cleared yet
+    [InlineData(200_000, "PartiallySettled")] // 0 < ClearedAmount < NetOwed
+    [InlineData(500_000, "Settled")]      // ClearedAmount == NetOwed -> fully cleared
+    public async Task GetEventBalanceAsync_SettlementStatus_TransitionsAsClearedAmountRisesToNetOwed(decimal clearedAmount, string expectedStatus)
+    {
+        _stats.OwnedEvent = OwnedEvent();
+        // Cường: advanced 0, owed 500k -> NetOwed 500k. IsSettled only true once ClearedAmount == NetOwed
+        // (mirrors what EventSettlementCreditApplier would have stored).
+        _stats.BalanceAggregates =
+        [
+            new MemberBalanceAggregate("m-cuong", "Cường", false, false, 0m, 500_000m, clearedAmount >= 500_000m, null, true, clearedAmount)
+        ];
+
+        var response = await CreateService().GetEventBalanceAsync(UserUuid, "e-1");
+
+        var cuong = Assert.Single(response.Rows);
+        Assert.Equal(expectedStatus, cuong.SettlementStatus);
+        Assert.Equal(Math.Max(0m, 500_000m - clearedAmount), cuong.Outstanding);
+    }
+
+    [Fact]
+    public async Task GetEventBalanceAsync_SettlementStatus_NotOwingMember_IsUnsettledRegardlessOfClearedAmount()
+    {
+        _stats.OwnedEvent = OwnedEvent();
+        // A member who is owed (Balance >= 0) has NetOwed == 0 - "Unsettled" is the n/a bucket, not an error.
+        _stats.BalanceAggregates =
+        [
+            new MemberBalanceAggregate("m-binh", "Bình", false, false, 800_000m, 500_000m, false, null, false, 0m)
+        ];
+
+        var response = await CreateService().GetEventBalanceAsync(UserUuid, "e-1");
+
+        Assert.Equal("Unsettled", Assert.Single(response.Rows).SettlementStatus);
+    }
+
+    [Fact]
+    public async Task GetEventBalanceAsync_SettlementStatus_ReversalDropsFromSettledBackToPartiallySettled()
+    {
+        _stats.OwnedEvent = OwnedEvent();
+        // Simulates a Direction-2 claw-back: ClearedAmount was 500k (Settled), a reversal drops it to 200k.
+        _stats.BalanceAggregates =
+        [
+            new MemberBalanceAggregate("m-cuong", "Cường", false, false, 0m, 500_000m, false, null, true, 200_000m)
+        ];
+
+        var response = await CreateService().GetEventBalanceAsync(UserUuid, "e-1");
+
+        var cuong = Assert.Single(response.Rows);
+        Assert.Equal("PartiallySettled", cuong.SettlementStatus);
+        Assert.Equal(300_000m, cuong.Outstanding);
+    }
+
+    [Fact]
+    public async Task GetEventBalanceAsync_Outstanding_NeverNegative_EvenIfClearedAmountExceedsNetOwed()
+    {
+        // Defensive: EventSettlementCreditApplier clamps ClearedAmount to [0, NetOwed] at every write, so
+        // this should never occur in practice - but the service's own max(0, ...) formula must not produce
+        // a negative Outstanding if it ever did (e.g. a NetOwed recomputation edge case).
+        _stats.OwnedEvent = OwnedEvent();
+        _stats.BalanceAggregates =
+        [
+            new MemberBalanceAggregate("m-cuong", "Cường", false, false, 0m, 500_000m, true, DateTime.UtcNow, true, 999_999m)
+        ];
+
+        var response = await CreateService().GetEventBalanceAsync(UserUuid, "e-1");
+
+        Assert.Equal(0m, Assert.Single(response.Rows).Outstanding);
+    }
+
+    [Fact]
+    public async Task GetEventBalanceAsync_ClearedAmount_MapsThroughFromAggregate_AndDoesNotPerturbBalance()
+    {
+        _stats.OwnedEvent = OwnedEvent();
+        var aggregates = new[]
+        {
+            new MemberBalanceAggregate("m-binh", "Bình", false, false, 800_000m, 500_000m, false, null, false, 0m),
+            new MemberBalanceAggregate("m-cuong", "Cường", false, false, 0m, 500_000m, false, null, true, 250_000m)
+        };
+        _stats.BalanceAggregates = aggregates;
+
+        var response = await CreateService().GetEventBalanceAsync(UserUuid, "e-1");
+
+        var cuong = Assert.Single(response.Rows, row => row.MemberUuid == "m-cuong");
+        Assert.Equal(250_000m, cuong.ClearedAmount);
+        Assert.Equal(-500_000m, cuong.Balance); // D2/M7 OQ2: balance itself untouched by ClearedAmount
+        Assert.Equal(250_000m, cuong.Outstanding);
+        Assert.Equal("PartiallySettled", cuong.SettlementStatus);
+    }
+
+    [Fact]
+    public async Task GetEventBalanceAsync_PartiallySettledMemberCount_CountsOnlyPartiallySettledRows()
+    {
+        _stats.OwnedEvent = OwnedEvent();
+        _stats.BalanceAggregates =
+        [
+            new MemberBalanceAggregate("m-binh", "Bình", false, false, 0m, 500_000m, false, null, true, 0m),       // Unsettled
+            new MemberBalanceAggregate("m-cuong", "Cường", false, false, 0m, 500_000m, false, null, true, 200_000m), // PartiallySettled
+            new MemberBalanceAggregate("m-dung", "Dũng", false, false, 0m, 500_000m, true, DateTime.UtcNow, true, 500_000m) // Settled
+        ];
+
+        var response = await CreateService().GetEventBalanceAsync(UserUuid, "e-1");
+
+        Assert.Equal(1, response.PartiallySettledMemberCount);
     }
 
     // ---- Overview ----------------------------------------------------------------------------------

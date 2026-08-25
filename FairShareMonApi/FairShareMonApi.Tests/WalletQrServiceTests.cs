@@ -281,6 +281,54 @@ public class WalletQrServiceTests
     }
 
     [Fact]
+    public async Task GenerateEventQr_PartiallyClearedMember_BillsExactlyOutstandingNotFullBalance()
+    {
+        // event-expense-settlement-sync M2.5/Story C: WalletQrService needs zero code changes - it already
+        // bills on row.Outstanding, which now derives from ClearedAmount. A member owing 500k who has
+        // partially cleared 200k via Direction 2 must be billed exactly the 300k remainder, not the 500k
+        // raw balance.
+        AddDefaultAccount();
+        _stats.Balance = new EventBalanceResponse
+        {
+            EventUuid = EventUuid, EventName = "Đà Lạt", IsClosed = true,
+            Rows = [PartiallyClearedRow("Cường", balance: -500_000m, clearedAmount: 200_000m)]
+        };
+
+        var result = await CreateService().GenerateEventQrAsync(UserUuid, EventUuid, null);
+
+        Assert.Equal("image/png", result.ContentType);
+        var items = Assert.Single(_images.CompositeBatches);
+        var only = Assert.Single(items);
+        Assert.Contains("Cường", only.Label);
+        Assert.Equal("300000", ParseTlv(only.Payload)["54"]); // 500k - 200k cleared = 300k remainder, not 500k
+    }
+
+    [Fact]
+    public async Task GenerateEventQr_ClearedAmountReachesNetOwed_DropsMemberFromComposite()
+    {
+        // Reaching full clearance (ClearedAmount == NetOwed, Outstanding == 0) excludes the member from the
+        // composite exactly as a plain Layer-B settle already did before Milestone 2.
+        AddDefaultAccount();
+        _stats.Balance = new EventBalanceResponse
+        {
+            EventUuid = EventUuid, EventName = "Đà Lạt", IsClosed = true,
+            Rows =
+            [
+                PartiallyClearedRow("Cường", balance: -500_000m, clearedAmount: 500_000m), // fully cleared -> excluded
+                PartiallyClearedRow("Dũng", balance: -125_000m, clearedAmount: 0m)          // uncleared -> included
+            ]
+        };
+
+        var result = await CreateService().GenerateEventQrAsync(UserUuid, EventUuid, null);
+
+        Assert.Equal("image/png", result.ContentType);
+        var items = Assert.Single(_images.CompositeBatches);
+        var only = Assert.Single(items);
+        Assert.Contains("Dũng", only.Label);
+        Assert.Equal("125000", ParseTlv(only.Payload)["54"]);
+    }
+
+    [Fact]
     public async Task GenerateEventQr_AllOwingMembersSettled_Throws12003()
     {
         AddDefaultAccount();
@@ -919,6 +967,20 @@ public class WalletQrServiceTests
     // derived Outstanding is 0, so the QR must skip them (settled-per-member OQ13a).
     private static MemberBalanceRow SettledRow(string name, decimal balance) =>
         new() { MemberUuid = Guid.NewGuid().ToString(), MemberName = name, Balance = balance, IsSettled = true, SettledAt = DateTime.UtcNow, Outstanding = 0m };
+
+    // Mirrors StatsService's M2.5 overlay formula exactly: Outstanding = max(0, netOwed - clearedAmount).
+    // Used to prove WalletQrService needs zero code changes for Direction 2's partial-clearance math -
+    // it only ever reads row.Outstanding, whatever produced it.
+    private static MemberBalanceRow PartiallyClearedRow(string name, decimal balance, decimal clearedAmount)
+    {
+        var netOwed = balance < 0m ? -balance : 0m;
+        var outstanding = Math.Max(0m, netOwed - clearedAmount);
+        return new MemberBalanceRow
+        {
+            MemberUuid = Guid.NewGuid().ToString(), MemberName = name, Balance = balance,
+            ClearedAmount = clearedAmount, IsSettled = outstanding <= 0m && netOwed > 0m, Outstanding = outstanding
+        };
+    }
 
     private static Dictionary<string, string> ParseTlv(string data)
     {

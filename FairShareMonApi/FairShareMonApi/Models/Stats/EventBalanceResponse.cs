@@ -25,4 +25,11 @@ public class EventBalanceResponse
 
     /// <summary>Số thành viên đang nợ (balance &lt; 0) nhưng đã được đánh dấu đã trả khoản nợ ròng.</summary>
     public int SettledMemberCount { get; set; }
+
+    /// <summary>
+    /// Số thành viên đã tất toán một phần khoản nợ ròng (event-expense-settlement-sync M2):
+    /// <c>settlementStatus == "PartiallySettled"</c> - đã cấn trừ một phần qua việc đánh dấu đã trả từng
+    /// phần gánh/phiếu chi tiêu riêng lẻ, nhưng chưa đủ để tất toán hết.
+    /// </summary>
+    public int PartiallySettledMemberCount { get; set; }
 }

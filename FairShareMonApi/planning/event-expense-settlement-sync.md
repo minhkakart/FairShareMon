@@ -914,13 +914,202 @@ Endpoint (`WebApplicationFactory`, `[SkippableFact]`):
     `AdminEndpointTests`), not MariaDB-related.
 - **Milestone 1's DB-backed behavior is now fully verified**, superseding the coverage-gap note above.
 
+### 2026-08-25 (Milestone 2 implementation)
+
+- Implemented Milestone 2 (Direction 2: expense/share settle -> partial credit to event balance + Story C
+  QR), per the finalized Implementation Plan (Steps M2.1-M2.6's production-code steps M2.1-M2.5; M2.6 test
+  authorship remains test-engineer's job next). Read Milestone 1's shipped code
+  (`EventSettlementClassifier`, `EventMemberSettlementRepository.SetMemberSettledAsync`,
+  `SettlementReconciler`, `StatsRepository`/`StatsService`/`StatsAggregates`/`MemberBalanceRow`/
+  `StatsProfile`, `WalletQrService`) before starting, plus this doc's Decision Log (all 6 entries) for
+  binding rationale.
+- **Step M2.1** - added `EventMemberSettlement.ClearedAmount` (`decimal`) to
+  `Database/Entities/EventMemberSettlement.cs` with an XML doc explaining it is the cumulative Direction-2
+  credit, clamped to `[0, NetOwed]`, and the sole source of truth `IsSettled` derives from. Mapped
+  `cleared_amount` as `decimal(18,2)` with `HasDefaultValue(0m)` and the
+  `ck_event_member_settlements_cleared_amount_non_negative` CHECK constraint (mirroring `Share`'s
+  `ck_shares_amount_non_negative` pattern) in `Database/Entities/Partials/EventMemberSettlement.cs`.
+  Generated migration `AddEventMemberSettlementClearedAmount`
+  (`FairShareMonApi/Migrations/20260825095114_AddEventMemberSettlementClearedAmount.cs`) via
+  `dotnet ef migrations add AddEventMemberSettlementClearedAmount --project ./FairShareMonApi/FairShareMonApi.csproj`
+  - reviewed: exactly one `AddColumn<decimal>` (`decimal(18,2)`, `NOT NULL DEFAULT 0`) + one
+  `AddCheckConstraint`, no data backfill, model snapshot updated. Matches the plan byte-for-byte.
+- **Step M2.2** - added `Repositories/EventSettlementCreditApplier.cs`: the ONE shared static
+  `ApplyAsync(db, eventId, deltas, now, cancellationToken)` helper both write paths call. Batches
+  `EventSettlementClassifier.ClassifyAsync` once per affected member set, loads/creates their
+  `EventMemberSettlement` rows in one query, and per member computes
+  `newCleared = Math.Clamp(existing.ClearedAmount + delta, 0m, facts.NetOwed)` (self-protecting for a
+  creditor/`NetZero` member since their `NetOwed == 0`, no separate eligibility branch, per Decision Log
+  entry 5's own finding) and flips `IsSettled`/`SettledAt` only when crossing the full/partial boundary. No
+  audit.
+- **Step M2.3** - wired the shared helper into both trigger points: `ShareRepository.SetSettledAsync`
+  captures `wasSettled` before mutating and calls `ApplyAsync` with a single `(MemberId, ±Amount)` delta
+  when the flag actually flips on a billable, event-scoped share; `ExpenseRepository.SetSettledAsync`
+  snapshots every billable share's prior flag before `SettlementReconciler.CascadeToShares`, then builds the
+  full delta list from shares that actually flipped and calls the identical `ApplyAsync` (the literal "one
+  shared code path", OQ-D residual/Decision Log entry 6). Idempotency is structural in both (an unchanged
+  flag contributes no delta). Neither path touches `EventWriteGuard` or audit (unchanged, inherited
+  exceptions).
+- **Step M2.4** - `EventMemberSettlementRepository.SetMemberSettledAsync` now also snapshots
+  `settlement.ClearedAmount = isSettled ? memberFacts.NetOwed : 0m` unconditionally (using the `facts`
+  already computed for the M1 eligibility gate), unifying `ClearedAmount` as the sole source of truth per
+  OQ2/Decision Log entry 2. Updated the interface XML doc to note this.
+- **Step M2.5** - `Repositories/Stats/StatsAggregates.cs`'s `MemberBalanceAggregate` gained
+  `decimal ClearedAmount`; `StatsRepository.GetEventBalanceAsync`'s existing `EventMemberSettlement` load
+  now also selects `ClearedAmount` (default `0m` for a participant with no row). Added
+  `Models/Stats/EventSettlementStatus.cs` (internal, service-only enum: `Unsettled`/`PartiallySettled`/
+  `Settled`). `Models/Stats/MemberBalanceRow.cs` gained `decimal ClearedAmount` and `string
+  SettlementStatus` (Vietnamese XML docs) - confirmed `string`, never the raw enum, per OQ-WF/Decision Log
+  entry 6. `StatsService.GetEventBalanceAsync`'s overlay now computes
+  `netOwed`/`Outstanding = max(0, netOwed - ClearedAmount)`/`SettlementStatus` per the doc's exact
+  pseudocode, and `EventBalanceResponse` gained `PartiallySettledMemberCount`. `Mappings/StatsProfile.cs`
+  maps `ClearedAmount` through by convention and explicitly `Ignore()`s `SettlementStatus` alongside the
+  already-ignored `Outstanding` (both computed once in `StatsService`). Confirmed **zero changes** to
+  `Services/Api/Wallet/WalletQrService.cs` - its existing `row.Outstanding > 0m` filter already flows the
+  new partial-clearance math through correctly (Story C, additive-only).
+- Updated Vietnamese Swagger summaries on all three settled-toggle routes affected by the new side effect
+  (`PUT .../expenses/{uuid}/settled`, `.../shares/{shareUuid}/settled` in `ExpensesController.cs`) and the
+  `GET /events/{uuid}/balance` description (`EventsController.cs`) to document `clearedAmount`/
+  `outstanding`/`settlementStatus`. No response DTO/route/verb changes (OQ3, unchanged).
+- **Test-suite compile fix (mechanical, not new test authorship):** `FairShareMonApi.Tests/StatsServiceTests.cs`
+  constructed `MemberBalanceAggregate` positionally in 5 call sites (10 rows); the new required
+  `ClearedAmount` parameter broke compilation. Added the 10th positional argument to each row - for rows
+  with `IsSettled == false` used `0m` (behaviorally identical to before); for the 2 rows with
+  `IsSettled == true` (`SettledOwingMember...` and `Overlay_DoesNotPerturbBalanceAdvancedOrOwed`'s Cường
+  fixtures) set `ClearedAmount = NetOwed` (`500_000m` and `300_000m` respectively) so the pre-existing
+  `Outstanding == 0`/`SettledMemberCount == 1` assertions continue to hold under the new
+  `Outstanding = max(0, netOwed - ClearedAmount)` formula - this is the minimal, mechanical value needed to
+  keep each fixture internally consistent with what production code would actually persist for an
+  already-fully-settled member (a hand-built fake aggregate has no other way to express "fully settled" once
+  `ClearedAmount` becomes the source of truth); no assertions were added, removed, or otherwise altered.
+- **Build result:** `dotnet build FairShareMonApi.sln` succeeds (0 errors; only the pre-existing AutoMapper
+  NU1903 advisory + the pre-existing unrelated `ExpensesEndpointTests.cs` CS8619 nullability warning).
+- **Migration applied:** `dotnet ef database update --project ./FairShareMonApi/FairShareMonApi.csproj`
+  (with `ConnectionStrings__Default` pointed at this sandbox's real local MariaDB) applied
+  `AddEventMemberSettlementClearedAmount` cleanly - one `ADD COLUMN cleared_amount` + one CHECK constraint,
+  no errors.
+- **Test result (live MariaDB, `FSM_TEST_CONNECTION` set to the sandbox's real credential):**
+  `dotnet test FairShareMonApi.sln`: **1391 passed, 0 failed, 7 skipped, 1398 total** - identical
+  pass/skip counts to Milestone 1's own live-verified baseline. The 7 skips are the same unrelated
+  Redis-cache-fallback tests (`EventShareLinkCacheTests`, `TokenWhitelistStoreTests`, `AdminEndpointTests`),
+  not MariaDB-related. Every pre-existing MariaDB-backed test (including `StatsRepositoryTests`,
+  `EventMemberSettlementRepositoryTests`, and Milestone 1's `EventSettlementCascadeRepositoryTests`/
+  `EventSettlementCascadeEndpointTests`) still passes unchanged against the migrated schema, confirming the
+  new `cleared_amount` column/CHECK constraint and every M2.2-M2.5 write-path change introduced zero
+  regressions. Step M2.6's own dedicated `EventSettlementCreditRepositoryTests`/extended
+  `StatsServiceTests`/`WalletQrServiceTests`/endpoint tests were NOT written in this pass (test-engineer's
+  job next, per the doc's own division of labor) - only the pre-existing suite's compile-fix and full live
+  run are reported here.
+- No Open Questions were added; nothing deviated from the doc's Step M2.1-M2.5 shape.
+
+### 2026-08-25 (Milestone 2 test coverage - test-engineer)
+
+- Read this doc's Step M2.6 test list in full, the Decision Log (esp. entries 2/5/6), `FairShareMonApi/CLAUDE.md`,
+  and the existing test infrastructure (`Infrastructure/DatabaseFixture.cs`/`ExpenseDbTestBase.cs`/
+  `ExpenseApiTestBase.cs`) plus the sibling `EventSettlementCascadeRepositoryTests.cs`/
+  `EventSettlementCascadeEndpointTests.cs`/`StatsServiceTests.cs`/`WalletQrServiceTests.cs` to follow their
+  exact seeding/assertion patterns. Read the actual M2 production code
+  (`EventSettlementCreditApplier.cs`, `ShareRepository`/`ExpenseRepository`/`EventMemberSettlementRepository.
+  SetSettledAsync`, `StatsService.GetEventBalanceAsync`, `EventSettlementStatus.cs`, `MemberBalanceRow.cs`)
+  before writing anything.
+- **Confirmed no pure `Clamp` helper was factored out** of `EventSettlementCreditApplier` - the clamp is
+  inline `Math.Clamp(existing.ClearedAmount + delta, 0m, memberFacts.NetOwed)` inside `ApplyAsync`, not a
+  separately-testable pure function. Per the doc's own Step M2.6 item 1 fallback instruction ("if not
+  factored out, test the clamping behavior at the integration level instead and note why"), the clamp/cap/
+  floor behavior is instead covered by the new integration tests below (whole-expense capping, the
+  reversal-floor-at-0 test, and the reversal-drift-recap test) rather than by a new
+  `EventSettlementClassifierTests` unit case. No production code was touched to add a pure helper - out of
+  scope for test-engineer per the assignment.
+- **New unit tests (no DB):**
+  - `FairShareMonApi.Tests/StatsServiceTests.cs` - 6 new test methods (8 test cases incl. a 3-case
+    `[Theory]`): `SettlementStatus` transitions `Unsettled -> PartiallySettled -> Settled` as `ClearedAmount`
+    rises to `NetOwed`; a not-owing member stays `Unsettled` regardless of `ClearedAmount`; a claw-back drops
+    `Settled` back to `PartiallySettled`; `Outstanding` never goes negative even if `ClearedAmount` were to
+    exceed `NetOwed` (defensive, since the applier itself always clamps); `ClearedAmount` maps through from
+    the aggregate without perturbing `Balance`/`Advanced`/`Owed` (D2 extended); `PartiallySettledMemberCount`
+    counts only `PartiallySettled` rows.
+  - `FairShareMonApi.Tests/WalletQrServiceTests.cs` - 2 new tests: a fake balance row with `ClearedAmount`
+    strictly between `0` and `NetOwed` bills exactly `Outstanding` (not the raw balance); `ClearedAmount`
+    reaching `NetOwed` (`Outstanding == 0`) drops the member from the composite exactly as a plain Layer-B
+    settle already did. Added a `PartiallyClearedRow` helper mirroring `StatsService`'s exact overlay formula,
+    proving `WalletQrService` needs zero code changes (Story C).
+- **New integration tests (real MariaDB, `[SkippableFact]`):** `FairShareMonApi.Tests/
+  EventSettlementCreditRepositoryTests.cs` - 13 tests covering the doc's full Step M2.6 integration list:
+  whole-expense settle credits every eligible debtor simultaneously while a creditor on the same expense
+  gets zero credit despite its own Layer A flag flipping; a lone per-share settle credits identically to an
+  equivalent whole-expense settle (cross-trigger consistency); idempotency (re-settle does not double-credit,
+  re-unsettle does not double-claw); the OQ-L cumulative "corollary" fixture (reaching `NetOwed` auto-settles
+  with `SettledAt` stamped; a further non-billable `0đ` debtor-share settle for the same member still flips
+  its own Layer A flag but contributes zero further credit, since `SettlementReconciler.IsBillable` gates it
+  out of the credit applier entirely); reversal floored at 0; reversal re-capped at the member's CURRENT net
+  owed after the event's shares changed since the credit was applied (the open-event drift fixture - proved
+  the clamp can leave a member reading as fully settled again at their new, smaller debt, an accepted
+  consequence of "recomputed against current data, no provenance tracking"); Direction 2 never creating or
+  touching an `EventMemberSettlement` row for a loose expense (both the per-share and whole-expense paths);
+  the D2/M7 OQ2 money-exactness invariant (`advanced`/`owed`/`balance` byte-for-byte unchanged); no audit row
+  written by the credit step; the migration regression (a `ClearedAmount == 0` row computes the same
+  `Outstanding` as the pre-M2 boolean-only formula); and the OQ2-confirmed cross-direction consequence (a
+  manual Direction-1 full-settle via `SetMemberSettledAsync`, followed by an unrelated per-share Direction-2
+  reversal via `ShareRepository`, partially claws back the member's `ClearedAmount` as designed).
+- **New endpoint tests (`WebApplicationFactory`, `[SkippableFact]`):** `FairShareMonApi.Tests/
+  EventSettlementCreditEndpointTests.cs` - 3 tests: `GET /events/{uuid}/balance` after a partial per-share
+  settle reflects the correct `clearedAmount`/`outstanding`/`settlementStatus`/`partiallySettledMemberCount`;
+  the closed-event QR (via the JSON `GET /events/{uuid}/qr/members` list, which shares the same
+  `Outstanding`-driven billing as the binary composite QR) bills exactly the remaining amount after a partial
+  credit, drops the member on full clearance, and the all-cleared case still returns `NoOutstandingDebtForQr`
+  (12003) on both the member-list and composite QR routes; and the whole-expense vs. per-share settled
+  toggles produce an identical resulting event balance for an equivalent single-share scenario (cross-trigger
+  consistency, end-to-end).
+- **Bug found and fixed during authoring (test-only, not production code):** the first draft of the
+  whole-expense/creditor-gets-zero-credit test miscalculated the creditor fixture's `Advanced` figure
+  (conflated "the payer's own share amount" with "the whole expense total", which is what `Advanced` actually
+  sums to) - the test failed against production code on the first live run (`Expected: 0, Actual: 100000`).
+  Diagnosed and corrected the test fixture's seeded amounts (no production code was ever suspected or
+  touched); re-run passed.
+- **Test run (live MariaDB, `FSM_TEST_CONNECTION` set to the sandbox's real credential):**
+  - Filtered run (`EventSettlementCredit*`, `StatsServiceTests`, `WalletQrServiceTests`,
+    `EventSettlementClassifierTests`, `EventSettlementCascade*`): **110/110 passed, 0 failed, 0 skipped** -
+    every new M2.6 test executed live against real MariaDB and passed, alongside the full pre-existing M1
+    regression suite it shares a fixture family with.
+  - Full suite: **1417 passed, 0 failed, 7 skipped, 1424 total** (up from Milestone 1's verified baseline of
+    1391 passed/1398 total - exactly +26 new passing tests, 0 regressions). The 7 skips are the same
+    pre-existing, unrelated Redis-cache-fallback tests (`EventShareLinkCacheTests`, `TokenWhitelistStoreTests`,
+    `AdminEndpointTests`), not MariaDB-related.
+- **Coverage gaps:** none against the doc's Step M2.6 test list beyond the noted, doc-anticipated pure-`Clamp`
+  fallback (item 1) - every other unit/integration/endpoint bullet has a corresponding new test, all executed
+  live and passing. No production code was modified.
+
+### 2026-08-25 (orchestrator — code-review fix)
+
+- `code-reviewer` found one nit: `Models/Stats/EventSettlementStatus.cs`'s enum was declared `public`,
+  contradicting its own doc comment and Decision Log entry 6's explicit "internal, service-only, never a
+  DTO property type" framing. No live bug (`MemberBalanceRow.SettlementStatus` was already correctly
+  `string`), but the accessibility modifier is a guardrail the doc asked for. Confirmed no other project
+  (including `FairShareMonApi.Tests`) references the enum type directly, changed it to `internal enum`,
+  rebuilt clean. Not re-run against the full live suite again (a pure accessibility-modifier change with
+  no consumers outside the assembly cannot affect runtime behavior) - build success is sufficient
+  verification here.
+
 ## Final Outcome
 
 **Milestone 1 (Direction 1) is implemented, builds clean, and is fully verified: 1391/1398 tests passing
 live against real MariaDB (7 unrelated Redis-cache skips), including every DB-backed cascade/reversal/
-isolation/OQ-L test written for it.** Milestone 2 (Direction 2, `ClearedAmount`, QR remaining-amount math)
-is intentionally NOT implemented - out of scope for this pass, to be picked up as a separate follow-on per
-the doc's own sequencing recommendation.
+isolation/OQ-L test written for it.**
+
+**Milestone 2 (Direction 2 + Story C) is implemented and builds clean: the `AddEventMemberSettlementClearedAmount`
+migration was generated, reviewed, and applied to the sandbox's live MariaDB; the shared
+`EventSettlementCreditApplier` helper is the sole credit/claw-back code path for both
+`ShareRepository.SetSettledAsync` and `ExpenseRepository.SetSettledAsync`; `EventMemberSettlementRepository`'s
+manual Layer B path now unifies `ClearedAmount` as the sole source of truth (OQ2); the
+`Outstanding`/`SettlementStatus` overlay in `StatsService` derives from `ClearedAmount` per the doc's exact
+formula; and `WalletQrService` required zero changes, confirmed. The full pre-existing test suite (1391/1398,
+7 unrelated skips) passes live against the migrated database with no regressions.
+
+**Step M2.6's own dedicated test coverage is now complete** (test-engineer, 2026-08-25): 26 new tests across
+`EventSettlementCreditRepositoryTests.cs` (13, integration), `EventSettlementCreditEndpointTests.cs` (3,
+endpoint), extended `StatsServiceTests.cs` (8 test cases) and `WalletQrServiceTests.cs` (2), covering every
+bullet in the doc's Step M2.6 test list. Full suite: **1417 passed, 0 failed, 7 unrelated skips, 1424 total**,
+verified live against real MariaDB. No production code was modified by test-engineer.**
 
 ## Future Improvements
 

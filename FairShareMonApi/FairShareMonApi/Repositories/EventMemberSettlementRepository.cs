@@ -60,6 +60,11 @@ public interface IEventMemberSettlementRepository : IBaseRepository
     /// same "all shares in the event" set is unconditionally un-settled, recomputed live against current
     /// data (OQ1).
     /// </para>
+    /// <para>
+    /// Milestone 2 (OQ2, option (a)): every call also snapshots <c>ClearedAmount = NetOwed</c> (on
+    /// <c>true</c>) / <c>0</c> (on <c>false</c>), unconditionally - the sole source of truth
+    /// <see cref="EventMemberSettlement.IsSettled"/> is kept consistent with.
+    /// </para>
     /// </summary>
     Task<SettlementWriteStatus> SetMemberSettledAsync(string userUuid, string eventUuid, string memberUuid, bool isSettled, CancellationToken cancellationToken = default);
 }
@@ -117,6 +122,12 @@ public sealed class EventMemberSettlementRepository(AppDbContext dbContext)
             var facts = await EventSettlementClassifier.ClassifyAsync(db, evt.Id, [member.Id], cancellationToken);
             if (!facts.TryGetValue(member.Id, out var memberFacts))
                 memberFacts = new MemberSettlementFacts(member.Id, 0m, 0m, false, MemberSettlementEligibility.NetZero);
+
+            // Milestone 2 Step M2.4 (OQ2, option (a)): unify ClearedAmount as the sole source of truth -
+            // every manual Layer B toggle snapshots it too, UNCONDITIONALLY (not gated by eligibility, since
+            // the flag write itself never was). Accepted consequence: a later per-share Direction 2 reversal
+            // can partially claw back credit even from a member fully settled via this manual path.
+            settlement.ClearedAmount = isSettled ? memberFacts.NetOwed : 0m;
 
             if (isSettled)
             {

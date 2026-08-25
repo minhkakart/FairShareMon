@@ -75,17 +75,20 @@ public sealed class StatsRepository(AppDbContext dbContext) : BaseRepository(dbC
                 .ToListAsync(ct);
 
             // Layer B overlay flags (settled-per-member OQ8a): additive load, keyed by member_id. This does
-            // NOT touch advanced/owed/balance above - the balance stays pure (D2 / M7 OQ2).
+            // NOT touch advanced/owed/balance above - the balance stays pure (D2 / M7 OQ2). ClearedAmount
+            // (Step M2.5) is the sole source of truth Outstanding/SettlementStatus derive from in StatsService.
             var settlements = await Query<EventMemberSettlement>()
                 .Where(settlement => settlement.EventId == eventId)
-                .Select(settlement => new { settlement.MemberId, settlement.IsSettled, settlement.SettledAt })
+                .Select(settlement => new { settlement.MemberId, settlement.IsSettled, settlement.SettledAt, settlement.ClearedAmount })
                 .ToListAsync(ct);
-            var settledMap = settlements.ToDictionary(row => row.MemberId, row => (row.IsSettled, row.SettledAt));
+            var settledMap = settlements.ToDictionary(row => row.MemberId, row => (row.IsSettled, row.SettledAt, row.ClearedAmount));
 
             var rows = members
                 .Select(member =>
                 {
-                    var settled = settledMap.TryGetValue(member.Id, out var flag) ? flag : (IsSettled: false, SettledAt: (DateTime?)null);
+                    var settled = settledMap.TryGetValue(member.Id, out var flag)
+                        ? flag
+                        : (IsSettled: false, SettledAt: (DateTime?)null, ClearedAmount: 0m);
                     var fact = facts[member.Id];
                     return new MemberBalanceAggregate(
                         member.Uuid,
@@ -96,7 +99,8 @@ public sealed class StatsRepository(AppDbContext dbContext) : BaseRepository(dbC
                         fact.Owed,
                         settled.IsSettled,
                         settled.SettledAt,
-                        fact.IsEligibleForDirection1Cascade);
+                        fact.IsEligibleForDirection1Cascade,
+                        settled.ClearedAmount);
                 })
                 .OrderByDescending(row => row.Advanced - row.Owed)
                 .ThenBy(row => row.MemberName)

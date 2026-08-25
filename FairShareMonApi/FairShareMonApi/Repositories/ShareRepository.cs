@@ -163,7 +163,7 @@ public sealed class ShareRepository(AppDbContext dbContext, IAuditLogFactory aud
         }, cancellationToken);
 
     public Task<ExpenseWriteStatus> SetSettledAsync(string userUuid, string expenseUuid, string shareUuid, bool isSettled, CancellationToken cancellationToken = default) =>
-        ExecuteTransactionAsync(async (_, transaction) =>
+        ExecuteTransactionAsync(async (db, transaction) =>
         {
             // Resource-owned expense with its shares, tracked for mutation. No closed-event guard (§4.4
             // exception, OQ5a); no audit (OQ10a).
@@ -183,12 +183,25 @@ public sealed class ShareRepository(AppDbContext dbContext, IAuditLogFactory aud
                 return ExpenseWriteStatus.ShareNotFound;
             }
 
+            // event-expense-settlement-sync Direction 2: capture the prior flag BEFORE mutating so the
+            // credit step only fires on an actual flip (structural idempotency).
+            var wasSettled = share.IsSettled;
+
             // Stored per-share flag is set even on a payer-own / 0đ share (a harmless no-op for derivations, OQ6a).
             share.IsSettled = isSettled;
             share.SettledAt = isSettled ? AppDateTime.Now : null;
 
             // Reconcile the whole-expense flag from the per-share flags (OQ3a).
             SettlementReconciler.ReconcileExpense(expense);
+
+            // Direction 2 (Step M2.3): a flipped, billable share on an event-scoped expense credits the
+            // member's event-level balance by exactly the share's amount (capped/floored inside the applier).
+            if (expense.EventId is { } eventId && SettlementReconciler.IsBillable(share, expense) && wasSettled != isSettled)
+            {
+                var now = AppDateTime.Now;
+                var delta = isSettled ? share.Amount : -share.Amount;
+                await EventSettlementCreditApplier.ApplyAsync(db, eventId, [(share.MemberId, delta)], now, cancellationToken);
+            }
 
             return ExpenseWriteStatus.Success;
         }, cancellationToken);
