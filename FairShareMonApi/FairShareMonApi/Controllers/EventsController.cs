@@ -83,7 +83,7 @@ public class EventsController(IEventsService eventsService, IStatsService statsS
     [HttpGet("{uuid}/balance")]
     [SwaggerOperation(
         Summary = "Cân bằng nợ của đợt chi tiêu",
-        Description = "Trả về cân bằng nợ của một đợt: với mỗi thành viên tham gia (người trả phiếu hoặc người gánh, kể cả thành viên đại diện ở mức 0đ và thành viên đã xóa mềm) là số tiền đã ứng, phải gánh và cân bằng (= đã ứng - phải gánh). Tổng cân bằng của tất cả thành viên luôn bằng 0. Xem được cho cả đợt đang mở và đã chốt; bỏ qua trạng thái đã trả. Đợt chưa có phiếu -> danh sách rỗng.")]
+        Description = "Trả về cân bằng nợ của một đợt: với mỗi thành viên tham gia (người trả phiếu hoặc người gánh, kể cả thành viên đại diện ở mức 0đ và thành viên đã xóa mềm) là số tiền đã ứng, phải gánh và cân bằng (= đã ứng - phải gánh). Tổng cân bằng của tất cả thành viên luôn bằng 0. Xem được cho cả đợt đang mở và đã chốt; bỏ qua trạng thái đã trả. Đợt chưa có phiếu -> danh sách rỗng. Mỗi dòng còn kèm cờ isEligibleForAutoCascade cho biết đánh dấu \"đã trả\" ở cấp đợt cho thành viên đó có tự động lan xuống mọi phần gánh của họ hay không.")]
     [SwaggerResponse(StatusCodes.Status200OK, "Lấy cân bằng nợ thành công.", typeof(ApiResult<EventBalanceResponse>))]
     [SwaggerResponse(StatusCodes.Status401Unauthorized, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", typeof(ApiResult))]
     [SwaggerResponse(StatusCodes.Status404NotFound, "Không tìm thấy đợt chi tiêu.", typeof(ApiResult))]
@@ -189,7 +189,7 @@ public class EventsController(IEventsService eventsService, IStatsService statsS
     [HttpPut("{uuid}/members/{memberUuid}/settled")]
     [SwaggerOperation(
         Summary = "Cập nhật trạng thái đã trả của thành viên trong đợt",
-        Description = "Đánh dấu hoặc bỏ đánh dấu một thành viên đã trả xong khoản nợ ròng của họ trong đợt (đã trả theo từng thành viên - §3.7/§6). Chỉ áp dụng cho thành viên có tham gia đợt (là người trả hoặc người gánh của một phiếu trong đợt); thành viên không tham gia trả về 404. Đây là metadata thanh toán, không thay đổi số liệu và không ghi vào nhật ký. Cho phép cả khi đợt đang mở và đã chốt (ngoại lệ §4.4). Dùng để lọc mã QR: chỉ những thành viên còn nợ chưa trả mới được tạo mã.")]
+        Description = "Đánh dấu hoặc bỏ đánh dấu một thành viên đã trả xong khoản nợ ròng của họ trong đợt (đã trả theo từng thành viên - §3.7/§6). Chỉ áp dụng cho thành viên có tham gia đợt (là người trả hoặc người gánh của một phiếu trong đợt); thành viên không tham gia trả về 404. Đây là metadata thanh toán, không thay đổi số liệu và không ghi vào nhật ký. Cho phép cả khi đợt đang mở và đã chốt (ngoại lệ §4.4). Dùng để lọc mã QR: chỉ những thành viên còn nợ chưa trả mới được tạo mã. Đánh dấu đã trả (true) sẽ TỰ ĐỘNG lan xuống mọi phần gánh của thành viên trong đợt nếu họ đủ điều kiện (là người nợ ròng, hoặc người được nợ ròng nhưng không gánh khoản nợ nào khác trong đợt) - thành viên vừa nợ vừa được nợ (không đủ điều kiện) chỉ đổi trạng thái ở cấp đợt, phải đánh dấu từng phần gánh thủ công. Bỏ đánh dấu (false) luôn hoàn tác toàn bộ các phần gánh đã lan xuống, tính lại theo dữ liệu hiện tại bất kể thành viên còn đủ điều kiện hay không.")]
     [SwaggerResponse(StatusCodes.Status200OK, "Đã cập nhật trạng thái đã trả của thành viên.", typeof(ApiResult))]
     [SwaggerResponse(StatusCodes.Status401Unauthorized, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", typeof(ApiResult))]
     [SwaggerResponse(StatusCodes.Status404NotFound, "Không tìm thấy đợt chi tiêu hoặc thành viên tham gia đợt.", typeof(ApiResult))]

@@ -38,4 +38,11 @@ public class MemberBalanceRow
 
     /// <summary>Thời điểm đánh dấu đã trả khoản nợ ròng gần nhất (null nếu chưa đánh dấu).</summary>
     public DateTime? SettledAt { get; set; }
+
+    /// <summary>
+    /// True nếu thành viên đủ điều kiện để việc đánh dấu "đã trả" ở cấp đợt tự động lan xuống mọi phần
+    /// gánh của họ trong đợt (chỉ dành cho người nợ ròng, hoặc người được nợ ròng nhưng không gánh khoản
+    /// nợ nào khác trong đợt).
+    /// </summary>
+    public bool IsEligibleForAutoCascade { get; set; }
 }

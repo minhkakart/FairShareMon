@@ -31,6 +31,17 @@ public enum SettlementWriteStatus
 /// never the row). Runs in a single <c>ExecuteTransactionAsync</c>. There is <b>no closed-event guard</b>
 /// (the §4.4 sole exception - Layer B is primarily a post-close action, settled-per-member OQ5a) and
 /// <b>no audit</b> (OQ10a). The balance overlay is read separately by <c>StatsRepository</c> (kept pure).
+///
+/// <para>
+/// event-expense-settlement-sync Milestone 1 (Direction 1): setting the flag to <c>true</c> automatically
+/// cascades to ALL of the member's <see cref="Share"/> rows in the event - gated by
+/// <c>EventSettlementClassifier</c>'s eligibility check (a net debtor is always eligible; a net creditor
+/// only if gross-pure, i.e. holds no debtor-share anywhere else in the event; a "mixed"/net-zero member
+/// never cascades and must be settled per-share manually, OQ-A/OQ-L). Setting it back to <c>false</c>
+/// unconditionally reverses the same "all shares in the event" set, recomputed against CURRENT data,
+/// regardless of the member's eligibility today (OQ1, option (a)). Bypasses <c>EventWriteGuard</c> the
+/// same way the flag write itself already does - no new bypass code needed. Not audited.
+/// </para>
 /// </summary>
 public interface IEventMemberSettlementRepository : IBaseRepository
 {
@@ -40,6 +51,15 @@ public interface IEventMemberSettlementRepository : IBaseRepository
     /// of the event - a payer of, or share-holder in, one of its expenses (else
     /// <see cref="SettlementWriteStatus.MemberNotFound"/>, settled-per-member OQ9a). Allowed on OPEN and
     /// CLOSED events (OQ5a). Soft-deleted participants are still markable (§4.7).
+    ///
+    /// <para>
+    /// event-expense-settlement-sync Direction 1: on <paramref name="isSettled"/> <c>true</c>, if the
+    /// member is eligible (net debtor, or a gross-pure net creditor), also settles every one of the
+    /// member's shares across all of the event's expenses and reconciles each affected expense's
+    /// whole-flag; an ineligible member's flag still flips, but no share is touched. On <c>false</c>, the
+    /// same "all shares in the event" set is unconditionally un-settled, recomputed live against current
+    /// data (OQ1).
+    /// </para>
     /// </summary>
     Task<SettlementWriteStatus> SetMemberSettledAsync(string userUuid, string eventUuid, string memberUuid, bool isSettled, CancellationToken cancellationToken = default);
 }
@@ -80,7 +100,7 @@ public sealed class EventMemberSettlementRepository(AppDbContext dbContext)
                 return SettlementWriteStatus.MemberNotFound;
             }
 
-            // Upsert the (event, member) flag.
+            // Upsert the (event, member) flag - always succeeds for any participant, eligible or not.
             var settlement = await Query<EventMemberSettlement>(tracking: true)
                 .FirstOrDefaultAsync(entity => entity.EventId == evt.Id && entity.MemberId == member.Id, cancellationToken);
             if (settlement is null)
@@ -92,6 +112,53 @@ public sealed class EventMemberSettlementRepository(AppDbContext dbContext)
             settlement.IsSettled = isSettled;
             settlement.SettledAt = isSettled ? AppDateTime.Now : null;
             // No audit (OQ10a).
+
+            // Direction 1 (event-expense-settlement-sync M1.2): classify against CURRENT data.
+            var facts = await EventSettlementClassifier.ClassifyAsync(db, evt.Id, [member.Id], cancellationToken);
+            if (!facts.TryGetValue(member.Id, out var memberFacts))
+                memberFacts = new MemberSettlementFacts(member.Id, 0m, 0m, false, MemberSettlementEligibility.NetZero);
+
+            if (isSettled)
+            {
+                // Eligible (net debtor, or gross-pure net creditor) -> cascade to ALL of the member's
+                // shares in the event (OQ-B); ineligible -> no share write at all, silent fallback to
+                // manual per-share toggling (OQ-A/OQ-L).
+                if (memberFacts.IsEligibleForDirection1Cascade)
+                {
+                    var expenses = await LoadMemberExpensesAsync(evt.Id, member.Id, cancellationToken);
+                    CascadeMemberShares(expenses, member.Id, isSettled: true, settledAt: AppDateTime.Now);
+                }
+            }
+            else
+            {
+                // OQ1, option (a): unconditional, recomputed live - reverse the same "all shares in the
+                // event" set regardless of whether the member is still eligible today.
+                var expenses = await LoadMemberExpensesAsync(evt.Id, member.Id, cancellationToken);
+                CascadeMemberShares(expenses, member.Id, isSettled: false, settledAt: null);
+            }
+
             return SettlementWriteStatus.Success;
         }, cancellationToken);
+
+    /// <summary>Loads every event expense where the member holds a share, tracked with its shares (for the Direction 1 cascade/reversal).</summary>
+    private Task<List<Expense>> LoadMemberExpensesAsync(ulong eventId, ulong memberId, CancellationToken cancellationToken) =>
+        Query<Expense>(tracking: true)
+            .Where(expense => expense.EventId == eventId && expense.Shares.Any(share => share.MemberId == memberId))
+            .Include(expense => expense.Shares)
+            .ToListAsync(cancellationToken);
+
+    /// <summary>Sets the member's own share(s) settled flag on each loaded expense and reconciles the expense's whole-flag.</summary>
+    private static void CascadeMemberShares(IEnumerable<Expense> expenses, ulong memberId, bool isSettled, DateTime? settledAt)
+    {
+        foreach (var expense in expenses)
+        {
+            foreach (var share in expense.Shares.Where(share => share.MemberId == memberId))
+            {
+                share.IsSettled = isSettled;
+                share.SettledAt = settledAt;
+            }
+
+            SettlementReconciler.ReconcileExpense(expense);
+        }
+    }
 }

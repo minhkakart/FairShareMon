@@ -785,13 +785,152 @@ Endpoint (`WebApplicationFactory`, `[SkippableFact]`):
   "PartiallySettled" | "Settled"` (wire key `settlementStatus`, camelCase per MVC's unmodified default) —
   not `0 | 1 | 2`.
 
+### 2026-08-25 (Milestone 1 implementation)
+
+- Implemented Milestone 1 (Direction 1: event settle -> cascade to expenses) only, per the finalized
+  Implementation Plan (Steps M1.1-M1.4). Milestone 2 (Direction 2, `ClearedAmount`, QR remaining-amount
+  math) intentionally NOT started - out of scope for this pass, sequenced after M1 per the doc's own
+  recommendation.
+- **Step M1.1** - added `Repositories/EventSettlementClassifier.cs`: `MemberSettlementEligibility` enum
+  (`NetZero`/`NetDebtor`/`NetCreditorGrossPure`/`NetCreditorGrossMixed`), `MemberSettlementFacts` record
+  (`Balance`/`NetOwed`/`IsEligibleForDirection1Cascade` computed), the pure `Classify(advanced, owed,
+  hasDebtorShareElsewhere)` function, and the DB-querying `ClassifyAsync(dbContext, eventId,
+  restrictToMemberIds, ct)` running the same advanced/owed `GroupBy`/`Sum` shape
+  `StatsRepository.GetEventBalanceAsync` ran inline before, plus the gross-purity
+  (`SettlementReconciler.IsBillable`-equivalent) query. Refactored `Repositories/StatsRepository.cs`
+  `GetEventBalanceAsync` to call this helper instead of its own inline `GroupBy` blocks - `StatsRepository`
+  is now a **consumer** of the same canonical classification Direction 1's write path gates on, closing the
+  BA doc's single-biggest-risk gap. Noted inline that the classifier call is not additionally scoped by
+  `share.Expense.User.Uuid` (unlike the pre-refactor inline query) since the caller always resolves
+  `eventId` through an already-resource-owned lookup first - matches the doc's own `ClassifyAsync` signature
+  (no `userUuid` parameter), not a security regression.
+- **Step M1.2** - modified `Repositories/EventMemberSettlementRepository.cs` `SetMemberSettledAsync`:
+  after the existing upsert of the `(event_id, member_id)` flag (unchanged - always succeeds for any
+  participant), classifies the member via `EventSettlementClassifier.ClassifyAsync` and, on
+  `isSettled == true`, cascades to all of the member's shares across the event's expenses (via new private
+  helpers `LoadMemberExpensesAsync`/`CascadeMemberShares`) ONLY if eligible, calling
+  `SettlementReconciler.ReconcileExpense` per affected expense; on `isSettled == false`, unconditionally
+  reverses the same "all shares in the event" set recomputed live (OQ1, option (a)) regardless of current
+  eligibility. No `EventWriteGuard` call, no audit (both inherited, unchanged). Updated the interface XML
+  doc and the Swagger summary on `EventsController.SetMemberSettledAsync` (Vietnamese) to document the
+  auto-cascade + its eligibility gate and the unconditional reversal.
+- **Step M1.3** - confirmed no DTO/response-shape change: `EventsController.SetMemberSettledAsync` (and
+  the other two settled-toggle routes) keep returning the plain `ApiResult` success message, unchanged.
+- **Step M1.4** - added `bool IsEligibleForAutoCascade` to `Repositories/Stats/StatsAggregates.cs`'s
+  `MemberBalanceAggregate` (new required positional parameter, populated in `StatsRepository` from the
+  classifier facts already computed in Step M1.1) and to `Models/Stats/MemberBalanceRow.cs` (Vietnamese XML
+  doc). `Mappings/StatsProfile.cs` needed no change - AutoMapper already maps the identically-named
+  property by convention. Also appended a short Vietnamese clause to the `GET
+  /events/{uuid}/balance` Swagger description documenting the new field (not an explicit doc step, but a
+  direct, low-risk documentation consequence of the wire-shape addition).
+- **Wrap-up** - added the `// 17xxx - Event/expense settlement sync` reservation comment to
+  `Constants/ErrorCodes.cs` (no codes defined), mirroring the 15xxx/16xxx precedent, per the doc's Wrap-up
+  section.
+- **Test-suite compile fix (mechanical, not new test authorship):** `FairShareMonApi.Tests/StatsServiceTests.cs`
+  constructed `MemberBalanceAggregate` positionally in 8 call sites; the new required
+  `IsEligibleForAutoCascade` parameter broke compilation. Added the 9th positional argument to each
+  existing call site (no new tests, no new assertions) purely to restore buildability - writing the
+  *dedicated* `EventSettlementClassifierTests`/`EventSettlementCascadeRepositoryTests` (Step M1.5) remains
+  test-engineer's job.
+- **Build/test result:** `dotnet build FairShareMonApi.sln` succeeds (0 errors; only the pre-existing
+  `AutoMapper` NU1903 advisory warning and one pre-existing unrelated `CS8619` nullability warning in
+  `ExpensesEndpointTests.cs`). `dotnet test FairShareMonApi.sln`: 801 passed, 0 failed, 571 skipped. All
+  skips are the pre-existing `[SkippableFact]` integration tests (including `StatsRepositoryTests` and
+  `EventMemberSettlementRepositoryTests`, which this change touches) - confirmed the skip reason is
+  `MariaDB unreachable ... Access denied for user 'root'@'localhost'`, i.e. this sandbox's local MariaDB
+  instance has different credentials than `appsettings.json`'s `ConnectionStrings:Default`. This is a
+  pre-existing environment limitation (the connection string is unmodified by this change) and not
+  something introduced by this implementation; it means the DB-backed regression coverage for the
+  `StatsRepository` refactor (Step M1.1's "byte-for-byte regression requirement") and the new cascade
+  behavior (Step M1.2) could not be exercised live in this session. No migration was needed for Milestone 1
+  (purely additive repository logic over existing tables/columns), consistent with the Impact Analysis.
+
+### 2026-08-25 (Milestone 1 test coverage - test-engineer)
+
+- Read this doc's Step M1.5 test list, the Decision Log (esp. OQ1/OQ4/OQ-L), `FairShareMonApi/CLAUDE.md`,
+  and the existing test infrastructure (`Infrastructure/DatabaseFixture.cs`, `IntegrationTestBase.cs`,
+  `ExpenseDbTestBase.cs`, `AuthApiTestBase.cs`, `ExpenseApiTestBase.cs`) plus the sibling
+  `EventMemberSettlementRepositoryTests.cs`/`StatsRepositoryTests.cs`/`StatsServiceTests.cs` to follow
+  their exact seeding/assertion patterns before writing anything.
+- **New unit tests (no DB):** `FairShareMonApi.Tests/EventSettlementClassifierTests.cs` - 13 test cases
+  covering the pure `EventSettlementClassifier.Classify` switch (`NetZero`/`NetDebtor` regardless of
+  gross-purity/`NetCreditorGrossPure`/`NetCreditorGrossMixed` per the OQ-L algebra) and
+  `MemberSettlementFacts`'s computed `Balance`/`NetOwed`/`IsEligibleForDirection1Cascade`.
+- **New integration tests (real MariaDB, `[SkippableFact]`):**
+  `FairShareMonApi.Tests/EventSettlementCascadeRepositoryTests.cs` - 9 tests extending the shipped
+  `EventMemberSettlementRepositoryTests` fixture: net-debtor full cascade + cross-member isolation +
+  byte-for-byte balance invariant; gross-pure net-creditor cascade; the OQ-L gross-mixed-creditor
+  regression (flag flips, debtor-share on the other expense stays exactly as it was); the `Balance == 0`
+  NetZero bucket (no cascade); OQ1's unconditional live-recomputed reversal (a gross-pure creditor who
+  later acquires a debtor-share elsewhere still has their originally-cascaded share reversed on unsettle,
+  despite now being ineligible); closed-event parity; a soft-deleted cascade target; no audit row written;
+  and cross-user isolation (two ledgers with an identical shape - settling one user's member never touches
+  the other user's shares/settlement row).
+- **New endpoint tests (`WebApplicationFactory`, `[SkippableFact]`):**
+  `FairShareMonApi.Tests/EventSettlementCascadeEndpointTests.cs` - 3 tests: an eligible debtor's cascade
+  is visible on a subsequent `GET /expenses/{uuid}`; a gross-mixed creditor's shares are unaffected while
+  the balance overlay's `isSettled`/`isEligibleForAutoCascade` still reflect correctly; and the
+  settle/un-settle round trip reverses live.
+- **Extended existing unit test:** added `StatsServiceTests.GetEventBalanceAsync_MapsIsEligibleForAutoCascadeThroughFromAggregate`
+  confirming the new `MemberBalanceAggregate.IsEligibleForAutoCascade` field flows through the real
+  AutoMapper `StatsProfile` to `MemberBalanceRow` unchanged, for both a debtor (eligible) and a
+  gross-mixed creditor (ineligible) fixture - closes the doc's own "confirm `IsEligibleForAutoCascade`
+  populates correctly for known fixtures" ask (Step M1.5 item 9) at the mapping layer.
+- Extra coverage beyond the doc's literal list (noted per protocol): `MemberSettlementFacts`
+  Balance/NetOwed unit tests; an explicit cross-user isolation repository test (the doc's own list didn't
+  spell this out as a separate bullet, only implied via OQ-J's cross-member framing).
+- **Test run:** `dotnet build FairShareMonApi.sln` - 0 errors (only the pre-existing AutoMapper NU1903
+  advisory + the pre-existing unrelated `ExpensesEndpointTests.cs` CS8619 nullability warning).
+  `dotnet test FairShareMonApi.sln`: **1398 total, 815 passed, 0 failed, 583 skipped.** All 13 new unit
+  test cases (`EventSettlementClassifierTests`) + the 1 new `StatsServiceTests` case passed (801 -> 815
+  passed, exactly +14). All 12 new integration/endpoint tests (9 repository + 3 endpoint) skipped cleanly
+  (571 -> 583 skipped, exactly +12) - **MariaDB is unreachable in this sandbox** (`SkipIfNoDb` reason:
+  `Access denied for user 'root'@'localhost' (using password: YES)`), the same pre-existing environment
+  credential mismatch `api-implementer` already flagged in the prior Progress Log entry; not caused by
+  this change and not something test-engineer can fix (owning only the test project, not
+  `appsettings.json`/environment credentials). No production code was modified.
+- **Coverage gap / follow-up needed:** because MariaDB could not be reached, none of the new DB-backed
+  cascade/reversal/isolation tests, nor the `StatsRepository` byte-for-byte regression re-run, were
+  actually exercised against a live database in this session - only compiled and skip-verified. The
+  orchestrator should re-run `dotnet test` (or set `FSM_TEST_CONNECTION` to a reachable MariaDB) before
+  considering Milestone 1's DB-backed behavior fully verified.
+
+### 2026-08-25 (orchestrator — live DB verification)
+
+- Root-caused the "MariaDB unreachable" skip: `DatabaseFixture.ResolveConnectionString()` only reads
+  `FSM_TEST_CONNECTION` or the plain `appsettings.json` fallback (`ConnectionStrings:Default =
+  ...Password=fairsharemon@123`) - it never loads `appsettings.Development.local.json`, so the actual
+  local dev credential (`Password=123456789`) was never in play. MariaDB itself was reachable and running
+  the whole time (Windows service `MariaDb`, confirmed running); this was a test-harness config-resolution
+  gap, not a real environment outage. Not fixed here (out of scope for this feature) - flagged as a
+  candidate Future Improvement below.
+- Re-ran with `FSM_TEST_CONNECTION` set to the correct local credential:
+  - Filtered run (`EventSettlementCascade*`, `EventSettlementClassifier*`, `StatsRepositoryTests`,
+    `StatsServiceTests`): **59/59 passed, 0 failed, 0 skipped** - every new cascade/reversal/isolation/OQ-L
+    test from Step M1.5 executed live against real MariaDB and passed, including the OQ-L gross-mixed-
+    creditor regression and the unconditional-reversal-after-eligibility-drift case.
+  - Full suite: **1391 passed, 0 failed, 7 skipped, 1398 total** - the 7 remaining skips are unrelated
+    Redis-cache-fallback tests (`EventShareLinkCacheTests`, `TokenWhitelistStoreTests`,
+    `AdminEndpointTests`), not MariaDB-related.
+- **Milestone 1's DB-backed behavior is now fully verified**, superseding the coverage-gap note above.
+
 ## Final Outcome
 
-(pending — implementation not yet started; this doc is now fully decided and ready for the
-Implementation Plan to be executed)
+**Milestone 1 (Direction 1) is implemented, builds clean, and is fully verified: 1391/1398 tests passing
+live against real MariaDB (7 unrelated Redis-cache skips), including every DB-backed cascade/reversal/
+isolation/OQ-L test written for it.** Milestone 2 (Direction 2, `ClearedAmount`, QR remaining-amount math)
+is intentionally NOT implemented - out of scope for this pass, to be picked up as a separate follow-on per
+the doc's own sequencing recommendation.
 
 ## Future Improvements
 
+- **Unrelated infra nit found during verification:** `FairShareMonApi.Tests/Infrastructure/
+  DatabaseFixture.cs`'s `ResolveConnectionString()` never loads `appsettings.Development.local.json`,
+  only `FSM_TEST_CONNECTION` or the plain `appsettings.json` fallback - meaning a developer's actual local
+  DB credentials in the `.local.json` override are silently ignored and every integration test skips with
+  a misleading "MariaDB unreachable" reason instead of the real "wrong password in the fallback config."
+  Worth fixing (e.g. also probe `appsettings.Development.local.json` if present) so this doesn't
+  re-surface for the next feature's test-engineer. Not fixed here - unrelated to this feature's scope.
 - Carried forward verbatim from the BA doc's own Future Improvements (not superseded by this plan):
   extending auto-cascade to the excluded mixed-role-creditor case, or a read-only "suggested cleared
   amount" signal for non-eligible members, once real usage data exists; unifying the display of all

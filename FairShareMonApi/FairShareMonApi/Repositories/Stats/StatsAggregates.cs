@@ -20,6 +20,11 @@ namespace FairShareMonApi.Repositories.Stats;
 /// false/null for a participant with no settlement row. The derived <c>outstanding</c> overlay is computed
 /// from these + balance in <c>StatsService</c>, not stored here.
 /// </remarks>
+/// <param name="IsEligibleForAutoCascade">
+/// Event-expense-settlement-sync Step M1.4 (OQ4): whether Direction 1's auto-cascade would fire for this
+/// member (a net debtor, or a gross-pure net creditor), derived from the same canonical
+/// <c>EventSettlementClassifier</c> helper Direction 1 itself gates on.
+/// </param>
 public sealed record MemberBalanceAggregate(
     string MemberUuid,
     string MemberName,
@@ -28,7 +33,8 @@ public sealed record MemberBalanceAggregate(
     decimal Advanced,
     decimal Owed,
     bool IsSettled,
-    DateTime? SettledAt);
+    DateTime? SettledAt,
+    bool IsEligibleForAutoCascade);
 
 /// <summary>Overview totals over the owner's whole ledger in a time range (OQ6): total spending (= sum of shares) and the distinct expense count.</summary>
 public sealed record OverviewAggregate(

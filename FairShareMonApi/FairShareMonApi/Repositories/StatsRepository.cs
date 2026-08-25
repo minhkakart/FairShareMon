@@ -54,30 +54,19 @@ public sealed class StatsRepository(AppDbContext dbContext) : BaseRepository(dbC
             .FirstOrDefaultAsync(evt => evt.Uuid == eventUuid && evt.User.Uuid == userUuid, ct), cancellationToken);
 
     public Task<IReadOnlyList<MemberBalanceAggregate>> GetEventBalanceAsync(string userUuid, ulong eventId, CancellationToken cancellationToken = default) =>
-        ExecuteQueryAsync(async (_, ct) =>
+        ExecuteQueryAsync(async (db, ct) =>
         {
-            // The single share-set: every share of the event's expenses (resource-owned defense-in-depth).
-            var shares = Query<Share>().Where(share =>
-                share.Expense.EventId == eventId && share.Expense.User.Uuid == userUuid);
-
-            // Advanced per payer (DB-side SUM grouped by the expense's payer).
-            var advancedByPayer = await shares
-                .GroupBy(share => share.Expense.PayerMemberId)
-                .Select(group => new { MemberId = group.Key, Amount = group.Sum(share => share.Amount) })
-                .ToListAsync(ct);
-
-            // Owed per member (DB-side SUM grouped by the share's member) - SAME share-set (OQ1).
-            var owedByMember = await shares
-                .GroupBy(share => share.MemberId)
-                .Select(group => new { MemberId = group.Key, Amount = group.Sum(share => share.Amount) })
-                .ToListAsync(ct);
-
-            var advancedMap = advancedByPayer.ToDictionary(row => row.MemberId, row => row.Amount);
-            var owedMap = owedByMember.ToDictionary(row => row.MemberId, row => row.Amount);
-
-            var memberIds = advancedMap.Keys.Union(owedMap.Keys).ToList();
-            if (memberIds.Count == 0)
+            // Canonical advanced/owed/eligibility classification (event-expense-settlement-sync Step
+            // M1.1) - the SAME helper Direction 1's write path gates on, closing the gross/net
+            // duplication-drift risk. Note: unlike the pre-refactor inline query, this is not additionally
+            // scoped by share.Expense.User.Uuid - the caller already resource-owns the event via
+            // FindOwnedEventAsync before calling this method, and an eventId is only ever resolved through
+            // that owned lookup, so the extra clause was defense-in-depth, not load-bearing.
+            var facts = await EventSettlementClassifier.ClassifyAsync(db, eventId, restrictToMemberIds: null, ct);
+            if (facts.Count == 0)
                 return (IReadOnlyList<MemberBalanceAggregate>)Array.Empty<MemberBalanceAggregate>();
+
+            var memberIds = facts.Keys.ToList();
 
             // Display info incl. soft-deleted members (OQ3/§4.7).
             var members = await Query<Member>(includeDeleted: true)
@@ -97,15 +86,17 @@ public sealed class StatsRepository(AppDbContext dbContext) : BaseRepository(dbC
                 .Select(member =>
                 {
                     var settled = settledMap.TryGetValue(member.Id, out var flag) ? flag : (IsSettled: false, SettledAt: (DateTime?)null);
+                    var fact = facts[member.Id];
                     return new MemberBalanceAggregate(
                         member.Uuid,
                         member.Name,
                         member.IsOwnerRepresentative,
                         member.IsDeleted,
-                        advancedMap.GetValueOrDefault(member.Id, 0m),
-                        owedMap.GetValueOrDefault(member.Id, 0m),
+                        fact.Advanced,
+                        fact.Owed,
                         settled.IsSettled,
-                        settled.SettledAt);
+                        settled.SettledAt,
+                        fact.IsEligibleForDirection1Cascade);
                 })
                 .OrderByDescending(row => row.Advanced - row.Owed)
                 .ThenBy(row => row.MemberName)

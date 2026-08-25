@@ -59,8 +59,8 @@ public class StatsServiceTests
         _stats.OwnedEvent = evt;
         _stats.BalanceAggregates =
         [
-            new MemberBalanceAggregate("m-binh", "Bình", false, false, 800_000m, 500_000m, false, null),
-            new MemberBalanceAggregate("m-cuong", "Cường", false, true, 0m, 500_000m, false, null)
+            new MemberBalanceAggregate("m-binh", "Bình", false, false, 800_000m, 500_000m, false, null, false),
+            new MemberBalanceAggregate("m-cuong", "Cường", false, true, 0m, 500_000m, false, null, true)
         ];
 
         var response = await CreateService().GetEventBalanceAsync(UserUuid, "e-1");
@@ -100,8 +100,8 @@ public class StatsServiceTests
         // Bình +300k (owed to), Cường −500k (owing, not settled).
         _stats.BalanceAggregates =
         [
-            new MemberBalanceAggregate("m-binh", "Bình", false, false, 800_000m, 500_000m, false, null),
-            new MemberBalanceAggregate("m-cuong", "Cường", false, false, 0m, 500_000m, false, null)
+            new MemberBalanceAggregate("m-binh", "Bình", false, false, 800_000m, 500_000m, false, null, false),
+            new MemberBalanceAggregate("m-cuong", "Cường", false, false, 0m, 500_000m, false, null, true)
         ];
 
         var response = await CreateService().GetEventBalanceAsync(UserUuid, "e-1");
@@ -123,8 +123,8 @@ public class StatsServiceTests
         // Cường still has balance −500k but has been marked settled (Layer B) → cleared.
         _stats.BalanceAggregates =
         [
-            new MemberBalanceAggregate("m-binh", "Bình", false, false, 800_000m, 500_000m, false, null),
-            new MemberBalanceAggregate("m-cuong", "Cường", false, false, 0m, 500_000m, true, new DateTime(2026, 7, 20, 0, 0, 0, DateTimeKind.Utc))
+            new MemberBalanceAggregate("m-binh", "Bình", false, false, 800_000m, 500_000m, false, null, false),
+            new MemberBalanceAggregate("m-cuong", "Cường", false, false, 0m, 500_000m, true, new DateTime(2026, 7, 20, 0, 0, 0, DateTimeKind.Utc), true)
         ];
 
         var response = await CreateService().GetEventBalanceAsync(UserUuid, "e-1");
@@ -146,8 +146,8 @@ public class StatsServiceTests
         // A valid sum-to-zero set: Bình +300k, Cường −300k (Cường marked settled).
         var aggregates = new[]
         {
-            new MemberBalanceAggregate("m-binh", "Bình", false, false, 800_000m, 500_000m, false, null),
-            new MemberBalanceAggregate("m-cuong", "Cường", false, false, 200_000m, 500_000m, true, DateTime.UtcNow)
+            new MemberBalanceAggregate("m-binh", "Bình", false, false, 800_000m, 500_000m, false, null, false),
+            new MemberBalanceAggregate("m-cuong", "Cường", false, false, 200_000m, 500_000m, true, DateTime.UtcNow, true)
         };
         _stats.BalanceAggregates = aggregates;
 
@@ -162,6 +162,24 @@ public class StatsServiceTests
             Assert.Equal(aggregate.Advanced - aggregate.Owed, row.Balance);
         }
         Assert.Equal(0m, response.Rows.Sum(row => row.Balance)); // sum-to-zero preserved
+    }
+
+    [Fact]
+    public async Task GetEventBalanceAsync_MapsIsEligibleForAutoCascadeThroughFromAggregate()
+    {
+        // event-expense-settlement-sync Step M1.4/OQ4: IsEligibleForAutoCascade must flow from the
+        // repository aggregate to the response row unchanged (AutoMapper convention mapping).
+        _stats.OwnedEvent = OwnedEvent();
+        _stats.BalanceAggregates =
+        [
+            new MemberBalanceAggregate("m-binh", "Bình", false, false, 200_000m, 500_000m, false, null, true),   // net debtor -> eligible
+            new MemberBalanceAggregate("m-cuong", "Cường", false, false, 800_000m, 300_000m, false, null, false) // gross-mixed creditor -> ineligible
+        ];
+
+        var response = await CreateService().GetEventBalanceAsync(UserUuid, "e-1");
+
+        Assert.True(Assert.Single(response.Rows, row => row.MemberUuid == "m-binh").IsEligibleForAutoCascade);
+        Assert.False(Assert.Single(response.Rows, row => row.MemberUuid == "m-cuong").IsEligibleForAutoCascade);
     }
 
     // ---- Overview ----------------------------------------------------------------------------------

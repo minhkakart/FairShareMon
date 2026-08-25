@@ -178,4 +178,10 @@ public static class ErrorCodes
 
     /// <summary>A share link was requested for an event that is not closed - only closed events may be shared (§4.4, HTTP 400).</summary>
     public const int EventNotClosedForShare = 16001;
+
+    // 17xxx - Event/expense settlement sync (block reserved by planning/event-expense-settlement-sync.md).
+    // Milestone 1 (Direction 1: event settle -> cascade to expenses) needs no new codes - every failure
+    // reuses an existing miss code (EventNotFound 9000 / MemberNotFound 3000); an ineligible member's
+    // cascade is a silent no-op, not an error. No codes are defined yet; this block is reserved for any
+    // future settlement-sync-specific failure state (e.g. Milestone 2).
 }
