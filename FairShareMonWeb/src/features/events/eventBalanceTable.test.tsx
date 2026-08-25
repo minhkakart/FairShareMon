@@ -59,6 +59,7 @@ const ROWS: MemberBalanceRow[] = [
     balance: 0,
     outstanding: 0,
     isSettled: false,
+    isEligibleForAutoCascade: false,
   },
   {
     memberUuid: "m-1",
@@ -70,6 +71,7 @@ const ROWS: MemberBalanceRow[] = [
     balance: 200000,
     outstanding: 0,
     isSettled: false,
+    isEligibleForAutoCascade: true,
   },
   {
     memberUuid: "m-2",
@@ -81,6 +83,7 @@ const ROWS: MemberBalanceRow[] = [
     balance: -200000,
     outstanding: 200000,
     isSettled: false,
+    isEligibleForAutoCascade: true,
   },
 ];
 
@@ -193,6 +196,50 @@ describe("EventBalanceTable", () => {
     ).toBeInTheDocument();
     // No total/footer row when there are no rows.
     expect(screen.queryByText("Tổng")).not.toBeInTheDocument();
+  });
+
+  it("EventBalanceTable_EligibleCreditorRow_RendersSameStatusCellShapeAsDebtorRow", async () => {
+    // Regression for M1-R2/OQ2: the eligible-creditor branch (`balance > 0 &&
+    // isEligibleForAutoCascade`) must render the same Badge + `MemberSettledToggle`
+    // shape a debtor row (`balance < 0`) gets — not silently regress to the old
+    // "muted dash, no control" rendering every `balance >= 0` row used to get.
+    stubBalance(ROWS);
+    renderTable();
+
+    // "An Nguyễn" (ROWS): balance 200.000 (creditor), isEligibleForAutoCascade: true.
+    const creditorRow = (
+      await screen.findByRole("rowheader", { name: /An Nguyễn/ })
+    ).closest("tr") as HTMLElement;
+    // "Còn nợ" appears twice (the Badge text + the switch's own labelOff span) —
+    // getAllByText, mirroring the existing color-independent-status assertion
+    // pattern in `memberSettled.test.tsx`.
+    expect(
+      within(creditorRow).getAllByText("Còn nợ").length,
+    ).toBeGreaterThanOrEqual(1);
+    expect(
+      within(creditorRow).getByRole("switch", {
+        name: "Trạng thái đã trả của An Nguyễn",
+      }),
+    ).toBeInTheDocument();
+    // Plus the M1-R2 eligibility HelpHint distinguishing it from a debtor row.
+    expect(
+      within(creditorRow).getByRole("button", {
+        name: "Đánh dấu đã trả sẽ tự động đánh dấu tất cả phần gánh liên quan của thành viên này là đã trả.",
+      }),
+    ).toBeInTheDocument();
+
+    // "Cũ" (ROWS): balance -200.000 (debtor) — the pre-existing branch, same shape.
+    const debtorRow = screen
+      .getByRole("rowheader", { name: /Cũ/ })
+      .closest("tr") as HTMLElement;
+    expect(
+      within(debtorRow).getAllByText("Còn nợ").length,
+    ).toBeGreaterThanOrEqual(1);
+    expect(
+      within(debtorRow).getByRole("switch", {
+        name: "Trạng thái đã trả của Cũ",
+      }),
+    ).toBeInTheDocument();
   });
 
   it("EventBalanceTable_LoadError_ShowsRetry", async () => {

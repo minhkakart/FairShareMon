@@ -50,6 +50,7 @@ const PAYLOAD: PublicEventShareResponse = {
       outstanding: 300000,
       isSettled: false,
       settledAt: null,
+      isEligibleForAutoCascade: true,
     },
     {
       memberUuid: "m-binh",
@@ -62,6 +63,7 @@ const PAYLOAD: PublicEventShareResponse = {
       outstanding: 0,
       isSettled: false,
       settledAt: null,
+      isEligibleForAutoCascade: false,
     },
   ],
   expenses: [],

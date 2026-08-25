@@ -85,6 +85,10 @@
     "settledAriaNamed": "Settled status of {{name}}",
     "settledToastOn": "Member marked as settled.",
     "settledToastOff": "Member marked as unsettled.",
+    "settledToastOnCascade": "Marked {{name}} as settled — their related shares in this event were automatically marked as settled too.",
+    "settledToastOffCascade": "Unmarked {{name}} as settled — their related shares were marked as unsettled again.",
+    "creditorEligibleHint": "Marking this member as settled will automatically mark all of their related shares in this event as settled too.",
+    "creditorIneligibleHint": "This member both receives and owes money in this event, so it can't be auto-synced — mark each expense/share individually instead.",
     "summary": "{{settled}}/{{total}} members settled · {{amount}} outstanding"
   },
   "expensesSection": {

@@ -95,8 +95,13 @@ export function useCloseEvent() {
 
 /**
  * Per-member net-clearance settled toggle (Layer B, OQ7a). Invalidates the event
- * balance overlay + `eventsKeys.all` (so the summary counts refresh); it does NOT
- * reach the expenses caches — Layer B does not change expense/share data.
+ * balance overlay + `eventsKeys.all` (so the summary counts refresh), and — since
+ * event-expense-settlement-sync (2026-08-25, Direction 1) — the expenses caches
+ * too: a member-level settle/un-settle can now cascade `Share.isSettled` across
+ * every expense that member has a share in, in this event, so any open expense
+ * view must refetch to reflect it. (Superseded assumption: this hook used to
+ * assert it never reaches the expenses caches because Layer B didn't change
+ * expense/share data — Direction 1 makes that false.)
  */
 export function useSetMemberSettled() {
   return useMutation({
@@ -114,6 +119,11 @@ export function useSetMemberSettled() {
         queryKey: eventsKeys.balance(eventUuid),
       });
       void queryClient.invalidateQueries({ queryKey: eventsKeys.all });
+      // Direction 1 (event-expense settlement sync): a member-level settle/
+      // un-settle can now cascade Share.isSettled across every expense the
+      // member has a share in, in this event — invalidate the expenses caches
+      // too (fuzzy-matches every `detail`/`history` sub-key, not just the list).
+      void queryClient.invalidateQueries({ queryKey: expensesKeys.all });
     },
   });
 }

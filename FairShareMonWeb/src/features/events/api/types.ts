@@ -87,6 +87,16 @@ export interface MemberBalanceRow {
   isSettled: boolean;
   /** Timestamp of the most recent net-clearance mark (null if never marked). */
   settledAt?: string | null;
+  /**
+   * Direction-1 auto-cascade eligibility (event-expense settlement sync): true if
+   * marking this member's event-level settled flag will automatically cascade to
+   * all of their shares in the event (a net debtor, or a net creditor who holds no
+   * debtor-share elsewhere in the event). Read verbatim — never re-derived
+   * client-side (the gross/net classification is the API's single canonical
+   * helper; duplicating it here is the exact drift risk the backend design
+   * exists to prevent).
+   */
+  isEligibleForAutoCascade: boolean;
 }
 
 /**

@@ -7,6 +7,7 @@ import { renderWithProviders } from "@/test/utils";
 import { sessionStore } from "@/lib/auth/session";
 import { queryClient } from "@/lib/query/queryClient";
 import { setActiveLocale } from "@/lib/api/runtime";
+import { useExpensesQuery } from "@/features/expenses/hooks/useExpenses";
 import i18n from "@/i18n";
 import { EventBalanceTable } from "./components/EventBalanceTable";
 
@@ -46,6 +47,16 @@ interface BaseRow {
   advanced: number;
   owed: number;
   balance: number;
+  /**
+   * Direction-1 auto-cascade eligibility (event-expense-settlement-sync).
+   * Deliberately `false` on every BASE row — none of these three members are
+   * used to exercise the cascade-aware branches (that's the dedicated
+   * `CREDITOR_ROWS` fixture below); keeping BASE unchanged here preserves every
+   * pre-existing assertion in this file (the plain, non-cascade toast copy; the
+   * owner's row falling into the ineligible-creditor branch, which still shows
+   * no `switch`, matching "RendersOnlyForOwingMembers" below).
+   */
+  isEligibleForAutoCascade: boolean;
 }
 
 /** Owner-rep is owed 500.000; An owes 300.000; Cũ (deleted) owes 200.000. Two
@@ -59,6 +70,7 @@ const BASE: BaseRow[] = [
     advanced: 500000,
     owed: 0,
     balance: 500000,
+    isEligibleForAutoCascade: false,
   },
   {
     // Advanced 100.000 so `owed` (400.000) is distinct from the balance/outstanding
@@ -70,6 +82,7 @@ const BASE: BaseRow[] = [
     advanced: 100000,
     owed: 400000,
     balance: -300000,
+    isEligibleForAutoCascade: false,
   },
   {
     memberUuid: "m-2",
@@ -79,6 +92,7 @@ const BASE: BaseRow[] = [
     advanced: 0,
     owed: 200000,
     balance: -200000,
+    isEligibleForAutoCascade: false,
   },
 ];
 
@@ -119,6 +133,111 @@ function installBalanceStore() {
       },
     ),
   );
+}
+
+// --- Creditor-row affordance fixture (event-expense-settlement-sync, M1-R2) ---
+// A dedicated event/store, separate from BASE/UUID above, so these dedicated
+// eligibility scenarios never perturb the pre-existing BASE assertions (switch
+// counts, footer X-of-Y counts, plain-toast copy) that hardcode BASE's shape.
+const CREDITOR_UUID = "ev-creditor";
+
+interface CreditorRow {
+  memberUuid: string;
+  memberName: string;
+  isOwnerRepresentative: boolean;
+  isDeleted: boolean;
+  advanced: number;
+  owed: number;
+  balance: number;
+  isEligibleForAutoCascade: boolean;
+}
+
+/** One row per M1-R2 branch: eligible creditor, ineligible (gross-mixed)
+ *  creditor, true net-zero, and an eligible DEBTOR (cascade isn't creditor-only). */
+const CREDITOR_ROWS: CreditorRow[] = [
+  {
+    memberUuid: "cm-eligible-creditor",
+    memberName: "Đông Vũ",
+    isOwnerRepresentative: false,
+    isDeleted: false,
+    advanced: 150000,
+    owed: 0,
+    balance: 150000,
+    isEligibleForAutoCascade: true,
+  },
+  {
+    memberUuid: "cm-ineligible-creditor",
+    memberName: "Giang Phạm",
+    isOwnerRepresentative: false,
+    isDeleted: false,
+    advanced: 150000,
+    owed: 50000,
+    balance: 100000,
+    isEligibleForAutoCascade: false,
+  },
+  {
+    memberUuid: "cm-net-zero",
+    memberName: "Hà Đặng",
+    isOwnerRepresentative: false,
+    isDeleted: false,
+    advanced: 100000,
+    owed: 100000,
+    balance: 0,
+    isEligibleForAutoCascade: false,
+  },
+  {
+    memberUuid: "cm-eligible-debtor",
+    memberName: "Khang Bùi",
+    isOwnerRepresentative: false,
+    isDeleted: false,
+    advanced: 0,
+    owed: 200000,
+    balance: -200000,
+    isEligibleForAutoCascade: true,
+  },
+];
+
+let creditorSettled: Set<string>;
+
+function creditorBalancePayload() {
+  const rows = CREDITOR_ROWS.map((r) => {
+    const marked = creditorSettled.has(r.memberUuid);
+    const outstanding = r.balance < 0 && !marked ? -r.balance : 0;
+    return { ...r, outstanding, isSettled: marked, settledAt: null };
+  });
+  return {
+    eventUuid: CREDITOR_UUID,
+    eventName: "Nha Trang",
+    isClosed: false,
+    rows,
+    totalOutstanding: rows.reduce((s, r) => s + r.outstanding, 0),
+    owingMemberCount: rows.filter((r) => r.outstanding > 0).length,
+    settledMemberCount: rows.filter((r) => r.balance < 0 && r.isSettled).length,
+  };
+}
+
+function installCreditorStore() {
+  creditorSettled = new Set();
+  server.use(
+    http.get(`*/api/v1/events/${CREDITOR_UUID}/balance`, () =>
+      ok(creditorBalancePayload()),
+    ),
+    http.put(
+      `*/api/v1/events/${CREDITOR_UUID}/members/:memberUuid/settled`,
+      async ({ request, params }) => {
+        const body = (await request.json()) as { isSettled?: boolean };
+        if (body.isSettled) creditorSettled.add(String(params.memberUuid));
+        else creditorSettled.delete(String(params.memberUuid));
+        return ok({ message: "OK" });
+      },
+    ),
+  );
+}
+
+function renderCreditorTable() {
+  return renderWithProviders(<EventBalanceTable uuid={CREDITOR_UUID} />, {
+    queryClient,
+  });
 }
 
 function seedSession() {
@@ -331,6 +450,159 @@ describe("MemberSettledToggle write + reconcile", () => {
 
     expect(
       await screen.findByText("Không tìm thấy thành viên."),
+    ).toBeInTheDocument();
+  });
+
+  it("MemberSettledToggle_MarkSettled_AlsoInvalidatesExpensesCache", async () => {
+    // The M1.2 regression: useSetMemberSettled's onSuccess used to reach only
+    // `eventsKeys` — a member-level settle can now cascade Share.isSettled
+    // across N expenses (Direction 1), so the expenses cache must refetch too.
+    // Mount a live subscriber on the expenses list (mirrors the
+    // `useEvents.test.tsx` counters+Probe pattern) so `expensesKeys.all`'s
+    // invalidation has an ACTIVE query to refetch, and count the GETs it fires.
+    let expensesRequests = 0;
+    server.use(
+      http.get("*/api/v1/expenses", () => {
+        expensesRequests += 1;
+        return ok([]);
+      }),
+    );
+    function ExpensesProbe() {
+      useExpensesQuery({});
+      return null;
+    }
+    const user = userEvent.setup();
+    renderWithProviders(
+      <>
+        <EventBalanceTable uuid={UUID} />
+        <ExpensesProbe />
+      </>,
+      { queryClient },
+    );
+
+    await screen.findByRole("rowheader", { name: /An Nguyễn/ });
+    await waitFor(() => expect(expensesRequests).toBe(1));
+
+    await user.click(
+      screen.getByRole("switch", { name: "Trạng thái đã trả của An Nguyễn" }),
+    );
+
+    // Before the M1.2 fix this never fired a second GET — the fix's whole point
+    // is that expensesKeys.all is now reached by the mutation's onSuccess.
+    await waitFor(() => expect(expensesRequests).toBeGreaterThanOrEqual(2));
+  });
+});
+
+describe("MemberSettledToggle creditor-row affordance (event-expense-settlement-sync M1-R2)", () => {
+  beforeEach(() => {
+    installCreditorStore();
+  });
+
+  /**
+   * The status column is the LAST `cell` in the row (member name is a
+   * `rowheader`, not a `cell`) — scoped lookup because the "Còn nợ" (outstanding)
+   * column ALSO renders a muted "—" for any `balance >= 0` row, so an unscoped
+   * `getByText("—")` on the whole row is ambiguous (multiple matches) or
+   * misleading (always finds one, regardless of the status column's own shape).
+   */
+  function statusCellFor(row: HTMLElement): HTMLElement {
+    const cells = within(row).getAllByRole("cell");
+    return cells[cells.length - 1];
+  }
+
+  it("MemberSettledToggle_CreditorRow_RendersAffordanceWhenEligible", async () => {
+    renderCreditorTable();
+    await screen.findByRole("rowheader", { name: /Đông Vũ/ });
+
+    const status = statusCellFor(rowFor(/Đông Vũ/));
+    // Not the muted "—" — the same toggle an owing row gets.
+    expect(
+      within(status).getByRole("switch", {
+        name: "Trạng thái đã trả của Đông Vũ",
+      }),
+    ).toBeInTheDocument();
+    expect(within(status).queryByText("—")).not.toBeInTheDocument();
+    // Plus the eligibility HelpHint (accessible name == the locked hint copy).
+    expect(
+      within(status).getByRole("button", {
+        name: "Đánh dấu đã trả sẽ tự động đánh dấu tất cả phần gánh liên quan của thành viên này là đã trả.",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("MemberSettledToggle_CreditorRow_IneligibleGrossMixed_HidesToggleShowsHint", async () => {
+    renderCreditorTable();
+    await screen.findByRole("rowheader", { name: /Giang Phạm/ });
+
+    const status = statusCellFor(rowFor(/Giang Phạm/));
+    // No toggle at all — OQ2 locked "hide", not "disable".
+    expect(within(status).queryByRole("switch")).not.toBeInTheDocument();
+    // The muted "—" is still shown…
+    expect(within(status).getByText("—")).toBeInTheDocument();
+    // …replaced-in-spirit by a HelpHint explaining why (not folded silently).
+    expect(
+      within(status).getByRole("button", {
+        name: "Thành viên này vừa có khoản được nhận vừa có khoản phải trả trong đợt, nên không thể tự động đồng bộ — hãy đánh dấu từng phiếu/phần gánh riêng.",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("MemberSettledToggle_CreditorRow_NetZero_UnchangedMutedDash", async () => {
+    renderCreditorTable();
+    await screen.findByRole("rowheader", { name: /Hà Đặng/ });
+
+    const status = statusCellFor(rowFor(/Hà Đặng/));
+    // A true net-zero balance never gets a toggle…
+    expect(within(status).queryByRole("switch")).not.toBeInTheDocument();
+    // …stays the plain muted "—"…
+    expect(within(status).getByText("—")).toBeInTheDocument();
+    // …and — the regression this test locks in — is NOT folded into the
+    // ineligible-creditor branch: no HelpHint button renders for it either.
+    expect(within(status).queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("MemberSettledToggle_EligibleCascade_ToastCommunicatesCascade", async () => {
+    const user = userEvent.setup();
+    renderCreditorTable();
+    await screen.findByRole("rowheader", { name: /Đông Vũ/ });
+
+    // Eligible creditor → cascade-aware toast (Step M1.5/OQ5).
+    await user.click(
+      screen.getByRole("switch", { name: "Trạng thái đã trả của Đông Vũ" }),
+    );
+    expect(
+      await screen.findByText(
+        "Đã đánh dấu Đông Vũ đã trả — các phần gánh liên quan của họ trong đợt cũng đã được tự động đánh dấu đã trả.",
+      ),
+    ).toBeInTheDocument();
+
+    // Eligible DEBTOR → the same cascade-aware toast (cascade communication
+    // isn't creditor-only — it's gated on eligibility, not polarity).
+    await user.click(
+      screen.getByRole("switch", { name: "Trạng thái đã trả của Khang Bùi" }),
+    );
+    expect(
+      await screen.findByText(
+        "Đã đánh dấu Khang Bùi đã trả — các phần gánh liên quan của họ trong đợt cũng đã được tự động đánh dấu đã trả.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("MemberSettledToggle_IneligibleOwingRow_KeepsPlainToast", async () => {
+    // Regression companion to the test above: an ineligible row (BASE's An
+    // Nguyễn, isEligibleForAutoCascade: false) keeps today's plain, non-cascade
+    // toast — nothing extra happened, so nothing extra is communicated.
+    const user = userEvent.setup();
+    renderTable();
+
+    await user.click(
+      await screen.findByRole("switch", {
+        name: "Trạng thái đã trả của An Nguyễn",
+      }),
+    );
+
+    expect(
+      await screen.findByText("Đã đánh dấu thành viên là đã trả."),
     ).toBeInTheDocument();
   });
 });

@@ -6,6 +6,7 @@ import {
   CardHeader,
   EmptyState,
   ErrorState,
+  HelpHint,
   Money,
   Skeleton,
   Table,
@@ -60,10 +61,13 @@ const COLUMN_COUNT = 6;
  * re-computed) — those columns and the sum-to-zero `TableFoot` total stay PURE
  * and untouched. Additive overlay columns render `outstanding` (còn nợ) + a
  * đã-trả/còn-nợ status with a per-member settled toggle for owing members
- * (`balance < 0`, OQ5a), plus a `totalOutstanding`/X-of-Y summary read verbatim
- * from the API. Shown for open AND closed events (OQ8a/OQ9a); the per-member
- * toggle is enabled on both (the sole closed-event write, R6). An event with no
- * expenses shows a calm empty note.
+ * (`balance < 0`, OQ5a) — and, since event-expense-settlement-sync (2026-08-25,
+ * Direction 1), for net-creditor members eligible for the auto-cascade too
+ * (`balance >= 0 && isEligibleForAutoCascade`, M1-R2/OQ2) — plus a
+ * `totalOutstanding`/X-of-Y summary read verbatim from the API. Shown for open
+ * AND closed events (OQ8a/OQ9a); the per-member toggle is enabled on both (the
+ * sole closed-event write, R6). An event with no expenses shows a calm empty
+ * note.
  */
 export function EventBalanceTable({ uuid }: EventBalanceTableProps) {
   const { t } = useT();
@@ -141,10 +145,16 @@ function BalanceHeadRow() {
 }
 
 /**
- * The overlay status cell (OQ4a/OQ5a): for an owing member (`balance < 0`), a
+ * The overlay status cell (OQ4a/OQ5a, extended by event-expense-settlement-sync
+ * M1-R2/OQ2): for an owing member (`balance < 0`, unchanged), a
  * color-independent đã-trả/còn-nợ badge (icon + text) plus the per-member settled
- * toggle; owed/zero members (`balance >= 0`) show a muted "—" (marking them has
- * no overlay effect — OQ5a).
+ * toggle. For a net creditor (`balance >= 0`) that is Direction-1
+ * auto-cascade-eligible, the same badge + toggle is shown, paired with a
+ * `HelpHint` explaining the cascade. For a net creditor that is NOT eligible
+ * (holds a debtor-share elsewhere in the event), the toggle is hidden entirely
+ * and the muted "—" is replaced by a `HelpHint` explaining why. A true net-zero
+ * balance stays exactly as today: plain muted "—", no hint (never folded into
+ * the ineligible-creditor branch).
  */
 function StatusCell({
   eventUuid,
@@ -154,27 +164,66 @@ function StatusCell({
   row: MemberBalanceRow;
 }) {
   const { t } = useT();
-  if (row.balance >= 0) {
-    return <span className={styles.muted}>—</span>;
+
+  if (row.balance < 0) {
+    return (
+      <div className={styles.statusCell}>
+        <Badge
+          tone={row.isSettled ? "settled" : "warning"}
+          icon={row.isSettled ? <CheckIcon /> : <ClockIcon />}
+        >
+          {row.isSettled
+            ? t("events:balance.statusSettled")
+            : t("events:balance.statusOwing")}
+        </Badge>
+        <MemberSettledToggle
+          eventUuid={eventUuid}
+          memberUuid={row.memberUuid}
+          memberName={row.memberName}
+          isSettled={row.isSettled}
+          isEligibleForAutoCascade={row.isEligibleForAutoCascade}
+        />
+      </div>
+    );
   }
-  return (
-    <div className={styles.statusCell}>
-      <Badge
-        tone={row.isSettled ? "settled" : "warning"}
-        icon={row.isSettled ? <CheckIcon /> : <ClockIcon />}
-      >
-        {row.isSettled
-          ? t("events:balance.statusSettled")
-          : t("events:balance.statusOwing")}
-      </Badge>
-      <MemberSettledToggle
-        eventUuid={eventUuid}
-        memberUuid={row.memberUuid}
-        memberName={row.memberName}
-        isSettled={row.isSettled}
-      />
-    </div>
-  );
+
+  if (row.balance > 0 && row.isEligibleForAutoCascade) {
+    return (
+      <div className={styles.statusCell}>
+        <Badge
+          tone={row.isSettled ? "settled" : "warning"}
+          icon={row.isSettled ? <CheckIcon /> : <ClockIcon />}
+        >
+          {row.isSettled
+            ? t("events:balance.statusSettled")
+            : t("events:balance.statusOwing")}
+        </Badge>
+        <MemberSettledToggle
+          eventUuid={eventUuid}
+          memberUuid={row.memberUuid}
+          memberName={row.memberName}
+          isSettled={row.isSettled}
+          isEligibleForAutoCascade={row.isEligibleForAutoCascade}
+        />
+        <HelpHint label={t("events:balance.creditorEligibleHint")}>
+          {t("events:balance.creditorEligibleHint")}
+        </HelpHint>
+      </div>
+    );
+  }
+
+  if (row.balance > 0 && !row.isEligibleForAutoCascade) {
+    return (
+      <div className={styles.statusCell}>
+        <span className={styles.muted}>—</span>
+        <HelpHint label={t("events:balance.creditorIneligibleHint")}>
+          {t("events:balance.creditorIneligibleHint")}
+        </HelpHint>
+      </div>
+    );
+  }
+
+  return <span className={styles.muted}>—</span>;
 }
 
 function BalanceRows({

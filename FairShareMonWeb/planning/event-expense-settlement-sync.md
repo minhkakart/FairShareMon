@@ -813,16 +813,138 @@ Extend existing files (per the task brief's named starting set):
   doc's scope stays planning-only; implementation remains a separate, explicitly future step gated on
   each milestone's backend shipping (Assumptions, unchanged).
 
+### 2026-08-25 (Milestone 1 implemented — Steps M1.1-M1.5)
+
+- Confirmed the API's Milestone 1 has shipped: `MemberBalanceRow.IsEligibleForAutoCascade` (bool) is a real
+  field in `FairShareMonApi/Models/Stats/MemberBalanceRow.cs`, read directly before starting.
+- **M1.1** — added `isEligibleForAutoCascade: boolean` to `MemberBalanceRow`
+  (`features/events/api/types.ts`) with the doc comment verbatim from the plan.
+- **M1.2** — GitNexus's indexed graph does not contain this frontend TS symbol (`query`/`impact` both
+  returned "not found" for `useSetMemberSettled`, not a staleness warning) — an intermittent gap the task
+  brief pre-authorized falling back from. Did a manual grep-based caller check instead: `useSetMemberSettled`
+  is called only from `MemberSettledToggle.tsx`; blast radius matches the doc's expectation exactly (low
+  risk). Added the `expensesKeys.all` invalidation to `useSetMemberSettled`'s `onSuccess`
+  (`features/events/hooks/useEvents.ts`) and rewrote the function's doc comment to state the cascade
+  instead of the old "does not reach the expenses caches" claim.
+- **M1.3** — `EventBalanceTable.tsx`'s `StatusCell` rewritten into the four explicit branches (owing /
+  eligible-creditor+`HelpHint` / ineligible-creditor+`HelpHint` / net-zero unchanged), reusing
+  `MemberSettledToggle` and the existing `Badge` unmodified, importing `HelpHint` from `@/components/ui`.
+  Also refreshed the component's top-of-file doc comment, which still asserted the toggle only ever
+  appears for `balance < 0` rows.
+- **M1.4** — added `creditorEligibleHint`, `creditorIneligibleHint`, `settledToastOnCascade`,
+  `settledToastOffCascade` to both `i18n/locales/{vi-VN,en-US}/events.json` under `balance` (vi-VN copy
+  verbatim from the plan; natural en-US mirrors authored).
+- **M1.5** — `MemberSettledToggle` gained the `isEligibleForAutoCascade: boolean` prop (threaded from
+  `StatusCell`'s `row.isEligibleForAutoCascade`) and branches its success toast between the cascade-aware
+  copy and the existing plain copy. Manual grep confirmed `MemberSettledToggle` is rendered only from
+  `EventBalanceTable.tsx`'s `StatusCell` (plus its own test file) — matches the doc's expected blast radius.
+- **Mechanical fixture fixes** (explicitly sanctioned by the task brief, not new test authorship): three
+  existing test files construct a `MemberBalanceRow`/`Partial<MemberBalanceRow>` object typed against the
+  now-larger interface and needed the new required field added —
+  `features/events/eventBalanceTable.test.tsx` (`ROWS` fixture), `features/share/publicBalanceTable.test.tsx`
+  (`mkRow` helper default), `features/share/publicSharePage.test.tsx` (`PAYLOAD.rows`). No assertions were
+  changed; the `share` feature's own product code (`PublicBalanceTable.tsx`) doesn't read the new field, so
+  it's untouched (this doc's Assumptions already scope `share` out). The MSW mock's `computeBalance`
+  (`src/test/msw/handlers.ts`) is intentionally left untouched — that's Step M1.6, `web-test-engineer`'s job.
+- **Verification**: `pnpm lint` clean (only pre-existing, unrelated `only-export-components` warnings),
+  `tsc -b` clean, `pnpm build` succeeds, `pnpm test` green (114 files / 949 tests passing, no regressions).
+  Ran the app for real: started `pnpm dev` with `VITE_ENABLE_MOCKS=true`, logged in as the seeded `admin`
+  user, opened the pre-seeded "Chuyến Đà Lạt" event (a real mixed creditor/debtor balance: one net creditor,
+  two net debtors). Temporarily patched the MSW `computeBalance` helper in-place to compute a plausible
+  `isEligibleForAutoCascade` (`balance !== 0`) purely to exercise the branches visually — reverted via
+  `git checkout` immediately after (confirmed no diff remains) so Step M1.6's MSW work is untouched. Screenshots
+  confirmed: the eligible-creditor row renders the badge+toggle+`HelpHint` exactly like an owing row plus
+  the eligibility hint; flipping the flag to ineligible hides the toggle and shows the muted "—" +
+  ineligible `HelpHint` instead; hovering the eligible-creditor's hint renders the exact locked Vietnamese
+  copy; clicking the eligible creditor's toggle produced the exact cascade-aware toast ("Đã đánh dấu An
+  Nguyễn đã trả — các phần gánh liên quan của họ trong đợt cũng đã được tự động đánh dấu đã trả."). The
+  owing-row branch and the net-zero branch were unchanged and confirmed via the existing/updated test suite.
+- **No Open Questions added** — nothing encountered required a stop-and-ask; the plan's code snippets and
+  locked copy were followed as written.
+
+### 2026-08-25 (Step M1.6 — tests added, `web-test-engineer`)
+
+- Read Step M1.6's exact test list, the implemented M1.1-M1.5 code (`features/events/api/types.ts`,
+  `hooks/useEvents.ts`'s `useSetMemberSettled`, `EventBalanceTable.tsx`'s four-way `StatusCell`,
+  `MemberSettledToggle.tsx`'s `isEligibleForAutoCascade` prop/toast branch), and both locales'
+  `creditorEligibleHint`/`creditorIneligibleHint`/`settledToastOnCascade`/`settledToastOffCascade` copy
+  before writing anything, per the task brief.
+- **`src/features/events/memberSettled.test.tsx`** — extended:
+  - Added `isEligibleForAutoCascade: boolean` to the pre-existing `BASE` fixture (all three rows kept
+    `false`, preserving every pre-existing assertion — the plain non-cascade toast, the owner's row still
+    showing no toggle, now via the ineligible-creditor branch instead of the old blanket muted-dash branch).
+  - `MemberSettledToggle_MarkSettled_AlsoInvalidatesExpensesCache` — the concrete M1.2 regression: mounts a
+    live `useExpensesQuery({})` subscriber alongside `EventBalanceTable` (mirrors the
+    `useEvents.test.tsx` counters+Probe pattern) and counts `GET /v1/expenses` requests; asserts a second
+    GET fires after the member-settle mutation succeeds (before the fix, `expensesKeys.all` was never
+    reached, so no second GET would have fired here).
+  - A new, isolated `CREDITOR_ROWS`/`installCreditorStore()` fixture (separate `ev-creditor` event/uuid, so
+    it never perturbs BASE's hardcoded switch-count/footer-count assertions) backing four new tests:
+    `MemberSettledToggle_CreditorRow_RendersAffordanceWhenEligible`,
+    `MemberSettledToggle_CreditorRow_IneligibleGrossMixed_HidesToggleShowsHint`,
+    `MemberSettledToggle_CreditorRow_NetZero_UnchangedMutedDash` (scoped to the status `cell` specifically,
+    since the "Còn nợ" outstanding column also renders a muted "—" for any `balance >= 0` row — an
+    unscoped assertion would be ambiguous/misleading), and `MemberSettledToggle_EligibleCascade_
+    ToastCommunicatesCascade` (both an eligible creditor AND an eligible debtor get the cascade-aware
+    toast — cascade communication is gated on eligibility, not polarity).
+  - `MemberSettledToggle_IneligibleOwingRow_KeepsPlainToast` — explicit companion regression (An Nguyễn,
+    `isEligibleForAutoCascade: false`) confirming the plain toast is unchanged; overlaps in spirit with the
+    pre-existing `MemberSettledToggle_Click_PutsToPerMemberRouteThenToasts` assertion but named directly
+    per the M1.6 checklist for traceability.
+- **`src/features/events/eventBalanceTable.test.tsx`** — extended:
+  `EventBalanceTable_EligibleCreditorRow_RendersSameStatusCellShapeAsDebtorRow` — the ROWS fixture's "An
+  Nguyễn" (already `isEligibleForAutoCascade: true` from the M1.1-M1.5 mechanical fixture fix) is asserted
+  to render the same Badge + `MemberSettledToggle` shape "Cũ" (a debtor row) gets, plus the M1-R2 eligibility
+  `HelpHint` — the regression that the new eligible-creditor branch doesn't silently break owing-row
+  rendering. (Discovered mid-write: `getByText("Còn nợ")` is ambiguous — the Badge text AND the switch's own
+  `labelOff` both render that string — switched to `getAllByText(...).length >= 1`, matching the existing
+  color-independent-status assertion pattern already used elsewhere in `memberSettled.test.tsx`.)
+- **`src/test/msw/handlers.ts`** — extended:
+  - `computeBalance` now derives `isEligibleForAutoCascade` per row via a `billableDebtors` set (built
+    alongside the existing `advanced`/`owed` accumulation): any member holding a "billable" share (not the
+    expense's payer, `amount > 0` — the same definition the whole-expense settled handler's own OQ3a
+    cascade already uses) on any expense in the event is NOT auto-cascade-eligible unless they are a net
+    debtor. Mirrors the API's four-way rule (net debtor → always true; net creditor with no billable
+    debtor-share elsewhere → true; net creditor with one → false; net-zero → false) exactly.
+  - The per-member settled PUT handler (`PUT /events/:uuid/members/:memberUuid/settled`) now cascades
+    `Share.isSettled` (+ `settledAt`) across every billable share the member holds on any expense within
+    that event, forward (settle) and reversal (un-settle) alike — needed for realistic end-to-end fixtures
+    per the task brief, and keeps the browser-mock (`VITE_ENABLE_MOCKS=true`) demo realistic without the
+    manual in-place patch the M1.1-M1.5 implementation note describes having reverted.
+  - Confirmed no other test file depends on the global `computeBalance`/member-settled-PUT handlers for
+    balance assertions — `eventBalanceTable.test.tsx`, `memberSettled.test.tsx`,
+    `eventDetailPage.test.tsx`, `useEvents.test.tsx`, and `share/eventDetailShare.test.tsx` all install
+    their own local `server.use(...)` overrides for these routes, so the handlers.ts change is additive/
+    inert for the existing suite (verified by running the full suite — no regressions).
+- **Verification**: `pnpm lint` clean (only the same pre-existing, unrelated `only-export-components`
+  warnings noted in the M1.1-M1.5 entry), `tsc -b` clean, `pnpm test` green — 114 files / **956 tests**
+  passing (949 pre-existing + 7 new: 6 in `memberSettled.test.tsx`, 1 in `eventBalanceTable.test.tsx`), no
+  regressions.
+- **No product-code bugs found** — every M1.1-M1.5 branch behaved exactly per the plan; no fix was routed
+  back to `web-implementer`.
+- **Coverage gaps / deferred, explicitly out of this step's scope**: `settledToastOffCascade` (the
+  un-settle mirror of the cascade toast) and the ineligible-creditor's un-toggle path aren't separately
+  exercised here (Direction 1's settle/un-settle symmetry is already covered for the plain-toast case by
+  the pre-existing suite; a dedicated un-settle-cascade toast test would be a reasonable low-cost addition
+  but wasn't in Step M1.6's named test list). Milestone 2 (`clearedAmount`/`settlementStatus`/
+  `SettlementMeter`/`partiallySettledMemberCount`) is untouched, per the task brief — that's Step M2.5,
+  gated on the API's Milestone 2 shipping.
+
 ## Final Outcome
 
-**Planning complete — zero Open Questions remain.** This doc is now the final planning deliverable for
-this feature cycle: both milestones' Requirements, Implementation Plan, and Impact Analysis are locked
-against a fully resolved contract (the two upstream docs) and a fully resolved design (this doc's own six
-OQs, with every referenced primitive already built and confirmed in the tree). **Implementation has not
-started** and is not part of this cycle — per the Assumptions section, Milestone 1 web work should not
-begin before the API's Milestone 1 ships, and likewise for Milestone 2, mirroring the
-`settled-per-member.md` precedent exactly. The next step is handing this doc to `web-implementer` once the
-relevant backend milestone lands.
+**Milestone 1 (Steps M1.1-M1.6) implemented and tested 2026-08-25.** Types, cache invalidation, the
+creditor-row affordance, i18n, cascade-aware toast copy, and Step M1.6's test coverage are all in per the
+locked plan; `pnpm lint`/`tsc -b`/`pnpm build`/`pnpm test` are all green (956 tests, no regressions) and the
+feature was exercised end-to-end in a running app (screenshots + a live toggle-and-toast check, M1.1-M1.5
+entry). Milestone 2 (Steps M2.1-M2.5) remains unstarted, gated on the API's Milestone 2 (`ClearedAmount`
+migration + overlay math) shipping — per the Assumptions section, unchanged.
+
+Prior planning-only outcome (superseded by the above once implementation started): **Planning complete —
+zero Open Questions remain.** This doc is now the final planning deliverable for this feature cycle: both
+milestones' Requirements, Implementation Plan, and Impact Analysis are locked against a fully resolved
+contract (the two upstream docs) and a fully resolved design (this doc's own six OQs, with every referenced
+primitive already built and confirmed in the tree). The next step is handing this doc to `web-implementer`
+once the relevant backend milestone lands.
 
 ## Future Improvements
 

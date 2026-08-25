@@ -9,6 +9,13 @@ export type MemberSettledToggleProps = {
   memberUuid: string;
   memberName: string;
   isSettled: boolean;
+  /**
+   * Direction-1 auto-cascade eligibility (event-expense settlement sync):
+   * when true, the success toast communicates that this member's shares were
+   * also cascaded; when false, the toast stays the plain pre-existing copy
+   * (nothing extra happened). Sourced from `row.isEligibleForAutoCascade`.
+   */
+  isEligibleForAutoCascade: boolean;
 };
 
 /**
@@ -24,6 +31,7 @@ export function MemberSettledToggle({
   memberUuid,
   memberName,
   isSettled,
+  isEligibleForAutoCascade,
 }: MemberSettledToggleProps) {
   const { t } = useT();
   const toast = useToast();
@@ -39,9 +47,18 @@ export function MemberSettledToggle({
       });
       toast.push({
         tone: "success",
-        title: next
-          ? t("events:balance.settledToastOn")
-          : t("events:balance.settledToastOff"),
+        title: isEligibleForAutoCascade
+          ? t(
+              next
+                ? "events:balance.settledToastOnCascade"
+                : "events:balance.settledToastOffCascade",
+              { name: memberName },
+            )
+          : t(
+              next
+                ? "events:balance.settledToastOn"
+                : "events:balance.settledToastOff",
+            ),
       });
     } catch (error) {
       toast.push({ tone: "danger", title: resolveErrorMessage(error, t) });

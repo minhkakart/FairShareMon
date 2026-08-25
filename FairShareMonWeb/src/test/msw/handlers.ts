@@ -654,12 +654,25 @@ function computeBalance(username: string, ev: EventRecord) {
   const add = (map: Map<string, number>, uuid: string, amt: number) =>
     map.set(uuid, (map.get(uuid) ?? 0) + amt);
 
+  // Direction-1 auto-cascade eligibility (event-expense-settlement-sync, §OQ-L
+  // amendment): a member holds a "billable" (gross) debtor-share on any expense
+  // in the event where they are NOT the payer and the share amount > 0 — the
+  // exact same "billable" definition the whole-expense settled PUT handler
+  // already uses for its own cascade below. Mirrors the API's four-way rule:
+  // net debtor → always eligible; net creditor → eligible only if they hold NO
+  // such billable debtor-share anywhere else in the event; net-zero → never
+  // eligible (nothing to cascade).
+  const billableDebtors = new Set<string>();
+
   for (const e of expenses) {
     add(advanced, e.payerMemberUuid, expenseTotal(e));
     seen.add(e.payerMemberUuid);
     for (const s of e.shares) {
       add(owed, s.memberUuid, s.amount);
       seen.add(s.memberUuid);
+      if (s.memberUuid !== e.payerMemberUuid && s.amount > 0) {
+        billableDebtors.add(s.memberUuid);
+      }
     }
   }
   // The owner-rep always participates (at 0đ if nothing else) — but only when
@@ -680,6 +693,8 @@ function computeBalance(username: string, ev: EventRecord) {
       // outstanding = -balance for an uncleared OWING member (balance < 0), else
       // 0 (owed/zero members, or once marked settled) — backend OQ8a (net-driven).
       const outstanding = balance < 0 && !isSettled ? -balance : 0;
+      const isEligibleForAutoCascade =
+        balance < 0 ? true : balance > 0 ? !billableDebtors.has(uuid) : false;
       return {
         memberUuid: uuid,
         memberName: m?.name ?? "(không rõ)",
@@ -691,6 +706,7 @@ function computeBalance(username: string, ev: EventRecord) {
         outstanding,
         isSettled,
         settledAt: null as string | null,
+        isEligibleForAutoCascade,
       };
     })
     .sort((x, y) => {
@@ -2347,6 +2363,15 @@ export const handlers = [
   // Per-member net-clearance settled toggle (Layer B, §6). Participant-only (a
   // non-participant → 3000); event miss → 9000. Allowed on OPEN and CLOSED events
   // (the sole closed-event write). No audit.
+  //
+  // event-expense-settlement-sync (2026-08-25, Direction 1, M1.6): also cascades
+  // Share.isSettled across every BILLABLE share (same definition as the
+  // whole-expense settled handler's own OQ3a cascade: not the payer's own share,
+  // amount > 0) the member holds on any expense within this event — forward
+  // (settle) and reversal (un-settle) alike. Mirrors the backend's real
+  // Direction-1 behavior closely enough for realistic end-to-end fixtures,
+  // regardless of `isEligibleForAutoCascade` (the mock does not re-derive the
+  // real gross/net eligibility gate here; tests choose fixtures accordingly).
   http.put(
     "*/api/v1/events/:uuid/members/:memberUuid/settled",
     async ({ request, params }) => {
@@ -2365,9 +2390,23 @@ export const handlers = [
       );
       if (!participates) return fail(3000, "Không tìm thấy thành viên.", 404);
       const body = (await request.json()) as { isSettled?: boolean };
+      const next = Boolean(body.isSettled);
       const set = getMemberSettledSet(username, ev.uuid);
-      if (body.isSettled) set.add(memberUuid);
+      if (next) set.add(memberUuid);
       else set.delete(memberUuid);
+      const cascadeAt = next ? new Date().toISOString() : null;
+      for (const e of getExpenses(username)) {
+        if (e.eventUuid !== ev.uuid) continue;
+        for (const s of e.shares) {
+          const billable = s.memberUuid === memberUuid &&
+            s.memberUuid !== e.payerMemberUuid &&
+            s.amount > 0;
+          if (billable) {
+            s.isSettled = next;
+            s.settledAt = cascadeAt;
+          }
+        }
+      }
       return ok({ message: "Đã cập nhật trạng thái đã trả của thành viên." });
     },
   ),

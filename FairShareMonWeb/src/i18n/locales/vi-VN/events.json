@@ -85,6 +85,10 @@
     "settledAriaNamed": "Trạng thái đã trả của {{name}}",
     "settledToastOn": "Đã đánh dấu thành viên là đã trả.",
     "settledToastOff": "Đã bỏ đánh dấu đã trả cho thành viên.",
+    "settledToastOnCascade": "Đã đánh dấu {{name}} đã trả — các phần gánh liên quan của họ trong đợt cũng đã được tự động đánh dấu đã trả.",
+    "settledToastOffCascade": "Đã bỏ đánh dấu đã trả cho {{name}} — và các phần gánh liên quan đã được đánh dấu lại là chưa trả.",
+    "creditorEligibleHint": "Đánh dấu đã trả sẽ tự động đánh dấu tất cả phần gánh liên quan của thành viên này là đã trả.",
+    "creditorIneligibleHint": "Thành viên này vừa có khoản được nhận vừa có khoản phải trả trong đợt, nên không thể tự động đồng bộ — hãy đánh dấu từng phiếu/phần gánh riêng.",
     "summary": "Đã trả {{settled}}/{{total}} thành viên · Còn nợ {{amount}}"
   },
   "expensesSection": {
