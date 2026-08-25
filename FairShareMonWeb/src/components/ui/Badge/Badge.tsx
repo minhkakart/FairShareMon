@@ -9,6 +9,7 @@ export type BadgeTone =
   | "danger"
   | "info"
   | "settled" /* đã trả */
+  | "partial" /* đã trả một phần — 3rd settlement state, between warning and settled */
   | "premium" /* Premium tier / gated */
   | "free"; /* Free tier */
 

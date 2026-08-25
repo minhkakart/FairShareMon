@@ -117,6 +117,9 @@ export type { AppShellProps } from "./AppShell/AppShell";
 export { Pagination } from "./Pagination/Pagination";
 export type { PaginationProps } from "./Pagination/Pagination";
 
+export { HelpHint } from "./HelpHint/HelpHint";
+export type { HelpHintProps } from "./HelpHint/HelpHint";
+
 /* Shared chart primitives (dataviz) — used by Stats (M6) + Admin (M8). */
 export {
   KpiTile,

@@ -25,6 +25,27 @@ export const ClockIcon = () => (
   </svg>
 );
 
+/**
+ * Half-filled circle — "đã trả một phần" (partially settled). Deliberately a
+ * distinct SILHOUETTE from both `ClockIcon` (circle + off-center hand) and
+ * `CheckIcon` (checkmark glyph), not just a distinct color, so the 3-state
+ * settlement badge reads correctly even without color vision or in grayscale
+ * print (event-expense-settlement-sync, 2026-08-25).
+ */
+export const HalfCheckIcon = () => (
+  <svg viewBox="0 0 20 20" aria-hidden="true" width="1em" height="1em">
+    <circle
+      cx="10"
+      cy="10"
+      r="7.2"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+    />
+    <path d="M10 2.8a7.2 7.2 0 000 14.4z" fill="currentColor" />
+  </svg>
+);
+
 export const PlusIcon = () => (
   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true" width="1em" height="1em">
     <path d="M10 4v12M4 10h12" strokeLinecap="round" />

@@ -95,6 +95,13 @@
   --fs-status-critical-text-light: #b1201f;
   --fs-status-info: #2a78d6;
   --fs-status-info-text-light: #1a5aa8;
+  /* Partial/in-progress — teal-cyan. Deliberately distinct from warning (amber),
+     settled (slate-blue) and success (green) so the 3-state settlement badge
+     (chưa trả / đã trả một phần / đã trả) never relies on color alone to be
+     told apart — it always ships with a distinct icon + label too (event-
+     expense-settlement-sync, 2026-08-25). */
+  --fs-status-partial: #0f97a6;
+  --fs-status-partial-text-light: #0b6d78;
 
   /* Finance polarity — balance sign. ALWAYS shown with a +/− sign and an
      arrow icon so meaning never rests on color alone (red-green CVD). */
@@ -159,6 +166,14 @@
   --fs-color-info-text: var(--fs-status-info-text-light);
   --fs-color-info-surface: #e3eefb;
   --fs-color-info-border: #aecdf0;
+
+  /* Partial/in-progress settlement (3rd state — event-expense-settlement-sync).
+     "đã trả một phần" — sits visually between warning (chưa trả) and settled
+     (đã trả) without borrowing either hue. */
+  --fs-color-partial: var(--fs-status-partial);
+  --fs-color-partial-text: var(--fs-status-partial-text-light);
+  --fs-color-partial-surface: #dff5f6;
+  --fs-color-partial-border: #a6dde1;
 
   /* Finance polarity */
   --fs-color-credit-text: var(--fs-credit-light); /* 5.23:1 */
@@ -401,6 +416,11 @@
     --fs-color-info-surface: rgba(42, 120, 214, 0.18);
     --fs-color-info-border: rgba(122, 179, 240, 0.4);
 
+    --fs-color-partial: var(--fs-status-partial);
+    --fs-color-partial-text: #5cd3dc;
+    --fs-color-partial-surface: rgba(15, 151, 166, 0.16);
+    --fs-color-partial-border: rgba(92, 211, 220, 0.4);
+
     --fs-color-credit-text: #3ec87a; /* 7.97:1 */
     --fs-color-credit-surface: rgba(62, 200, 122, 0.14);
     --fs-color-debit-text: #f2685a; /* 5.64:1 */
@@ -512,6 +532,11 @@
   --fs-color-info-text: #7ab3f0;
   --fs-color-info-surface: rgba(42, 120, 214, 0.18);
   --fs-color-info-border: rgba(122, 179, 240, 0.4);
+
+  --fs-color-partial: var(--fs-status-partial);
+  --fs-color-partial-text: #5cd3dc;
+  --fs-color-partial-surface: rgba(15, 151, 166, 0.16);
+  --fs-color-partial-border: rgba(92, 211, 220, 0.4);
 
   --fs-color-credit-text: #3ec87a;
   --fs-color-credit-surface: rgba(62, 200, 122, 0.14);

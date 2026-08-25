@@ -1,0 +1,52 @@
+/* SettlementMeter — the partial-clearance money-metaphor (X đã trả / Y tổng
+   nợ). Tokens only; light + dark come free through the semantic tokens. */
+
+.root {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.2rem;
+  min-width: 6.5rem;
+}
+
+/* The fraction is the PRIMARY channel (never color alone) — same numeric
+   weight/tabular figures as `Money`, so it lines up in a numeric column. */
+.fraction {
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-text-sm);
+  font-weight: var(--fs-weight-medium);
+  color: var(--fs-color-text);
+  white-space: nowrap;
+}
+.fractionSlash {
+  color: var(--fs-color-text-secondary);
+  font-weight: var(--fs-weight-regular);
+}
+
+/* The reinforcement bar. Rounded ends, 2px surface ring so the fill never
+   touches the track's own edge (dataviz mark spec — a visible gap, not a hard
+   color-on-color seam). */
+.track {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 0.375rem;
+  border-radius: var(--fs-radius-pill);
+  background-color: var(--fs-color-surface-sunken);
+  border: 1px solid var(--fs-color-border);
+  overflow: hidden;
+}
+.fill {
+  position: absolute;
+  inset: 1px;
+  right: auto;
+  border-radius: var(--fs-radius-pill);
+  background-color: var(--fs-color-partial);
+  transition: width var(--fs-duration-normal) var(--fs-ease-standard);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fill {
+    transition: none;
+  }
+}

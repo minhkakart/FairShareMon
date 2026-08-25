@@ -48,6 +48,11 @@
   background-color: var(--fs-color-settled-surface);
   color: var(--fs-color-settled-text);
 }
+.partial {
+  background-color: var(--fs-color-partial-surface);
+  border-color: var(--fs-color-partial-border);
+  color: var(--fs-color-partial-text);
+}
 .premium {
   background-color: var(--fs-color-premium-surface);
   border-color: var(--fs-color-premium-border);
