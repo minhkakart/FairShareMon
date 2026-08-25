@@ -1111,15 +1111,25 @@ endpoint), extended `StatsServiceTests.cs` (8 test cases) and `WalletQrServiceTe
 bullet in the doc's Step M2.6 test list. Full suite: **1417 passed, 0 failed, 7 unrelated skips, 1424 total**,
 verified live against real MariaDB. No production code was modified by test-engineer.**
 
+### 2026-08-25 (orchestrator — DatabaseFixture credential-fallback fix)
+
+- **Fixed** the `DatabaseFixture` nit below, at the user's explicit request. `ResolveConnectionString()`
+  now also probes `appsettings.Development.local.json` (source path and the copy next to the test
+  assembly), layered with higher precedence than the base `appsettings.json` but lower than
+  `FSM_TEST_CONNECTION` - a developer's real local MariaDB credentials in the gitignored `.local.json`
+  override are now honored automatically. Verified: `dotnet test FairShareMonApi.sln` with **no**
+  `FSM_TEST_CONNECTION` set now runs live against real MariaDB - **1417 passed, 0 failed, 7 unrelated
+  skips, 1424 total**, identical to the env-var-override baseline. `FSM_TEST_CONNECTION` still takes
+  precedence for CI/other environments that don't have a `.local.json` file.
+
 ## Future Improvements
 
-- **Unrelated infra nit found during verification:** `FairShareMonApi.Tests/Infrastructure/
-  DatabaseFixture.cs`'s `ResolveConnectionString()` never loads `appsettings.Development.local.json`,
-  only `FSM_TEST_CONNECTION` or the plain `appsettings.json` fallback - meaning a developer's actual local
-  DB credentials in the `.local.json` override are silently ignored and every integration test skips with
-  a misleading "MariaDB unreachable" reason instead of the real "wrong password in the fallback config."
-  Worth fixing (e.g. also probe `appsettings.Development.local.json` if present) so this doesn't
-  re-surface for the next feature's test-engineer. Not fixed here - unrelated to this feature's scope.
+- ~~**Unrelated infra nit found during verification:**~~ **Fixed 2026-08-25** - `FairShareMonApi.Tests/
+  Infrastructure/DatabaseFixture.cs`'s `ResolveConnectionString()` never loads `appsettings.Development.
+  local.json`, only `FSM_TEST_CONNECTION` or the plain `appsettings.json` fallback - meaning a developer's
+  actual local DB credentials in the `.local.json` override are silently ignored and every integration
+  test skips with a misleading "MariaDB unreachable" reason instead of the real "wrong password in the
+  fallback config." See the dated Progress Log entry above for the fix.
 - Carried forward verbatim from the BA doc's own Future Improvements (not superseded by this plan):
   extending auto-cascade to the excluded mixed-role-creditor case, or a read-only "suggested cleared
   amount" signal for non-eligible members, once real usage data exists; unifying the display of all
