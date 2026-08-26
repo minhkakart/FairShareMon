@@ -26,6 +26,7 @@ public class SharesServiceTests
     private const string UserUuid = "0198a5c2-0000-7000-8000-0000000000f7";
 
     private readonly FakeShareRepository _shares = new();
+    private readonly FakeEventShareUpdateNotifier _shareUpdateNotifier = new();
 
     private readonly IMapper _mapper = new MapperConfiguration(config =>
     {
@@ -34,7 +35,7 @@ public class SharesServiceTests
     }).CreateMapper();
 
     private SharesService CreateService() =>
-        new(_shares, _mapper, new CreateShareRequestValidator(), new UpdateShareRequestValidator());
+        new(_shares, _mapper, new CreateShareRequestValidator(), new UpdateShareRequestValidator(), _shareUpdateNotifier);
 
     private static CreateShareRequest CreateRequest(string memberUuid = "m-1", decimal amount = 50_000m) =>
         new() { MemberUuid = memberUuid, Amount = amount };
@@ -184,6 +185,41 @@ public class SharesServiceTests
         Assert.Equal(ErrorCodes.ShareNotFound, exception.Code);
     }
 
+    // ---- SSE notify seam (planning/public-share-sse-updates.md) ------------------------------------
+
+    [Fact]
+    public async Task SetSettledAsync_Success_CallsShareUpdateNotifierOnceWithOwningExpenseUuid()
+    {
+        _shares.SetSettledStatus = ExpenseWriteStatus.Success;
+
+        await CreateService().SetSettledAsync(UserUuid, "e-1", "s-1", new SetSettledRequest { IsSettled = true });
+
+        Assert.Equal(1, _shareUpdateNotifier.ExpenseChangedCalls);
+        Assert.Equal("e-1", _shareUpdateNotifier.LastExpenseUuid); // the owning expenseUuid, not the shareUuid
+    }
+
+    [Fact]
+    public async Task SetSettledAsync_ExpenseMiss_NeverCallsShareUpdateNotifier()
+    {
+        _shares.SetSettledStatus = ExpenseWriteStatus.ExpenseNotFound;
+
+        await Assert.ThrowsAsync<ErrorException>(() =>
+            CreateService().SetSettledAsync(UserUuid, "no-such-expense", "s-1", new SetSettledRequest { IsSettled = true }));
+
+        Assert.Equal(0, _shareUpdateNotifier.ExpenseChangedCalls);
+    }
+
+    [Fact]
+    public async Task SetSettledAsync_ShareMiss_NeverCallsShareUpdateNotifier()
+    {
+        _shares.SetSettledStatus = ExpenseWriteStatus.ShareNotFound;
+
+        await Assert.ThrowsAsync<ErrorException>(() =>
+            CreateService().SetSettledAsync(UserUuid, "e-1", "no-such-share", new SetSettledRequest { IsSettled = false }));
+
+        Assert.Equal(0, _shareUpdateNotifier.ExpenseChangedCalls);
+    }
+
     private sealed class FakeShareRepository : IShareRepository
     {
         public ExpenseWriteResult<Share> AddResult { get; set; } = ExpenseWriteResult<Share>.Fail(ExpenseWriteStatus.ExpenseNotFound);
@@ -221,5 +257,23 @@ public class SharesServiceTests
 
         public Task<TResult> ExecuteTransactionAsync<TResult>(Func<AppDbContext, TransactionContext, Task<TResult>> action, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
+    }
+
+    /// <summary>No-op fake for the SSE notify seam (planning/public-share-sse-updates.md) - records calls
+    /// so a test can assert the notifier was (or wasn't) invoked, without touching Redis/DB.</summary>
+    private sealed class FakeEventShareUpdateNotifier : FairShareMonApi.Services.Api.Share.IEventShareUpdateNotifier
+    {
+        public int ExpenseChangedCalls { get; private set; }
+        public string? LastExpenseUuid { get; private set; }
+
+        public Task NotifyEventChangedAsync(string userUuid, string eventUuid, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task NotifyExpenseChangedAsync(string userUuid, string expenseUuid, CancellationToken cancellationToken = default)
+        {
+            ExpenseChangedCalls++;
+            LastExpenseUuid = expenseUuid;
+            return Task.CompletedTask;
+        }
     }
 }

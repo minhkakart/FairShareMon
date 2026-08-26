@@ -395,6 +395,7 @@ public class TierServiceTests
         public Task<ExpenseWriteStatus> SetSettledAsync(string userUuid, string expenseUuid, bool isSettled, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<ExpenseWriteResult<Expense>> AssignEventAsync(string userUuid, string expenseUuid, string eventUuid, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<ExpenseWriteStatus> RemoveEventAsync(string userUuid, string expenseUuid, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<string?> GetEventUuidAsync(string userUuid, string expenseUuid, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public IQueryable<Expense> Query(bool tracking = false, bool includeDeleted = false) => throw new NotSupportedException();
         public Task<TResult> ExecuteQueryAsync<TResult>(Func<AppDbContext, CancellationToken, Task<TResult>> query, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<TResult> ExecuteTransactionAsync<TResult>(Func<AppDbContext, TransactionContext, Task<TResult>> action, CancellationToken cancellationToken = default) => throw new NotSupportedException();

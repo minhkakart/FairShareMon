@@ -82,3 +82,78 @@ describe("share i18n parity", () => {
     expect(enShare.expired.title).toBe("Link unavailable");
   });
 });
+
+/**
+ * `stream.*` — the live-update terminal/settled copy added by
+ * `public-share-sse-updates.md` (OQ1: distinct copy per reason, deliberately
+ * NOT collapsed into the generic pre-load `expired.title/body` no-leak copy).
+ * The generic parity/non-empty/token-matching assertions above already cover
+ * these keys structurally (they're picked up automatically); this block adds
+ * the OQ1-specific regression guard: the three new strings must stay
+ * pairwise distinct from each other and from the pre-load `expired.*` copy.
+ */
+describe("share i18n stream keys (public-share-sse-updates.md)", () => {
+  it("ShareStreamKeys_ExistAndAreNonEmpty_InBothLocales", () => {
+    for (const locale of [viShare, enShare]) {
+      expect(locale.stream.revokedTitle.trim()).not.toBe("");
+      expect(locale.stream.revokedBody.trim()).not.toBe("");
+      expect(locale.stream.expiredTitle.trim()).not.toBe("");
+      expect(locale.stream.expiredBody.trim()).not.toBe("");
+      expect(locale.stream.qrMemberSettledTitle.trim()).not.toBe("");
+      expect(locale.stream.qrMemberSettledBody.trim()).not.toBe("");
+    }
+  });
+
+  it("ShareStreamKeys_InterpolationTokens_MatchAcrossLocales", () => {
+    // The current draft copy has no interpolation at all — assert both
+    // locales agree on that (an empty token set on both sides), so a future
+    // edit that adds a token to only one locale is caught here too, not only
+    // by the whole-namespace parity test above.
+    const keys = [
+      "revokedTitle",
+      "revokedBody",
+      "expiredTitle",
+      "expiredBody",
+      "qrMemberSettledTitle",
+      "qrMemberSettledBody",
+    ] as const;
+    for (const key of keys) {
+      expect(tokens(enShare.stream[key])).toEqual(tokens(viShare.stream[key]));
+    }
+  });
+
+  it("ShareStreamKeys_RevokedAndExpiredAndQrSettled_ArePairwiseDistinct", () => {
+    // Regression guard against accidentally collapsing OQ1's distinct-copy
+    // decision back down: revoked/expired/qrMemberSettled must each be a
+    // genuinely different string from one another, in both locales.
+    for (const locale of [viShare, enShare]) {
+      const titles = [
+        locale.stream.revokedTitle,
+        locale.stream.expiredTitle,
+        locale.stream.qrMemberSettledTitle,
+      ];
+      expect(new Set(titles).size).toBe(titles.length);
+      const bodies = [
+        locale.stream.revokedBody,
+        locale.stream.expiredBody,
+        locale.stream.qrMemberSettledBody,
+      ];
+      expect(new Set(bodies).size).toBe(bodies.length);
+    }
+  });
+
+  it("ShareStreamKeys_RevokedAndExpired_AreDistinctFromThePreLoadExpiredCopy", () => {
+    // The pre-load `expired.title/body` screen deliberately uses IDENTICAL
+    // copy for expired/revoked/missing to avoid an existence leak (untouched,
+    // locked decision from `event-share-link.md`). The mid-session
+    // `stream.revoked*`/`stream.expired*` copy must be textually distinct from
+    // it — that's the whole point of OQ1's recommended option (a visitor here
+    // already saw a real, loaded report, so naming the reason leaks nothing).
+    for (const locale of [viShare, enShare]) {
+      expect(locale.stream.revokedTitle).not.toBe(locale.expired.title);
+      expect(locale.stream.revokedBody).not.toBe(locale.expired.body);
+      expect(locale.stream.expiredTitle).not.toBe(locale.expired.title);
+      expect(locale.stream.expiredBody).not.toBe(locale.expired.body);
+    }
+  });
+});

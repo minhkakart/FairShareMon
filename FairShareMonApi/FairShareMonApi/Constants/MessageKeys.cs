@@ -55,6 +55,9 @@ public static class MessageKeys
         public const string TagNameDuplicate = "Error.TagNameDuplicate";
         public const string ShareLinkNotFoundOrExpired = "Error.ShareLinkNotFoundOrExpired";
         public const string EventNotClosedForShare = "Error.EventNotClosedForShare";
+        public const string BankCallbackVerificationFailed = "Error.BankCallbackVerificationFailed";
+        public const string BankCallbackPayloadInvalid = "Error.BankCallbackPayloadInvalid";
+        public const string BankCallbackProviderUnknown = "Error.BankCallbackProviderUnknown";
     }
 
     public static class Feature
@@ -113,6 +116,7 @@ public static class MessageKeys
         public const string MemberDeleted = "Success.MemberDeleted";
         public const string TagDeleted = "Success.TagDeleted";
         public const string ShareLinkRevoked = "Success.ShareLinkRevoked";
+        public const string BankCallbackReceived = "Success.BankCallbackReceived";
     }
 
     public static class Validation

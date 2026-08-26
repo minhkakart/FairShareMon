@@ -237,6 +237,125 @@ namespace FairShareMonApi.Migrations
                     b.ToTable("bank_accounts", (string)null);
                 });
 
+            modelBuilder.Entity("FairShareMonApi.Database.Entities.BankTransactionCallback", b =>
+                {
+                    b.Property<ulong>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint unsigned")
+                        .HasColumnName("id");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<ulong>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("amount");
+
+                    b.Property<DateTime?>("AppliedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("applied_at");
+
+                    b.Property<string>("BankBin")
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)")
+                        .HasColumnName("bank_bin");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)")
+                        .HasColumnName("content");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("DestinationAccountNumber")
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)")
+                        .HasColumnName("destination_account_number");
+
+                    b.Property<string>("ExtractedCode")
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)")
+                        .HasColumnName("extracted_code");
+
+                    b.Property<string>("FailureNote")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)")
+                        .HasColumnName("failure_note");
+
+                    b.Property<bool>("IsIncoming")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("is_incoming");
+
+                    b.Property<ulong?>("MatchedCorrelationCodeId")
+                        .HasColumnType("bigint unsigned")
+                        .HasColumnName("matched_correlation_code_id");
+
+                    b.Property<int>("Outcome")
+                        .HasColumnType("int")
+                        .HasColumnName("outcome");
+
+                    b.Property<string>("ProviderKey")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)")
+                        .HasColumnName("provider_key");
+
+                    b.Property<string>("ProviderTransactionId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)")
+                        .HasColumnName("provider_transaction_id");
+
+                    b.Property<string>("RawPayload")
+                        .IsRequired()
+                        .HasColumnType("longtext")
+                        .HasColumnName("raw_payload");
+
+                    b.Property<ulong?>("ResolvedUserId")
+                        .HasColumnType("bigint unsigned")
+                        .HasColumnName("resolved_user_id");
+
+                    b.Property<DateTime>("TransactionAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("transaction_at");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("current_timestamp(6) ON UPDATE current_timestamp(6)");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlComputedColumn(b.Property<DateTime>("UpdatedAt"));
+
+                    b.Property<string>("Uuid")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)")
+                        .HasColumnName("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExtractedCode");
+
+                    b.HasIndex("MatchedCorrelationCodeId");
+
+                    b.HasIndex("ResolvedUserId");
+
+                    b.HasIndex("Uuid")
+                        .IsUnique();
+
+                    b.HasIndex("ProviderKey", "ProviderTransactionId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_bank_transaction_callbacks_provider_tx");
+
+                    b.ToTable("bank_transaction_callbacks", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_bank_transaction_callbacks_amount_non_negative", "amount >= 0");
+                        });
+                });
+
             modelBuilder.Entity("FairShareMonApi.Database.Entities.Category", b =>
                 {
                     b.Property<ulong>("Id")
@@ -681,6 +800,85 @@ namespace FairShareMonApi.Migrations
                     b.ToTable("members", (string)null);
                 });
 
+            modelBuilder.Entity("FairShareMonApi.Database.Entities.QrCorrelationCode", b =>
+                {
+                    b.Property<ulong>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint unsigned")
+                        .HasColumnName("id");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<ulong>("Id"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)")
+                        .HasColumnName("code");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("created_at");
+
+                    b.Property<ulong?>("EventId")
+                        .HasColumnType("bigint unsigned")
+                        .HasColumnName("event_id");
+
+                    b.Property<decimal>("ExpectedAmountSnapshot")
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("expected_amount_snapshot");
+
+                    b.Property<ulong?>("ExpenseId")
+                        .HasColumnType("bigint unsigned")
+                        .HasColumnName("expense_id");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("expires_at");
+
+                    b.Property<ulong>("MemberId")
+                        .HasColumnType("bigint unsigned")
+                        .HasColumnName("member_id");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("current_timestamp(6) ON UPDATE current_timestamp(6)");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlComputedColumn(b.Property<DateTime>("UpdatedAt"));
+
+                    b.Property<ulong>("UserId")
+                        .HasColumnType("bigint unsigned")
+                        .HasColumnName("user_id");
+
+                    b.Property<string>("Uuid")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)")
+                        .HasColumnName("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.HasIndex("EventId");
+
+                    b.HasIndex("ExpenseId");
+
+                    b.HasIndex("MemberId");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("Uuid")
+                        .IsUnique();
+
+                    b.ToTable("qr_correlation_codes", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_qr_correlation_codes_amount_non_negative", "expected_amount_snapshot >= 0");
+                        });
+                });
+
             modelBuilder.Entity("FairShareMonApi.Database.Entities.Share", b =>
                 {
                     b.Property<ulong>("Id")
@@ -1011,6 +1209,23 @@ namespace FairShareMonApi.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("FairShareMonApi.Database.Entities.BankTransactionCallback", b =>
+                {
+                    b.HasOne("FairShareMonApi.Database.Entities.QrCorrelationCode", "MatchedCorrelationCode")
+                        .WithMany()
+                        .HasForeignKey("MatchedCorrelationCodeId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("FairShareMonApi.Database.Entities.User", "ResolvedUser")
+                        .WithMany()
+                        .HasForeignKey("ResolvedUserId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.Navigation("MatchedCorrelationCode");
+
+                    b.Navigation("ResolvedUser");
+                });
+
             modelBuilder.Entity("FairShareMonApi.Database.Entities.Category", b =>
                 {
                     b.HasOne("FairShareMonApi.Database.Entities.User", "User")
@@ -1131,6 +1346,39 @@ namespace FairShareMonApi.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("FairShareMonApi.Database.Entities.QrCorrelationCode", b =>
+                {
+                    b.HasOne("FairShareMonApi.Database.Entities.Event", "Event")
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("FairShareMonApi.Database.Entities.Expense", "Expense")
+                        .WithMany()
+                        .HasForeignKey("ExpenseId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("FairShareMonApi.Database.Entities.Member", "Member")
+                        .WithMany()
+                        .HasForeignKey("MemberId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FairShareMonApi.Database.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Event");
+
+                    b.Navigation("Expense");
+
+                    b.Navigation("Member");
 
                     b.Navigation("User");
                 });

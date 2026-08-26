@@ -72,6 +72,9 @@ public class ErrorException(int code, string messageKey, int? httpStatus = null,
         ErrorCodes.AccountDisabled => StatusCodes.Status403Forbidden,
         ErrorCodes.ShareLinkNotFoundOrExpired => StatusCodes.Status404NotFound,
         ErrorCodes.EventNotClosedForShare => StatusCodes.Status400BadRequest,
+        ErrorCodes.BankCallbackVerificationFailed => StatusCodes.Status401Unauthorized,
+        ErrorCodes.BankCallbackPayloadInvalid => StatusCodes.Status400BadRequest,
+        ErrorCodes.BankCallbackProviderUnknown => StatusCodes.Status404NotFound,
         _ => StatusCodes.Status500InternalServerError
     };
 }

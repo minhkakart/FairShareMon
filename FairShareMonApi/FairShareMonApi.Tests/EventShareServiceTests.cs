@@ -53,9 +53,10 @@ public class EventShareServiceTests
     private readonly FakeWalletQrService _walletQr = new();
     private readonly FakeTierService _tier = new();
     private readonly CreateShareLinkRequestValidator _validator = new();
+    private readonly RecordingStreamBroadcaster _streamBroadcaster = new();
 
     private EventShareService CreateService() =>
-        new(_repo, CreateCache(), _stats, _events, _expenses, _accounts, _walletQr, _tier, _validator, Config());
+        new(_repo, CreateCache(), _stats, _events, _expenses, _accounts, _walletQr, _tier, _validator, Config(), _streamBroadcaster);
 
     private EventShareLinkCache CreateCache() =>
         new(_repo, UnreachableRedis.Instance, NullLogger<EventShareLinkCache>.Instance);
@@ -222,6 +223,19 @@ public class EventShareServiceTests
         Assert.Single(_repo.Links, link => link.RevokedAt == null && link.Token == response.Token);
     }
 
+    [Fact]
+    public async Task CreateAsync_Regenerate_PublishesRevokedOnOldTokenBeforeReturningNewOne()
+    {
+        _stats.Balance = ClosedBalance(OwingRow("Bình", -100_000m));
+        await _repo.CreateAsync(OwnerUuid, EventUuid, "old-token", AppDateTime.Now.AddHours(24), null, null, null, null, null);
+
+        var response = await CreateService().CreateAsync(OwnerUuid, EventUuid, new CreateShareLinkRequest { Regenerate = true });
+
+        Assert.Equal(1, _streamBroadcaster.PublishRevokedCalls);
+        Assert.Equal("old-token", _streamBroadcaster.LastRevokedToken); // terminates any live stream on the OLD token
+        Assert.NotEqual("old-token", response.Token);                  // ...before returning the new one
+    }
+
     // ---------------------------- GetActive ----------------------------
 
     [Fact]
@@ -277,6 +291,28 @@ public class EventShareServiceTests
         _events.Event = new EventResponse { Uuid = EventUuid, Name = "Đà Lạt", IsClosed = true };
 
         await CreateService().RevokeAsync(OwnerUuid, EventUuid); // no throw
+    }
+
+    [Fact]
+    public async Task RevokeAsync_ActiveLink_PublishesRevokedWithThatToken()
+    {
+        _events.Event = new EventResponse { Uuid = EventUuid, Name = "Đà Lạt", IsClosed = true };
+        await _repo.CreateAsync(OwnerUuid, EventUuid, "tok", AppDateTime.Now.AddHours(24), null, null, null, null, null);
+
+        await CreateService().RevokeAsync(OwnerUuid, EventUuid);
+
+        Assert.Equal(1, _streamBroadcaster.PublishRevokedCalls);
+        Assert.Equal("tok", _streamBroadcaster.LastRevokedToken); // terminates any live stream on the just-revoked token
+    }
+
+    [Fact]
+    public async Task RevokeAsync_NoActiveLink_NeverPublishesRevoked()
+    {
+        _events.Event = new EventResponse { Uuid = EventUuid, Name = "Đà Lạt", IsClosed = true };
+
+        await CreateService().RevokeAsync(OwnerUuid, EventUuid); // idempotent no-op
+
+        Assert.Equal(0, _streamBroadcaster.PublishRevokedCalls);
     }
 
     [Fact]
@@ -450,6 +486,31 @@ public class EventShareServiceTests
     };
 
     // ---------------------------- Fakes ----------------------------
+
+    /// <summary>Wraps a REAL <see cref="EventShareStreamBroadcaster"/> (so <c>Subscribe</c>/fan-out still
+    /// behaves exactly like production) while additionally counting <c>PublishRevoked</c> calls and the
+    /// last token, so a test can assert the exact call the service made without needing its own
+    /// subscription plumbing (planning/public-share-sse-updates.md).</summary>
+    private sealed class RecordingStreamBroadcaster : IEventShareStreamBroadcaster
+    {
+        private readonly EventShareStreamBroadcaster _inner = new();
+
+        public int PublishRevokedCalls { get; private set; }
+        public string? LastRevokedToken { get; private set; }
+
+        public IEventShareStreamSubscription Subscribe(string token) => _inner.Subscribe(token);
+
+        public void PublishUpdated(string token) => _inner.PublishUpdated(token);
+
+        public void PublishRevoked(string token)
+        {
+            PublishRevokedCalls++;
+            LastRevokedToken = token;
+            _inner.PublishRevoked(token);
+        }
+
+        public void PublishExpired(string token) => _inner.PublishExpired(token);
+    }
 
     private sealed class FakeEventShareLinkRepository : IEventShareLinkRepository
     {

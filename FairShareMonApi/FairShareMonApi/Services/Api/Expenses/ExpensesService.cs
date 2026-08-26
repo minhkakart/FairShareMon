@@ -4,6 +4,7 @@ using FairShareMonApi.Constants;
 using FairShareMonApi.Exceptions;
 using FairShareMonApi.Models.Expenses;
 using FairShareMonApi.Repositories;
+using FairShareMonApi.Services.Api.Share;
 using FairShareMonApi.Services.Api.Tiers;
 using FluentValidation;
 
@@ -48,7 +49,8 @@ public sealed class ExpensesService(
     IMapper mapper,
     IValidator<CreateExpenseRequest> createValidator,
     IValidator<UpdateExpenseRequest> updateValidator,
-    IValidator<AssignEventRequest> assignEventValidator) : IExpensesService
+    IValidator<AssignEventRequest> assignEventValidator,
+    IEventShareUpdateNotifier shareUpdateNotifier) : IExpensesService
 {
     public async Task<IReadOnlyList<ExpenseSummaryResponse>> ListAsync(string userUuid, ExpenseFilter filter, CancellationToken cancellationToken = default)
     {
@@ -122,6 +124,8 @@ public sealed class ExpensesService(
         var status = await expenseRepository.SetSettledAsync(userUuid, expenseUuid, request.IsSettled, cancellationToken);
         if (status != ExpenseWriteStatus.Success)
             throw ExpenseNotFound();
+
+        await shareUpdateNotifier.NotifyExpenseChangedAsync(userUuid, expenseUuid, cancellationToken);
     }
 
     public async Task<ExpenseResponse> AssignEventAsync(string userUuid, string expenseUuid, AssignEventRequest request, CancellationToken cancellationToken = default)

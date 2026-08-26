@@ -6,6 +6,7 @@ using FairShareMonApi.Exceptions;
 using FairShareMonApi.Models.Events;
 using FairShareMonApi.Models.Expenses;
 using FairShareMonApi.Repositories;
+using FairShareMonApi.Services.Api.Share;
 using FairShareMonApi.Services.Api.Tiers;
 using FluentValidation;
 
@@ -44,7 +45,8 @@ public sealed class EventsService(
     IRequestTimeZone requestTimeZone,
     IMapper mapper,
     IValidator<CreateEventRequest> createValidator,
-    IValidator<UpdateEventRequest> updateValidator) : IEventsService
+    IValidator<UpdateEventRequest> updateValidator,
+    IEventShareUpdateNotifier shareUpdateNotifier) : IEventsService
 {
     public async Task<IReadOnlyList<EventSummaryResponse>> ListAsync(string userUuid, EventFilter filter, CancellationToken cancellationToken = default)
     {
@@ -104,6 +106,7 @@ public sealed class EventsService(
         switch (status)
         {
             case SettlementWriteStatus.Success:
+                await shareUpdateNotifier.NotifyEventChangedAsync(userUuid, eventUuid, cancellationToken);
                 return;
             case SettlementWriteStatus.MemberNotFound:
                 throw new ErrorException(ErrorCodes.MemberNotFound, MessageKeys.Error.MemberNotFound);

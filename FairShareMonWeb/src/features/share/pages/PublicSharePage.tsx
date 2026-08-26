@@ -14,6 +14,7 @@ import { formatMoneyVnd, formatDateTime } from "@/i18n/format";
 import { ErrorCodes, isApiError } from "@/lib/api/errors";
 import { classifyError } from "@/lib/api/http-error-handling";
 import { usePublicShareQuery } from "../hooks/useShare";
+import { useEventShareStream } from "../hooks/useEventShareStream";
 import type { PublicEventShareResponse } from "../api/types";
 import { PublicBalanceTable } from "../components/PublicBalanceTable";
 import styles from "./PublicSharePage.module.css";
@@ -123,11 +124,19 @@ function SuccessReport({
  * expired / revoked / missing (no existence leak); a generic failure offers a
  * retry. While mounted, a `noindex,nofollow` robots meta is injected (OQ6) —
  * these temporary URLs expose member names + money.
+ *
+ * While the report is successfully loaded, a native `EventSource` stream keeps
+ * it live: `updated` silently invalidates the report/QR caches so they refetch
+ * in the background; `revoked`/`expired` swap the page to a distinct terminal
+ * state (see `useEventShareStream`) — deliberately its own copy, not the
+ * pre-load `share:expired.*` no-leak screen above, since a visitor here has
+ * already seen a real, loaded report (planning doc OQ1).
  */
 export function PublicSharePage() {
   const { t } = useT();
   const { token = "" } = useParams();
   const query = usePublicShareQuery(token);
+  const stream = useEventShareStream(token, { enabled: query.isSuccess });
 
   // OQ6 — keep these temporary financial URLs out of search indexes while the
   // page is mounted; remove the tag on unmount so it never leaks to other views.
@@ -145,7 +154,23 @@ export function PublicSharePage() {
   }, [t]);
 
   let body: React.ReactNode;
-  if (query.isPending) {
+  if (stream.terminalReason) {
+    // Terminal reason can only be set once `query.isSuccess` was already true
+    // (see `useEventShareStream`), so this branch is checked first and takes
+    // priority over the (now-stale) success/error state below.
+    body = (
+      // ErrorState already renders role="alert" (assertive) on its own root, so
+      // it announces the swap on its own — an outer role="status" aria-live="polite"
+      // wrapper here would be inert (nested inside an alert) and misleadingly
+      // suggest a polite announcement that doesn't actually happen.
+      <div className={styles.report}>
+        <ErrorState
+          title={t(`share:stream.${stream.terminalReason}Title`)}
+          description={t(`share:stream.${stream.terminalReason}Body`)}
+        />
+      </div>
+    );
+  } else if (query.isPending) {
     body = <LoadingReport />;
   } else if (query.isError) {
     const notFound =

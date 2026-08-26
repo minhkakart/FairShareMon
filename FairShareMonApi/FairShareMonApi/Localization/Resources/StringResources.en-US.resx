@@ -213,6 +213,15 @@
   <data name="Error.EventNotClosedForShare" xml:space="preserve">
     <value>Only a closed event can be shared.</value>
   </data>
+  <data name="Error.BankCallbackVerificationFailed" xml:space="preserve">
+    <value>Bank webhook verification failed.</value>
+  </data>
+  <data name="Error.BankCallbackPayloadInvalid" xml:space="preserve">
+    <value>The bank transaction data is invalid.</value>
+  </data>
+  <data name="Error.BankCallbackProviderUnknown" xml:space="preserve">
+    <value>This bank transaction provider is not supported.</value>
+  </data>
   <data name="Envelope.ValidationFailed" xml:space="preserve">
     <value>The submitted data is invalid.</value>
   </data>
@@ -296,6 +305,9 @@
   </data>
   <data name="Success.ShareLinkRevoked" xml:space="preserve">
     <value>The share link has been revoked.</value>
+  </data>
+  <data name="Success.BankCallbackReceived" xml:space="preserve">
+    <value>Bank transaction received.</value>
   </data>
   <data name="Validation.Auth.CurrentPasswordRequired" xml:space="preserve">
     <value>Current password must not be empty.</value>

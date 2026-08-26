@@ -94,5 +94,13 @@
   "expired": {
     "title": "Liên kết không khả dụng",
     "body": "Liên kết này đã hết hạn, bị thu hồi, hoặc không tồn tại. Hãy liên hệ người chia sẻ để nhận liên kết mới."
+  },
+  "stream": {
+    "revokedTitle": "Liên kết đã bị thu hồi",
+    "revokedBody": "Chủ đợt đã thu hồi hoặc tạo lại liên kết này. Báo cáo bạn đang xem không còn được cập nhật — hãy xin liên kết mới từ chủ đợt.",
+    "expiredTitle": "Liên kết đã hết hạn",
+    "expiredBody": "Thời hạn của liên kết này đã hết. Báo cáo bạn đang xem không còn được cập nhật — hãy xin liên kết mới từ chủ đợt.",
+    "qrMemberSettledTitle": "Thành viên đã được cập nhật",
+    "qrMemberSettledBody": "Thành viên này không còn nợ nữa nên mã QR đã được đóng lại."
   }
 }

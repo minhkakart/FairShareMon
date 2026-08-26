@@ -2,11 +2,14 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Route, Routes } from "react-router-dom";
+import type { QueryClient } from "@tanstack/react-query";
 import { delay, http, HttpResponse } from "msw";
 import { server } from "@/test/msw/server";
 import { renderWithProviders } from "@/test/utils";
 import { setActiveLocale } from "@/lib/api/runtime";
 import i18n from "@/i18n";
+import { FakeEventSource, fakeEventSourceInstances, latestFakeEventSource } from "@/test/fakeEventSource";
+import { queryClient as appQueryClient } from "@/lib/query/queryClient";
 import { PublicSharePage } from "./pages/PublicSharePage";
 import type { PublicEventShareResponse } from "./api/types";
 
@@ -77,12 +80,12 @@ const PAYLOAD: PublicEventShareResponse = {
   hasQr: false,
 };
 
-function renderPage(path = "/share/tok") {
+function renderPage(path = "/share/tok", queryClient?: QueryClient) {
   return renderWithProviders(
     <Routes>
       <Route path="/share/:token" element={<PublicSharePage />} />
     </Routes>,
-    { initialPath: path },
+    { initialPath: path, queryClient },
   );
 }
 
@@ -246,5 +249,142 @@ describe("PublicSharePage generic failure", () => {
         screen.getByRole("heading", { level: 1, name: "Chuyến Đà Lạt" }),
       ).toBeInTheDocument(),
     );
+  });
+});
+
+describe("PublicSharePage live-update stream (public-share-sse-updates.md)", () => {
+  it("PublicSharePage_ReportPending_NeverOpensEventSource", async () => {
+    server.use(
+      http.get("*/api/v1/public/shares/:token", async () => {
+        await delay(40);
+        return ok(PAYLOAD);
+      }),
+    );
+    renderPage();
+
+    // Still pending — the stream must not open before the report's own
+    // success state (usePublicShareQuery.isSuccess).
+    expect(fakeEventSourceInstances()).toHaveLength(0);
+
+    await screen.findByRole("heading", { level: 1, name: "Chuyến Đà Lạt" });
+
+    // Opens exactly once the report has successfully loaded.
+    expect(fakeEventSourceInstances()).toHaveLength(1);
+  });
+
+  it("PublicSharePage_16000Path_NeverOpensEventSource", async () => {
+    // Regression guard: this feature must not touch the pre-load no-leak
+    // 16000 screen at all — the stream is gated on a SUCCESSFUL report load,
+    // which a 16000 response never reaches.
+    server.use(
+      http.get("*/api/v1/public/shares/:token", () =>
+        fail(16000, "Liên kết không tồn tại hoặc đã hết hạn.", 404),
+      ),
+    );
+    renderPage("/share/whatever");
+
+    await screen.findByText("Liên kết không khả dụng");
+
+    expect(fakeEventSourceInstances()).toHaveLength(0);
+  });
+
+  it("PublicSharePage_UpdatedEvent_RefetchesReportAndRendersNewNumbers", async () => {
+    // `useEventShareStream`'s `updated` handler invalidates via the app's
+    // SINGLETON `queryClient` (imported directly, not via `useQueryClient()`
+    // context — see the hook's own doc comment). In production there is only
+    // ever one `QueryClientProvider`, wired to that same singleton
+    // (`src/app/providers.tsx`), so this always lines up; `renderWithProviders`
+    // otherwise hands each test a fresh, unrelated client, which would make an
+    // invalidation on the singleton a no-op for the query this page actually
+    // reads. Passing the singleton in here reproduces the real wiring.
+    let calls = 0;
+    const PAYLOAD2: PublicEventShareResponse = {
+      ...PAYLOAD,
+      totalOutstanding: 950000,
+      rows: [
+        {
+          ...PAYLOAD.rows[0],
+          owed: 450000,
+          balance: -450000,
+          outstanding: 450000,
+        },
+        PAYLOAD.rows[1],
+      ],
+    };
+    server.use(
+      http.get("*/api/v1/public/shares/:token", () => {
+        calls += 1;
+        return ok(calls === 1 ? PAYLOAD : PAYLOAD2);
+      }),
+    );
+    renderPage("/share/tok", appQueryClient);
+
+    await screen.findByRole("heading", { level: 1, name: "Chuyến Đà Lạt" });
+    expect(screen.getByText(/800\.000\s*₫/)).toBeInTheDocument();
+    expect(calls).toBe(1);
+
+    latestFakeEventSource()?.dispatch("updated");
+
+    // The underlying MSW GET handler is hit a second time, and the rendered
+    // summary number reflects the second payload once the refetch resolves —
+    // no manual reload, no route change.
+    await waitFor(() => expect(calls).toBe(2));
+    expect(await screen.findByText(/950\.000\s*₫/)).toBeInTheDocument();
+    expect(screen.queryByText(/800\.000\s*₫/)).not.toBeInTheDocument();
+
+    appQueryClient.clear(); // keep the shared singleton clean for other files
+  });
+
+  it("PublicSharePage_RevokedEvent_SwapsToDistinctRevokedTerminalCopy", async () => {
+    server.use(http.get("*/api/v1/public/shares/:token", () => ok(PAYLOAD)));
+    renderPage();
+    await screen.findByRole("heading", { level: 1, name: "Chuyến Đà Lạt" });
+
+    latestFakeEventSource()?.dispatch("revoked");
+
+    expect(
+      await screen.findByText("Liên kết đã bị thu hồi"),
+    ).toBeInTheDocument();
+    // Distinct from the success report AND from the pre-load no-leak screen —
+    // three genuinely different strings (OQ1).
+    expect(
+      screen.queryByRole("heading", { level: 1, name: "Chuyến Đà Lạt" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Liên kết không khả dụng"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Liên kết đã hết hạn")).not.toBeInTheDocument();
+  });
+
+  it("PublicSharePage_ExpiredEvent_SwapsToDistinctExpiredTerminalCopy", async () => {
+    server.use(http.get("*/api/v1/public/shares/:token", () => ok(PAYLOAD)));
+    renderPage();
+    await screen.findByRole("heading", { level: 1, name: "Chuyến Đà Lạt" });
+
+    latestFakeEventSource()?.dispatch("expired");
+
+    expect(await screen.findByText("Liên kết đã hết hạn")).toBeInTheDocument();
+    // Distinct from the success report AND from the pre-load no-leak screen
+    // AND from the revoked terminal copy — all four are different strings.
+    expect(
+      screen.queryByRole("heading", { level: 1, name: "Chuyến Đà Lạt" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Liên kết không khả dụng"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Liên kết đã bị thu hồi")).not.toBeInTheDocument();
+  });
+
+  it("PublicSharePage_Unmount_ClosesTheFakeEventSource", async () => {
+    server.use(http.get("*/api/v1/public/shares/:token", () => ok(PAYLOAD)));
+    const view = renderPage();
+    await screen.findByRole("heading", { level: 1, name: "Chuyến Đà Lạt" });
+
+    const source = latestFakeEventSource();
+    expect(source?.readyState).toBe(FakeEventSource.OPEN);
+
+    view.unmount();
+
+    expect(source?.readyState).toBe(FakeEventSource.CLOSED);
   });
 });

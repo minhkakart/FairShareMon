@@ -94,5 +94,13 @@
   "expired": {
     "title": "Link unavailable",
     "body": "This link has expired, was revoked, or does not exist. Contact whoever shared it for a new link."
+  },
+  "stream": {
+    "revokedTitle": "This link was revoked",
+    "revokedBody": "The event owner revoked or regenerated this link. The report you were viewing is no longer updating — ask the owner for a new link.",
+    "expiredTitle": "This link has expired",
+    "expiredBody": "This link's time limit has passed. The report you were viewing is no longer updating — ask the owner for a new link.",
+    "qrMemberSettledTitle": "Member updated",
+    "qrMemberSettledBody": "This member no longer owes anything, so their QR was closed."
   }
 }

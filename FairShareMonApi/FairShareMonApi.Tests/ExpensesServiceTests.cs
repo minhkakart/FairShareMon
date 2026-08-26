@@ -28,6 +28,7 @@ public class ExpensesServiceTests
     private readonly FakeExpenseRepository _expenses = new();
     private readonly FakeAuditLogRepository _audit = new();
     private readonly FakeTierService _tier = new();
+    private readonly FakeEventShareUpdateNotifier _shareUpdateNotifier = new();
 
     private readonly IMapper _mapper = new MapperConfiguration(config =>
     {
@@ -40,7 +41,7 @@ public class ExpensesServiceTests
     }).CreateMapper();
 
     private ExpensesService CreateService() =>
-        new(_expenses, _audit, _tier, _mapper, new CreateExpenseRequestValidator(), new UpdateExpenseRequestValidator(), new AssignEventRequestValidator());
+        new(_expenses, _audit, _tier, _mapper, new CreateExpenseRequestValidator(), new UpdateExpenseRequestValidator(), new AssignEventRequestValidator(), _shareUpdateNotifier);
 
     private static CreateExpenseRequest CreateRequest() =>
         new()
@@ -226,6 +227,30 @@ public class ExpensesServiceTests
             CreateService().SetSettledAsync(UserUuid, "no-such", new SetSettledRequest { IsSettled = true }));
 
         Assert.Equal(ErrorCodes.ExpenseNotFound, exception.Code);
+    }
+
+    // ---- SSE notify seam (planning/public-share-sse-updates.md) ------------------------------------
+
+    [Fact]
+    public async Task SetSettledAsync_Success_CallsShareUpdateNotifierOnceWithExpenseUuid()
+    {
+        _expenses.SetSettledStatus = ExpenseWriteStatus.Success;
+
+        await CreateService().SetSettledAsync(UserUuid, "e-1", new SetSettledRequest { IsSettled = true });
+
+        Assert.Equal(1, _shareUpdateNotifier.ExpenseChangedCalls);
+        Assert.Equal("e-1", _shareUpdateNotifier.LastExpenseUuid);
+    }
+
+    [Fact]
+    public async Task SetSettledAsync_Miss_NeverCallsShareUpdateNotifier()
+    {
+        _expenses.SetSettledStatus = ExpenseWriteStatus.ExpenseNotFound;
+
+        await Assert.ThrowsAsync<ErrorException>(() =>
+            CreateService().SetSettledAsync(UserUuid, "no-such", new SetSettledRequest { IsSettled = true }));
+
+        Assert.Equal(0, _shareUpdateNotifier.ExpenseChangedCalls);
     }
 
     [Fact]
@@ -430,6 +455,9 @@ public class ExpensesServiceTests
         public Task<ExpenseWriteStatus> RemoveEventAsync(string userUuid, string expenseUuid, CancellationToken cancellationToken = default) =>
             Task.FromResult(RemoveEventStatus);
 
+        public Task<string?> GetEventUuidAsync(string userUuid, string expenseUuid, CancellationToken cancellationToken = default) =>
+            Task.FromResult(StoredExpense?.Event?.Uuid);
+
         public IQueryable<Expense> Query(bool tracking = false, bool includeDeleted = false) => throw new NotSupportedException();
 
         public Task<TResult> ExecuteQueryAsync<TResult>(Func<AppDbContext, CancellationToken, Task<TResult>> query, CancellationToken cancellationToken = default) =>
@@ -451,5 +479,23 @@ public class ExpensesServiceTests
 
         public Task<TResult> ExecuteTransactionAsync<TResult>(Func<AppDbContext, TransactionContext, Task<TResult>> action, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
+    }
+
+    /// <summary>No-op fake for the SSE notify seam (planning/public-share-sse-updates.md) - records calls
+    /// so a test can assert the notifier was (or wasn't) invoked, without touching Redis/DB.</summary>
+    private sealed class FakeEventShareUpdateNotifier : FairShareMonApi.Services.Api.Share.IEventShareUpdateNotifier
+    {
+        public int ExpenseChangedCalls { get; private set; }
+        public string? LastExpenseUuid { get; private set; }
+
+        public Task NotifyEventChangedAsync(string userUuid, string eventUuid, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task NotifyExpenseChangedAsync(string userUuid, string expenseUuid, CancellationToken cancellationToken = default)
+        {
+            ExpenseChangedCalls++;
+            LastExpenseUuid = expenseUuid;
+            return Task.CompletedTask;
+        }
     }
 }

@@ -184,4 +184,18 @@ public static class ErrorCodes
     // reuses an existing miss code (EventNotFound 9000 / MemberNotFound 3000); an ineligible member's
     // cascade is a silent no-op, not an error. No codes are defined yet; this block is reserved for any
     // future settlement-sync-specific failure state (e.g. Milestone 2).
+
+    // 18xxx - Bank callback settlement (block claimed by planning/bank-callback-settlement.md). Only the
+    // webhook's own request-shape failures get a code; the internal per-transaction Outcome values
+    // (UnmatchedCode/AmountMismatch/VerificationFailed/Ignored/AlreadySettledNoOp) are always ACK'd 200 -
+    // a webhook delivery is not "in error" just because the app couldn't resolve/apply it.
+
+    /// <summary>Webhook signature/API-key verification failed (HTTP 401).</summary>
+    public const int BankCallbackVerificationFailed = 18000;
+
+    /// <summary>The webhook payload could not be parsed into a recognizable bank transaction (HTTP 400).</summary>
+    public const int BankCallbackPayloadInvalid = 18001;
+
+    /// <summary>The <c>{provider}</c> route segment matches no registered <c>IBankCallbackParser</c> (HTTP 404).</summary>
+    public const int BankCallbackProviderUnknown = 18002;
 }

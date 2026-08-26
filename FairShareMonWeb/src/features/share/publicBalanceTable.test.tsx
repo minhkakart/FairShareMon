@@ -1,12 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { QueryClient } from "@tanstack/react-query";
 import { http, HttpResponse } from "msw";
 import { server } from "@/test/msw/server";
 import { renderWithProviders } from "@/test/utils";
 import { setActiveLocale } from "@/lib/api/runtime";
 import i18n from "@/i18n";
 import { PublicBalanceTable } from "./components/PublicBalanceTable";
+import { shareKeys } from "./hooks/useShare";
 import type { MemberBalanceRow, PublicEventShareResponse } from "./api/types";
 
 /**
@@ -96,6 +98,26 @@ function owingQrs() {
 
 function renderTable(data = makeData()) {
   return renderWithProviders(<PublicBalanceTable token="tok" data={data} />);
+}
+
+/**
+ * Like `renderTable`, but hands back the `QueryClient` instance too, so a test
+ * can call `invalidateQueries` directly on the exact same client the mounted
+ * `usePublicShareMemberQrsQuery` reads from — simulating what
+ * `useEventShareStream`'s `updated` handler does in the real app, without
+ * needing a live `EventSource`/stream at this component-test layer (the QR
+ * guard effect only ever reacts to its own query's data, regardless of what
+ * triggered the refetch).
+ */
+function renderTableWithClient(data = makeData()) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  const view = renderWithProviders(
+    <PublicBalanceTable token="tok" data={data} />,
+    { queryClient },
+  );
+  return { ...view, queryClient };
 }
 
 const PREVIEW_NAME = "Xem mã QR phóng to"; // wallet:qr.previewTitle (vi-VN)
@@ -253,5 +275,94 @@ describe("PublicBalanceTable expand toggle", () => {
     });
     expect(heading).toBeInTheDocument();
     expect(document.getElementById(regionId as string)).toContainElement(heading);
+  });
+});
+
+describe("PublicBalanceTable QR-lightbox live-update guard (public-share-sse-updates.md Step 4)", () => {
+  it("PublicBalanceTable_ViewedMemberDropsFromRefreshedQrList_ClosesDialogAndShowsToast", async () => {
+    server.use(
+      http.get("*/api/v1/public/shares/:token/qr/members", () => ok(owingQrs())),
+    );
+    const user = userEvent.setup();
+    const { queryClient } = renderTableWithClient();
+
+    await user.click(
+      screen.getByRole("button", { name: "Xem mã QR của Bình Trần" }),
+    );
+    const lightbox = await screen.findByRole("dialog", { name: PREVIEW_NAME });
+    expect(within(lightbox).getByText("Bình Trần")).toBeInTheDocument();
+
+    // Bình Trần just got settled server-side: the next QR-list fetch no longer
+    // includes them (mirrors what an `updated` SSE frame's refetch produces).
+    server.use(
+      http.get("*/api/v1/public/shares/:token/qr/members", () =>
+        ok(owingQrs().filter((m) => m.memberUuid !== "m-binh")),
+      ),
+    );
+    void queryClient.invalidateQueries({ queryKey: shareKeys.publicQrs("tok") });
+
+    // The dialog auto-closes (no silent jump to a different member's slide)…
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("dialog", { name: PREVIEW_NAME }),
+      ).not.toBeInTheDocument(),
+    );
+    // …and an informational toast explains why.
+    expect(
+      await screen.findByText("Thành viên đã được cập nhật"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Thành viên này không còn nợ nữa nên mã QR đã được đóng lại.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("PublicBalanceTable_QrListRefreshesWithViewedMemberStillPresent_DialogStaysOpenNoToast", async () => {
+    // Regression guard on the guard itself: a refetch that still contains the
+    // currently-viewed member must NOT close the dialog or toast.
+    server.use(
+      http.get("*/api/v1/public/shares/:token/qr/members", () => ok(owingQrs())),
+    );
+    const user = userEvent.setup();
+    const { queryClient } = renderTableWithClient();
+
+    await user.click(
+      screen.getByRole("button", { name: "Xem mã QR của Bình Trần" }),
+    );
+    await screen.findByRole("dialog", { name: PREVIEW_NAME });
+
+    void queryClient.invalidateQueries({ queryKey: shareKeys.publicQrs("tok") });
+
+    // Give the (unchanged-result) refetch a tick to settle, then assert the
+    // dialog is still open and no "member updated" toast fired.
+    await waitFor(() => expect(queryClient.isFetching()).toBe(0));
+    expect(
+      screen.getByRole("dialog", { name: PREVIEW_NAME }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Thành viên đã được cập nhật"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("PublicBalanceTable_FirstOpenOfLightbox_GuardEffectIsInert_NoToast", async () => {
+    // Regression guard (event-share-link.md original behavior): opening the
+    // lightbox for the very first time must never trip the new Step 4 guard —
+    // it only reacts to a CHANGE in an already-open dialog's member list.
+    server.use(
+      http.get("*/api/v1/public/shares/:token/qr/members", () => ok(owingQrs())),
+    );
+    const user = userEvent.setup();
+    renderTable();
+
+    await user.click(
+      screen.getByRole("button", { name: "Xem mã QR của An Nguyễn" }),
+    );
+
+    const lightbox = await screen.findByRole("dialog", { name: PREVIEW_NAME });
+    expect(within(lightbox).getByText("An Nguyễn")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Thành viên đã được cập nhật"),
+    ).not.toBeInTheDocument();
   });
 });

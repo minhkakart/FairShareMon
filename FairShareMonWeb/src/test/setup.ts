@@ -8,6 +8,7 @@ process.env.TZ = "Asia/Ho_Chi_Minh";
 import { afterAll, afterEach, beforeAll } from "vitest";
 import { cleanup, configure } from "@testing-library/react";
 import { server } from "./msw/server";
+import { FakeEventSource, resetFakeEventSources } from "./fakeEventSource";
 
 // Raise the async-util timeout above the 1000ms default so `findBy*`/`waitFor`
 // tolerate CPU saturation when the full suite runs in parallel (network-bound
@@ -51,9 +52,23 @@ if (typeof URL.revokeObjectURL === "undefined") {
   URL.revokeObjectURL = () => {};
 }
 
+// jsdom does not implement `EventSource` at all (on its documented "not
+// implemented" list, like WebSocket) — without a default, any component that
+// mounts `useEventShareStream` (public-share-sse-updates.md) would throw
+// `EventSource is not defined` even in tests that have nothing to do with the
+// stream. Installed unconditionally as the harness default (mirrors the other
+// polyfills above); a spec that actually drives the stream can still call
+// `vi.stubGlobal("EventSource", FakeEventSource)` itself for clarity, or just
+// reach for `latestFakeEventSource()`/`fakeEventSourceInstances()` directly
+// since this is already the global in effect.
+if (typeof globalThis.EventSource === "undefined") {
+  globalThis.EventSource = FakeEventSource as unknown as typeof EventSource;
+}
+
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
 afterEach(() => {
   cleanup();
   server.resetHandlers();
+  resetFakeEventSources();
 });
 afterAll(() => server.close());

@@ -213,6 +213,15 @@
   <data name="Error.EventNotClosedForShare" xml:space="preserve">
     <value>Chỉ có thể chia sẻ đợt đã chốt.</value>
   </data>
+  <data name="Error.BankCallbackVerificationFailed" xml:space="preserve">
+    <value>Xác thực webhook ngân hàng không hợp lệ.</value>
+  </data>
+  <data name="Error.BankCallbackPayloadInvalid" xml:space="preserve">
+    <value>Dữ liệu giao dịch ngân hàng không hợp lệ.</value>
+  </data>
+  <data name="Error.BankCallbackProviderUnknown" xml:space="preserve">
+    <value>Không hỗ trợ nhà cung cấp giao dịch ngân hàng này.</value>
+  </data>
   <data name="Envelope.ValidationFailed" xml:space="preserve">
     <value>Dữ liệu gửi lên không hợp lệ.</value>
   </data>
@@ -296,6 +305,9 @@
   </data>
   <data name="Success.ShareLinkRevoked" xml:space="preserve">
     <value>Đã thu hồi liên kết chia sẻ.</value>
+  </data>
+  <data name="Success.BankCallbackReceived" xml:space="preserve">
+    <value>Đã nhận giao dịch ngân hàng.</value>
   </data>
   <data name="Validation.Auth.CurrentPasswordRequired" xml:space="preserve">
     <value>Mật khẩu hiện tại không được để trống.</value>

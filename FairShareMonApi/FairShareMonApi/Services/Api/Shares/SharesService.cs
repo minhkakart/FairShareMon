@@ -5,6 +5,7 @@ using FairShareMonApi.Exceptions;
 using FairShareMonApi.Models.Expenses;
 using FairShareMonApi.Models.Shares;
 using FairShareMonApi.Repositories;
+using FairShareMonApi.Services.Api.Share;
 using FluentValidation;
 
 namespace FairShareMonApi.Services.Api.Shares;
@@ -32,7 +33,8 @@ public sealed class SharesService(
     IShareRepository shareRepository,
     IMapper mapper,
     IValidator<CreateShareRequest> createValidator,
-    IValidator<UpdateShareRequest> updateValidator) : ISharesService
+    IValidator<UpdateShareRequest> updateValidator,
+    IEventShareUpdateNotifier shareUpdateNotifier) : ISharesService
 {
     public async Task<ShareResponse> AddAsync(string userUuid, string expenseUuid, CreateShareRequest request, CancellationToken cancellationToken = default)
     {
@@ -104,6 +106,7 @@ public sealed class SharesService(
         switch (status)
         {
             case ExpenseWriteStatus.Success:
+                await shareUpdateNotifier.NotifyExpenseChangedAsync(userUuid, expenseUuid, cancellationToken);
                 return;
             case ExpenseWriteStatus.ExpenseNotFound:
                 throw ExpenseNotFound();

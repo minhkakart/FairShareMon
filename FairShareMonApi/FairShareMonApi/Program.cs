@@ -100,6 +100,11 @@ builder.Services
     .AddHttpClient<FairShareMonApi.Services.Api.Banks.VietQrApiClient>(client =>
         client.Timeout = TimeSpan.FromSeconds(10));
 
+// Bank-callback settlement (planning/bank-callback-settlement.md, Step 9). Standard .NET options wiring
+// (mirrors the Banks block above) - this feature only RECEIVES inbound webhooks, so no outbound HttpClient.
+builder.Services.Configure<FairShareMonApi.Models.BankCallbacks.BankCallbacksOptions>(
+    builder.Configuration.GetSection(FairShareMonApi.Models.BankCallbacks.BankCallbacksOptions.SectionName));
+
 // API versioning: routes are api/v{version}/[controller].
 builder.Services
     .AddApiVersioning(options =>

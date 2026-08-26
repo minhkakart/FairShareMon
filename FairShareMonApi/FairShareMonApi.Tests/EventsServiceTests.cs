@@ -35,10 +35,12 @@ public class EventsServiceTests
     // only needs to prove the service reads and forwards it - see CreateAsync_PassesRequestZoneToRepository.
     private readonly TestRequestTimeZone _requestTimeZone = new(TestTimeZones.Plus7);
 
+    private readonly FakeEventShareUpdateNotifier _shareUpdateNotifier = new();
+
     private readonly IMapper _mapper = new MapperConfiguration(config => config.AddProfile<EventProfile>()).CreateMapper();
 
     private EventsService CreateService() =>
-        new(_events, _settlements, _tier, _requestTimeZone, _mapper, new CreateEventRequestValidator(), new UpdateEventRequestValidator());
+        new(_events, _settlements, _tier, _requestTimeZone, _mapper, new CreateEventRequestValidator(), new UpdateEventRequestValidator(), _shareUpdateNotifier);
 
     private static readonly DateTime Start = new(2026, 7, 14, 0, 0, 0, DateTimeKind.Utc);
     private static readonly DateTime End = new(2026, 7, 16, 23, 59, 59, DateTimeKind.Utc);
@@ -353,6 +355,41 @@ public class EventsServiceTests
         Assert.Equal(ErrorCodes.MemberNotFound, exception.Code); // OQ9a/OQ12a: non-participant is a resource-owned miss
     }
 
+    // ---- SSE notify seam (planning/public-share-sse-updates.md) ------------------------------------
+
+    [Fact]
+    public async Task SetMemberSettledAsync_Success_CallsShareUpdateNotifierOnceWithEventUuid()
+    {
+        _settlements.SetMemberSettledStatus = SettlementWriteStatus.Success;
+
+        await CreateService().SetMemberSettledAsync(UserUuid, "e-1", "m-1", new SetSettledRequest { IsSettled = true });
+
+        Assert.Equal(1, _shareUpdateNotifier.EventChangedCalls);
+        Assert.Equal("e-1", _shareUpdateNotifier.LastEventUuid);
+    }
+
+    [Fact]
+    public async Task SetMemberSettledAsync_EventMiss_NeverCallsShareUpdateNotifier()
+    {
+        _settlements.SetMemberSettledStatus = SettlementWriteStatus.EventNotFound;
+
+        await Assert.ThrowsAsync<ErrorException>(() =>
+            CreateService().SetMemberSettledAsync(UserUuid, "no-such-event", "m-1", new SetSettledRequest { IsSettled = true }));
+
+        Assert.Equal(0, _shareUpdateNotifier.EventChangedCalls);
+    }
+
+    [Fact]
+    public async Task SetMemberSettledAsync_MemberNotFound_NeverCallsShareUpdateNotifier()
+    {
+        _settlements.SetMemberSettledStatus = SettlementWriteStatus.MemberNotFound;
+
+        await Assert.ThrowsAsync<ErrorException>(() =>
+            CreateService().SetMemberSettledAsync(UserUuid, "e-1", "not-a-participant", new SetSettledRequest { IsSettled = true }));
+
+        Assert.Equal(0, _shareUpdateNotifier.EventChangedCalls);
+    }
+
     // ---- List --------------------------------------------------------------------------------------
 
     [Fact]
@@ -439,6 +476,24 @@ public class EventsServiceTests
             throw new NotSupportedException();
 
         public Task<TResult> ExecuteTransactionAsync<TResult>(Func<AppDbContext, TransactionContext, Task<TResult>> action, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+    }
+
+    /// <summary>No-op fake for the SSE notify seam (planning/public-share-sse-updates.md) - records calls
+    /// so a test can assert the notifier was (or wasn't) invoked, without touching Redis/DB.</summary>
+    private sealed class FakeEventShareUpdateNotifier : FairShareMonApi.Services.Api.Share.IEventShareUpdateNotifier
+    {
+        public int EventChangedCalls { get; private set; }
+        public string? LastEventUuid { get; private set; }
+
+        public Task NotifyEventChangedAsync(string userUuid, string eventUuid, CancellationToken cancellationToken = default)
+        {
+            EventChangedCalls++;
+            LastEventUuid = eventUuid;
+            return Task.CompletedTask;
+        }
+
+        public Task NotifyExpenseChangedAsync(string userUuid, string expenseUuid, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
     }
 

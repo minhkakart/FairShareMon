@@ -50,6 +50,11 @@ public interface IExpenseRepository : IBaseRepository, IQueryRepository<Expense>
 
     /// <summary>DB-side count of the user's expenses whose <c>expense_time</c> falls in the UTC half-open window <c>[from, to)</c> (M10 monthly limit; the service computes the +7 calendar-month window, OQ4a).</summary>
     Task<int> CountByUserInRangeAsync(string userUuid, DateTime fromUtcInclusive, DateTime toUtcExclusive, CancellationToken cancellationToken = default);
+
+    /// <summary>Resource-owned lookup of the expense's owning event UUID (null for a loose expense or an
+    /// ownership miss). Backs the SSE notify seam (planning/public-share-sse-updates.md) - a plain read, no
+    /// change to any write method's signature.</summary>
+    Task<string?> GetEventUuidAsync(string userUuid, string expenseUuid, CancellationToken cancellationToken = default);
 }
 
 [ScopedService(typeof(IExpenseRepository))]
@@ -469,4 +474,10 @@ public sealed class ExpenseRepository(AppDbContext dbContext, IAuditLogFactory a
     /// <summary>Whole-day-inclusive range check against the normalized event window (OQ1).</summary>
     private static bool IsWithinRange(DateTime expenseTime, Event evt) =>
         expenseTime >= evt.StartDate && expenseTime <= evt.EndDate;
+
+    public Task<string?> GetEventUuidAsync(string userUuid, string expenseUuid, CancellationToken cancellationToken = default) =>
+        ExecuteQueryAsync((_, ct) => Query()
+            .Where(expense => expense.Uuid == expenseUuid && expense.User.Uuid == userUuid)
+            .Select(expense => expense.Event != null ? expense.Event.Uuid : null)
+            .FirstOrDefaultAsync(ct), cancellationToken);
 }

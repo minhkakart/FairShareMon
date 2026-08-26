@@ -1,4 +1,5 @@
 import { api } from "@/lib/api/client";
+import { env } from "@/config/env";
 import type { MemberQrResponse } from "@/features/wallet/api/types";
 import type {
   CreateShareLinkRequest,
@@ -41,4 +42,14 @@ export const shareApi = {
       anonymous: true,
       skipAuthRefresh: true,
     }),
+
+  /**
+   * The anonymous SSE stream URL for a token. Deliberately NOT routed through the
+   * centralized `api` client — native `EventSource` is a separate browser transport
+   * that cannot attach custom headers at all (not just Authorization), and this
+   * route sends none anyway (public, no auth). Reuses the same `env.apiBaseUrl`
+   * base the `api` client itself builds every request URL from.
+   */
+  publicStreamUrl: (token: string) =>
+    `${env.apiBaseUrl}/v1/public/shares/${token}/stream`,
 };

@@ -177,13 +177,13 @@ public class LocalizationResourceTests
     }
 
     [Fact]
-    public void MessageKeys_CoversAllOneHundredThirtyThreeKeys()
+    public void MessageKeys_CoversAllOneHundredThirtySevenKeys()
     {
-        // Sanity anchor on the documented key count (133 = the prior 129 + the 4 keys added by
-        // event-share-link: Feature.Share, Error.ShareLinkNotFoundOrExpired, Error.EventNotClosedForShare,
-        // and Success.ShareLinkRevoked) so an accidental key deletion/addition surfaces here rather than
-        // as a silent gap.
-        Assert.Equal(133, CollectMessageKeyConstants().Count);
+        // Sanity anchor on the documented key count (137 = the prior 133 + the 4 keys added by
+        // bank-callback-settlement: Error.BankCallbackVerificationFailed, Error.BankCallbackPayloadInvalid,
+        // Error.BankCallbackProviderUnknown, and Success.BankCallbackReceived) so an accidental key
+        // deletion/addition surfaces here rather than as a silent gap.
+        Assert.Equal(137, CollectMessageKeyConstants().Count);
     }
 
     // ---- QR-image-header labels: present in both resx and culture-distinct ------------------------

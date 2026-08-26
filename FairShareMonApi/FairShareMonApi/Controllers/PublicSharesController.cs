@@ -1,3 +1,5 @@
+using FairShareMonApi.Constants;
+using FairShareMonApi.Exceptions;
 using FairShareMonApi.Models;
 using FairShareMonApi.Models.Share;
 using FairShareMonApi.Models.Wallet;
@@ -16,10 +18,15 @@ namespace FairShareMonApi.Controllers;
 /// <c>[AllowAnonymous]</c> (the derived route attribute wins over the base). It <b>never</b> reads
 /// <c>AuthenticatedUser</c> - owner + event are resolved from the token; the view is never re-gated
 /// (§4 rule 9). An unknown / expired / revoked token yields 404 <c>ShareLinkNotFoundOrExpired</c> (16000).
+/// Also exposes the live-update SSE stream (planning/public-share-sse-updates.md).
 /// </summary>
 [AllowAnonymous]
 [Route("api/v{version:apiVersion}/public/shares")]
-public class PublicSharesController(IEventShareService shareService) : AppController
+public class PublicSharesController(
+    IEventShareService shareService,
+    IEventShareLinkCache shareLinkCache,
+    IEventShareStreamBroadcaster streamBroadcaster,
+    IConfiguration configuration) : AppController
 {
     [HttpGet("{token}")]
     [SwaggerOperation(
@@ -41,4 +48,76 @@ public class PublicSharesController(IEventShareService shareService) : AppContro
     public async Task<IActionResult> GetPublicMemberQrsAsync([FromRoute] string token, CancellationToken cancellationToken) =>
         ApiResult<IReadOnlyList<MemberQrResponse>>.Success(
             await shareService.GetPublicMemberQrsAsync(token, cancellationToken));
+
+    [HttpGet("{token}/stream")]
+    [Produces("text/event-stream", "application/json")]
+    [SwaggerOperation(
+        Summary = "Luồng cập nhật trực tiếp của báo cáo chia sẻ (Server-Sent Events)",
+        Description = "Giữ kết nối mở và gửi sự kiện text/event-stream mỗi khi tổng quan đã trả/còn nợ của đợt được chia sẻ thay đổi (event: updated) - client tự gọi lại GET .../shares/{token} (và QR nếu đang hiển thị) khi nhận sự kiện; luồng không mang theo dữ liệu báo cáo. Khi liên kết bị chủ sổ thu hồi/tạo lại (event: revoked) hoặc tự hết hạn (event: expired), gửi sự kiện kết thúc rồi đóng kết nối. Có bình luận giữ-kết-nối định kỳ. Không cần token đăng nhập. Token không tồn tại/đã hết hạn/đã thu hồi ngay khi kết nối trả về 404 (chưa ghi byte nào).")]
+    [SwaggerResponse(StatusCodes.Status200OK, "Kết nối SSE thành công.")]
+    [SwaggerResponse(StatusCodes.Status404NotFound, "Liên kết chia sẻ không tồn tại hoặc đã hết hạn.", typeof(ApiResult))]
+    public async Task<IActionResult> StreamPublicAsync([FromRoute] string token, CancellationToken cancellationToken)
+    {
+        // Validate BEFORE writing anything (same LookupAsync the plain GET uses). Thrown before any byte
+        // is written, so ErrorHandlerFilter still wraps this into the normal 404 16000 JSON envelope -
+        // verified against the File()-returning export/QR actions, which throw from the service the same
+        // way before ever calling File(...).
+        _ = await shareLinkCache.LookupAsync(token, cancellationToken)
+            ?? throw new ErrorException(ErrorCodes.ShareLinkNotFoundOrExpired, MessageKeys.Error.ShareLinkNotFoundOrExpired);
+
+        Response.ContentType = "text/event-stream";
+        Response.Headers.CacheControl = "no-cache";
+        Response.Headers["X-Accel-Buffering"] = "no"; // defense in depth; nginx also gets a dedicated location (Step 8)
+
+        using var subscription = streamBroadcaster.Subscribe(token);
+        await WriteFrameAsync("connected", cancellationToken); // OQ small, harmless "the pipe is live" ping
+
+        var heartbeat = TimeSpan.FromSeconds(configuration.GetValue("Share:StreamHeartbeatSeconds", 20));
+        using var timer = new PeriodicTimer(heartbeat);
+
+        // Both tasks are long-lived across iterations - only the one that actually completed gets
+        // replaced. PeriodicTimer.WaitForNextTickAsync() throws if called again while a previous call
+        // is still pending, and re-issuing ReadAsync every iteration would abandon a still-pending read,
+        // letting a "zombie" reader steal a later signal out from under the live one.
+        var signalTask = subscription.Reader.ReadAsync(cancellationToken).AsTask();
+        var tickTask = timer.WaitForNextTickAsync(cancellationToken).AsTask();
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            if (await Task.WhenAny(signalTask, tickTask) == signalTask)
+            {
+                var signal = await signalTask;
+                var name = signal.Type switch
+                {
+                    EventShareStreamSignalType.Revoked => "revoked",
+                    EventShareStreamSignalType.Expired => "expired",
+                    _ => "updated"
+                };
+                await WriteFrameAsync(name, cancellationToken);
+                if (signal.Type != EventShareStreamSignalType.Updated)
+                    break; // terminal
+                signalTask = subscription.Reader.ReadAsync(cancellationToken).AsTask();
+            }
+            else
+            {
+                // Heartbeat tick doubles as the natural-expiry re-check (OQ1) - nobody has to actively
+                // revoke for an aged-out link to close a still-open tab.
+                if (await shareLinkCache.LookupAsync(token, cancellationToken) is null)
+                {
+                    await WriteFrameAsync("expired", cancellationToken);
+                    break;
+                }
+                await Response.WriteAsync(": keep-alive\n\n", cancellationToken);
+                await Response.Body.FlushAsync(cancellationToken);
+                tickTask = timer.WaitForNextTickAsync(cancellationToken).AsTask();
+            }
+        }
+
+        return new EmptyResult();
+
+        async Task WriteFrameAsync(string eventName, CancellationToken ct)
+        {
+            await Response.WriteAsync($"event: {eventName}\ndata: {{}}\n\n", ct);
+            await Response.Body.FlushAsync(ct);
+        }
+    }
 }

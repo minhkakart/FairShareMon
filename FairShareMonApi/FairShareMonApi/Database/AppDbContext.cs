@@ -44,6 +44,10 @@ public partial class AppDbContext : DbContext
 
     public DbSet<EventShareLink> EventShareLinks => Set<EventShareLink>();
 
+    public DbSet<QrCorrelationCode> QrCorrelationCodes => Set<QrCorrelationCode>();
+
+    public DbSet<BankTransactionCallback> BankTransactionCallbacks => Set<BankTransactionCallback>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -66,6 +70,8 @@ public partial class AppDbContext : DbContext
         BankAccount.ConfigureModel(modelBuilder);
         TierGrant.ConfigureModel(modelBuilder);
         EventShareLink.ConfigureModel(modelBuilder);
+        QrCorrelationCode.ConfigureModel(modelBuilder);
+        BankTransactionCallback.ConfigureModel(modelBuilder);
 
         ConfigureQueryFilters(modelBuilder);
     }

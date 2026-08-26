@@ -117,6 +117,36 @@ export function PublicBalanceTable({ token, data }: PublicBalanceTableProps) {
     }
   }, [pendingOpen, qrQuery.isSuccess, qrQuery.isError, members.length, toast, t]);
 
+  // Live-update correctness guard (public-share-sse-updates.md Step 4): a
+  // stream-triggered QR-list refetch (`useEventShareStream`'s `updated`
+  // invalidation) can resolve while the lightbox is open. If the member
+  // currently being viewed is no longer in the refreshed list (e.g. they just
+  // got settled), close the dialog and toast rather than silently recomputing
+  // `startIndex` to a different member's slide. The render-time
+  // `targetStillPresent` gate on `QrPreviewDialog`'s `open` prop (below) is
+  // what actually prevents painting the wrong slide in the same frame the
+  // data changes — this effect only owns the bookkeeping (closing the
+  // `previewOpen` state + the toast) once that's happened. Inert on
+  // first-open — the ordinary "open for the first time" path never sees
+  // `members` change out from under an already-open dialog.
+  useEffect(() => {
+    if (!previewOpen || !targetMemberUuid) return;
+    // `qrQuery.data` (not the `members` fallback-to-`[]` derived above) so the
+    // dependency array holds a reference that is stable across renders unless
+    // the query actually refetches — `members ?? []` would otherwise create a
+    // new array identity every render and re-run this effect needlessly.
+    const list = qrQuery.data ?? [];
+    const stillPresent = list.some((m) => m.memberUuid === targetMemberUuid);
+    if (!stillPresent) {
+      setPreviewOpen(false);
+      toast.push({
+        tone: "info",
+        title: t("share:stream.qrMemberSettledTitle"),
+        description: t("share:stream.qrMemberSettledBody"),
+      });
+    }
+  }, [qrQuery.data, previewOpen, targetMemberUuid, toast, t]);
+
   function toggleRow(memberUuid: string) {
     setExpanded((prev) => {
       const next = new Set(prev);
@@ -137,6 +167,14 @@ export function PublicBalanceTable({ token, data }: PublicBalanceTableProps) {
     }
   }
 
+  // Computed at render time (not only in the guard effect above) so a
+  // stream-triggered refetch that drops the viewed member can never paint that
+  // member's slide as an unrelated one in the same frame the dialog is still
+  // marked open — the effect closes it right after, but `open` itself must
+  // never lie about which member it's showing in between.
+  const targetStillPresent =
+    targetMemberUuid !== null &&
+    members.some((m) => m.memberUuid === targetMemberUuid);
   const startIndex = Math.max(
     0,
     members.findIndex((m) => m.memberUuid === targetMemberUuid),
@@ -290,7 +328,7 @@ export function PublicBalanceTable({ token, data }: PublicBalanceTableProps) {
       </Table>
 
       <QrPreviewDialog
-        open={previewOpen}
+        open={previewOpen && targetStillPresent}
         onOpenChange={setPreviewOpen}
         members={members}
         kind="event"

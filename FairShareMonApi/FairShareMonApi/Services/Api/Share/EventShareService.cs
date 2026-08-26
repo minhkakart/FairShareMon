@@ -57,7 +57,8 @@ public sealed class EventShareService(
     IWalletQrService walletQrService,
     ITierService tierService,
     IValidator<CreateShareLinkRequest> createValidator,
-    IConfiguration configuration) : IEventShareService
+    IConfiguration configuration,
+    IEventShareStreamBroadcaster streamBroadcaster) : IEventShareService
 {
     private const int TokenByteLength = 32;
 
@@ -82,7 +83,12 @@ public sealed class EventShareService(
             // Regenerate (OQ5b): revoke the active link + mint a fresh one.
             var (revoked, oldToken) = await shareLinkRepository.RevokeActiveByEventAsync(userUuid, eventUuid, cancellationToken);
             if (revoked && oldToken is not null)
+            {
                 await shareLinkCache.RemoveAsync(oldToken, cancellationToken);
+                // Same "this token is now dead" transition as RevokeAsync (Decision 4) - terminate any
+                // live stream on the OLD token.
+                streamBroadcaster.PublishRevoked(oldToken);
+            }
         }
         else
         {
@@ -154,7 +160,10 @@ public sealed class EventShareService(
 
         var (revoked, token) = await shareLinkRepository.RevokeActiveByEventAsync(userUuid, eventUuid, cancellationToken);
         if (revoked && token is not null)
+        {
             await shareLinkCache.RemoveAsync(token, cancellationToken); // post-commit cache eviction
+            streamBroadcaster.PublishRevoked(token); // terminate any live stream on the just-revoked token
+        }
     }
 
     public async Task<PublicEventShareResponse> GetPublicAsync(string token, CancellationToken cancellationToken = default)

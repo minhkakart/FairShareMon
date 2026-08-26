@@ -36,6 +36,7 @@ public class WalletQrServiceTests
     private readonly FakeBankAccountRepository _accounts = new();
     private readonly FakeExpensesService _expenses = new();
     private readonly FakeStatsService _stats = new();
+    private readonly FakeQrCorrelationCodeRepository _correlationCodes = new();
     private readonly CapturingQrImageService _images = new();
     // Pass-through tier double for the orchestration tests; the Premium QR gate is proved separately
     // (below + at the endpoint level).
@@ -59,7 +60,7 @@ public class WalletQrServiceTests
     private WalletQrService CreateService() =>
         new(_accounts, _expenses, _stats, _tier,
             new StubQrContentProviderResolver(new LocalQrContentProvider(new VietQrPayloadBuilder())),
-            _images, _bankDirectory);
+            _images, _bankDirectory, _correlationCodes);
 
     private BankAccount AddDefaultAccount(string bin = "970436", string number = "0123456789")
     {
@@ -815,6 +816,151 @@ public class WalletQrServiceTests
         Assert.Equal(ErrorCodes.PremiumFeatureRequired, exception.Code);
     }
 
+    // ---- Bank-callback settlement (planning/bank-callback-settlement.md OQ1/OQ3, Step 10) ----------
+
+    [Fact]
+    public async Task GenerateExpenseQr_MemoComposesCorrelationCodeFirstThenHumanReadableSuffix()
+    {
+        // ASCII-only names avoid diacritic-folding ambiguity - proves pure ordering: "{code} {description}".
+        AddDefaultAccount();
+        _expenses.Expense = new ExpenseResponse
+        {
+            Uuid = ExpenseUuid, Name = "Party",
+            Payer = new MemberResponse { Uuid = PayerUuid, Name = "An" },
+            Total = 500_000m, Shares = [Share("Chi", 500_000m)]
+        };
+
+        await CreateService().GenerateExpenseQrAsync(UserUuid, ExpenseUuid, null);
+
+        var items = Assert.Single(_images.CompositeBatches);
+        var memo = MemoOf(Assert.Single(items).Payload);
+        Assert.Equal("FSMTESTCD Party - Chi", memo); // code first, then the existing human-readable suffix
+    }
+
+    [Fact]
+    public async Task GenerateExpenseQr_LongDescription_MemoStillStartsWithTheFullUntruncatedCodeAfterFolding()
+    {
+        // A long member name pushes "{code} {expenseName} - {memberName}" well past FoldMemo's 25-char
+        // budget - the code-first ordering alone must guarantee the code survives intact (Background).
+        AddDefaultAccount();
+        var longName = new string('X', 40);
+        _expenses.Expense = ExpenseWith(Share(longName, 500_000m));
+
+        await CreateService().GenerateExpenseQrAsync(UserUuid, ExpenseUuid, null);
+
+        var items = Assert.Single(_images.CompositeBatches);
+        var memo = MemoOf(Assert.Single(items).Payload);
+        Assert.True(memo.Length <= 25); // VietQrPayloadBuilder.MemoMaxLength
+        Assert.StartsWith("FSMTESTCD ", memo); // the 9-char code + separator survives, never cut mid-code
+    }
+
+    [Fact]
+    public async Task GenerateExpenseQr_AttachesCorrelationCode_ForEveryBilledMemberWithTheExpenseTarget()
+    {
+        AddDefaultAccount();
+        _expenses.Expense = ExpenseWith(Share("Cường", 500_000m), Share("Dũng", 250_000m));
+        var cuongMemberUuid = _expenses.Expense.Shares[0].Member.Uuid;
+
+        await CreateService().GenerateExpenseQrAsync(UserUuid, ExpenseUuid, null);
+
+        Assert.Equal(2, _correlationCodes.Calls.Count); // one GetOrCreateAsync per billed member
+        foreach (var call in _correlationCodes.Calls)
+        {
+            Assert.Equal(UserUuid, call.UserUuid);
+            Assert.Null(call.EventUuid);
+            Assert.Equal(ExpenseUuid, call.ExpenseUuid);
+        }
+        Assert.Contains(_correlationCodes.Calls, call => call.MemberUuid == cuongMemberUuid && call.ExpectedAmount == 500_000m);
+    }
+
+    [Fact]
+    public async Task GenerateEventQr_AttachesCorrelationCode_ForEveryBilledMemberWithTheEventTarget()
+    {
+        AddDefaultAccount();
+        _stats.Balance = new EventBalanceResponse
+        {
+            EventUuid = EventUuid, EventName = "Đà Lạt", IsClosed = true,
+            Rows = [Row("Cường", -500_000m)]
+        };
+
+        await CreateService().GenerateEventQrAsync(UserUuid, EventUuid, null);
+
+        var call = Assert.Single(_correlationCodes.Calls);
+        Assert.Equal(UserUuid, call.UserUuid);
+        Assert.Equal(EventUuid, call.EventUuid);
+        Assert.Null(call.ExpenseUuid);
+        Assert.Equal(500_000m, call.ExpectedAmount);
+    }
+
+    [Fact]
+    public async Task GenerateExpenseMemberQrs_AttachesCorrelationCode_SameBilledSetAsCompositePath()
+    {
+        AddDefaultAccount();
+        _expenses.Expense = ExpenseWith(Share("Cường", 500_000m));
+
+        await CreateService().GenerateExpenseMemberQrsAsync(UserUuid, ExpenseUuid, null);
+
+        var call = Assert.Single(_correlationCodes.Calls);
+        Assert.Equal(ExpenseUuid, call.ExpenseUuid);
+        var memo = MemoOf(Assert.Single(_images.SinglePayloads));
+        Assert.StartsWith("FSMTESTCD ", memo);
+    }
+
+    [Fact]
+    public async Task GenerateEventMemberQrs_AttachesCorrelationCode_SameBilledSetAsCompositePath()
+    {
+        AddDefaultAccount();
+        _stats.Balance = new EventBalanceResponse
+        {
+            EventUuid = EventUuid, EventName = "Đà Lạt", IsClosed = true,
+            Rows = [Row("Cường", -500_000m)]
+        };
+
+        await CreateService().GenerateEventMemberQrsAsync(UserUuid, EventUuid, null);
+
+        var call = Assert.Single(_correlationCodes.Calls);
+        Assert.Equal(EventUuid, call.EventUuid);
+        var memo = MemoOf(Assert.Single(_images.SinglePayloads));
+        Assert.StartsWith("FSMTESTCD ", memo);
+    }
+
+    [Fact]
+    public async Task GenerateEventMemberQrsForShare_NeverCallsCorrelationCodeRepository_OQ3Exclusion()
+    {
+        // The anonymous public share-link QR is deliberately excluded from code embedding (OQ3, option a):
+        // the correlation-code repository must never even be called from this path.
+        _stats.Balance = new EventBalanceResponse
+        {
+            EventUuid = EventUuid, EventName = "Đà Lạt", IsClosed = true,
+            Rows = [Row("Cường", -500_000m)]
+        };
+
+        await CreateService().GenerateEventMemberQrsForShareAsync(UserUuid, EventUuid, Snapshot);
+
+        Assert.Empty(_correlationCodes.Calls);
+    }
+
+    [Fact]
+    public async Task GenerateEventMemberQrsForShare_MemoUnchanged_NoCorrelationCodePrefix_OQ3Exclusion()
+    {
+        // Byte-for-byte regression (OQ3): the memo for the excluded share-link path must carry ONLY the
+        // pre-existing "{eventName} - {memberName}" content, folded - no "FSM..." prefix ever appears.
+        _stats.Balance = new EventBalanceResponse
+        {
+            EventUuid = EventUuid, EventName = "Party", IsClosed = true,
+            Rows = [Row("Chi", -500_000m)]
+        };
+
+        await CreateService().GenerateEventMemberQrsForShareAsync(UserUuid, EventUuid, Snapshot);
+
+        var memo = MemoOf(Assert.Single(_images.SinglePayloads));
+        Assert.Equal("Party - Chi", memo);
+        Assert.DoesNotContain("FSM", memo);
+    }
+
+    /// <summary>Extracts the folded memo text from a VietQR payload's field 62 &gt; sub-tag 08 (the additional-data/addInfo memo).</summary>
+    private static string MemoOf(string payload) => ParseTlv(ParseTlv(payload)["62"])["08"];
+
     // ---- Public share per-member QR list (GenerateEventMemberQrsForShareAsync) --------------------
 
     // Distinct from any DB account so a payload check proves the transient snapshot destination was used.
@@ -1095,5 +1241,40 @@ public class WalletQrServiceTests
 
         public Task<IReadOnlyList<BankResponse>> ListAsync(CancellationToken cancellationToken) =>
             Task.FromResult<IReadOnlyList<BankResponse>>(Banks);
+    }
+
+    // planning/bank-callback-settlement.md Step 6/10: a deterministic stand-in for the correlation-code
+    // repository. Returns a FIXED code ("FSMTESTCD") regardless of input, so the pre-existing orchestration
+    // tests above (none of which inspect the VietQR memo field 62, only 38/53/54/58) keep passing unchanged;
+    // also records every call so the dedicated correlation-code-embedding tests (Step 10) can assert the
+    // exact (userUuid, eventUuid, memberUuid, expenseUuid, expectedAmount) tuple WalletQrService passed.
+    private sealed class FakeQrCorrelationCodeRepository : IQrCorrelationCodeRepository
+    {
+        public List<GetOrCreateCall> Calls { get; } = [];
+
+        public Task<QrCorrelationCode> GetOrCreateAsync(
+            string userUuid, string? eventUuid, string memberUuid, string? expenseUuid, decimal expectedAmount,
+            CancellationToken cancellationToken = default)
+        {
+            Calls.Add(new GetOrCreateCall(userUuid, eventUuid, memberUuid, expenseUuid, expectedAmount));
+            return Task.FromResult(new QrCorrelationCode
+            {
+                UserId = 1,
+                MemberId = 1,
+                Code = "FSMTESTCD",
+                ExpectedAmountSnapshot = expectedAmount
+            });
+        }
+
+        public Task<CorrelationTarget?> ResolveCurrentTargetAsync(string code, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<TResult> ExecuteQueryAsync<TResult>(Func<AppDbContext, CancellationToken, Task<TResult>> query, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<TResult> ExecuteTransactionAsync<TResult>(Func<AppDbContext, TransactionContext, Task<TResult>> action, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public sealed record GetOrCreateCall(string UserUuid, string? EventUuid, string MemberUuid, string? ExpenseUuid, decimal ExpectedAmount);
     }
 }

@@ -67,6 +67,7 @@ public sealed class WalletQrService(
     IQrContentProviderResolver qrContentResolver,
     IQrImageService qrImageService,
     IBankDirectoryService bankDirectory,
+    IQrCorrelationCodeRepository correlationCodeRepository,
     IStringLocalizer<StringResources>? localizer = null) : IWalletQrService
 {
     private const string PngContentType = "image/png";
@@ -89,6 +90,10 @@ public sealed class WalletQrService(
         var (contextName, billed) = CollectExpenseBillables(expense);
         if (billed.Count == 0)
             throw new ErrorException(ErrorCodes.NoOutstandingDebtForQr, MessageKeys.Error.NoOutstandingDebtForQr);
+
+        // Bank-callback settlement (OQ3, option (a)): embed a correlation code ahead of the human-readable
+        // memo suffix for every billed member on this owner-initiated, Premium-gated route.
+        billed = await AttachCorrelationCodesAsync(userUuid, eventUuid: null, expenseUuid: expense.Uuid, billed, cancellationToken);
 
         var provider = qrContentResolver.Resolve();
         var items = new List<QrCompositeItem>(billed.Count);
@@ -126,6 +131,10 @@ public sealed class WalletQrService(
         if (billed.Count == 0)
             throw new ErrorException(ErrorCodes.NoOutstandingDebtForQr, MessageKeys.Error.NoOutstandingDebtForQr);
 
+        // Bank-callback settlement (OQ3, option (a)): embed a correlation code ahead of the human-readable
+        // memo suffix for every billed member on this owner-initiated, Premium-gated route.
+        billed = await AttachCorrelationCodesAsync(userUuid, eventUuid: balance.EventUuid, expenseUuid: null, billed, cancellationToken);
+
         var provider = qrContentResolver.Resolve();
         var items = new List<QrCompositeItem>(billed.Count);
         foreach (var member in billed)
@@ -156,6 +165,10 @@ public sealed class WalletQrService(
         if (billed.Count == 0)
             throw new ErrorException(ErrorCodes.NoOutstandingDebtForQr, MessageKeys.Error.NoOutstandingDebtForQr);
 
+        // Bank-callback settlement (OQ3, option (a)): same billed set as GenerateExpenseQrAsync, so the
+        // per-member QR carries the same code as the composite image.
+        billed = await AttachCorrelationCodesAsync(userUuid, eventUuid: null, expenseUuid: expense.Uuid, billed, cancellationToken);
+
         return await BuildMemberQrsAsync(account, contextName, billed, cancellationToken);
     }
 
@@ -175,6 +188,10 @@ public sealed class WalletQrService(
         var (contextName, billed) = CollectEventBillables(balance);
         if (billed.Count == 0)
             throw new ErrorException(ErrorCodes.NoOutstandingDebtForQr, MessageKeys.Error.NoOutstandingDebtForQr);
+
+        // Bank-callback settlement (OQ3, option (a)): same billed set as GenerateEventQrAsync, so the
+        // per-member QR carries the same code as the composite image.
+        billed = await AttachCorrelationCodesAsync(userUuid, eventUuid: balance.EventUuid, expenseUuid: null, billed, cancellationToken);
 
         return await BuildMemberQrsAsync(account, contextName, billed, cancellationToken);
     }
@@ -237,6 +254,29 @@ public sealed class WalletQrService(
             .Select(row => new BilledMember(row.MemberUuid, row.MemberName, row.Outstanding, $"{balance.EventName} - {row.MemberName}"))
             .ToList();
         return (balance.EventName, billed);
+    }
+
+    /// <summary>
+    /// Bank-callback settlement (planning/bank-callback-settlement.md Step 6, OQ1/OQ3): finds-or-creates a
+    /// short correlation code per billed member and prepends it to that member's memo/<c>Description</c>
+    /// (the code-first ordering alone survives <c>VietQrPayloadBuilder.FoldMemo</c>'s 25-char right-
+    /// truncation, Background - no change needed to <c>FoldMemo</c> itself). Called by the four
+    /// owner-initiated, Premium-gated methods only (OQ3, option (a)); <see cref="GenerateEventMemberQrsForShareAsync"/>
+    /// (the anonymous share-link QR) is deliberately excluded. <see cref="CollectExpenseBillables"/>/
+    /// <see cref="CollectEventBillables"/> themselves stay pure/unchanged.
+    /// </summary>
+    private async Task<IReadOnlyList<BilledMember>> AttachCorrelationCodesAsync(
+        string userUuid, string? eventUuid, string? expenseUuid, IReadOnlyList<BilledMember> billed, CancellationToken cancellationToken)
+    {
+        var result = new List<BilledMember>(billed.Count);
+        foreach (var member in billed)
+        {
+            var code = await correlationCodeRepository.GetOrCreateAsync(
+                userUuid, eventUuid, member.MemberUuid, expenseUuid, member.Amount, cancellationToken);
+            result.Add(member with { Description = $"{code.Code} {member.Description}" });
+        }
+
+        return result;
     }
 
     /// <summary>
